@@ -20,7 +20,7 @@ export default function BackendModeToggle({
 }) {
   const [mode, setMode] = useState(() => {
     const stored = getStoredBackendMode();
-    if (!stored || stored === "local") return "aws";
+    if (!stored || stored === "local") return "render";
     return stored;
   });
   const [boot, setBoot] = useState(null);
@@ -49,7 +49,7 @@ export default function BackendModeToggle({
             onReadyChange?.(r.ok);
           }
         } else {
-          const kind = mode === "lab" ? "lab" : "aws";
+          const kind = mode === "lab" ? "lab" : mode === "render" ? "render" : "aws";
           const r = await ensureRemoteBackendReachable(kind, ac.signal);
           if (!cancelled) {
             if (
@@ -58,9 +58,9 @@ export default function BackendModeToggle({
               !userExplicitlyChoseRemote.current
             ) {
               setDevFallbackNotice(
-                "저장된 원격 서버에 연결되지 않아 개발 모드에서 Cloud(AWS)로 전환했습니다. VPN·망을 확인한 뒤 필요하면 아래에서 서버를 다시 선택하세요."
+                "저장된 원격 서버에 연결되지 않아 개발 모드에서 Cloud(Render)로 전환했습니다. VPN·망을 확인한 뒤 필요하면 아래에서 서버를 다시 선택하세요."
               );
-              setMode("aws");
+              setMode("render");
               return;
             }
             setBoot({ phase: "done", ...r });
@@ -109,7 +109,7 @@ export default function BackendModeToggle({
         <button
           type="button"
           className={
-            mode === "aws"
+            mode === "render" || mode === "aws"
               ? "auth-backend-mode-btn auth-backend-mode-btn--active"
               : "auth-backend-mode-btn"
           }
@@ -117,12 +117,55 @@ export default function BackendModeToggle({
           onClick={() => {
             setDevFallbackNotice(null);
             userExplicitlyChoseRemote.current = true;
-            setMode("aws");
+            setMode((prev) => (prev === "aws" || prev === "render" ? prev : "render"));
           }}
+          aria-expanded={mode === "render" || mode === "aws"}
+          aria-controls="auth-backend-cloud-sub"
         >
-          Cloud (AWS)
+          Cloud
         </button>
       </div>
+      {(mode === "render" || mode === "aws") && (
+        <div
+          id="auth-backend-cloud-sub"
+          className="auth-backend-mode-sub"
+          role="group"
+          aria-label="Cloud 종류"
+        >
+          <button
+            type="button"
+            className={
+              mode === "render"
+                ? "auth-backend-mode-btn auth-backend-mode-btn--sub auth-backend-mode-btn--active"
+                : "auth-backend-mode-btn auth-backend-mode-btn--sub"
+            }
+            disabled={disabled}
+            onClick={() => {
+              setDevFallbackNotice(null);
+              userExplicitlyChoseRemote.current = true;
+              setMode("render");
+            }}
+          >
+            Render
+          </button>
+          <button
+            type="button"
+            className={
+              mode === "aws"
+                ? "auth-backend-mode-btn auth-backend-mode-btn--sub auth-backend-mode-btn--active"
+                : "auth-backend-mode-btn auth-backend-mode-btn--sub"
+            }
+            disabled={disabled}
+            onClick={() => {
+              setDevFallbackNotice(null);
+              userExplicitlyChoseRemote.current = true;
+              setMode("aws");
+            }}
+          >
+            AWS
+          </button>
+        </div>
+      )}
       <div className="auth-chatbot-model">
         <div className="auth-chatbot-model-label">Chatbot 모델</div>
         <select

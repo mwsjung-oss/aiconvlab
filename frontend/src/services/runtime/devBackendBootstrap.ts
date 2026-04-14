@@ -1,6 +1,10 @@
 /** 개발 시 로컬 uvicorn 자동 기동(Vite 플러그인) + 연구실 헬스 확인 */
 
-import { getAwsApiUrl, getLabApiUrlWithLegacyFallback } from "../config/publicEnv";
+import {
+  getAwsApiUrl,
+  getLabApiUrlWithLegacyFallback,
+  getPublicApiBaseUrl,
+} from "../config/publicEnv";
 
 const trim = (u: string) => u.replace(/\/+$/, "");
 
@@ -10,6 +14,10 @@ function labBase() {
 
 function awsBase() {
   return trim(getAwsApiUrl());
+}
+
+function renderBase() {
+  return trim(getPublicApiBaseUrl());
 }
 
 /** Vite dev 전용: 로컬 백엔드가 없으면 서버가 uvicorn 을 띄운 뒤 /api/health 까지 대기 */
@@ -70,9 +78,15 @@ export async function ensureLocalBackendReady(
 }
 
 export async function ensureRemoteBackendReachable(
-  kind: "lab" | "aws",
+  kind: "lab" | "render" | "aws",
   signal?: AbortSignal
 ): Promise<{ ok: boolean; message: string }> {
+  if (kind === "render" && !renderBase()) {
+    return {
+      ok: false,
+      message: "VITE_API_BASE_URL 이 비어 있습니다. `.env`에 Render API 베이스 URL을 설정하세요.",
+    };
+  }
   if (kind === "aws" && !awsBase()) {
     return {
       ok: false,
@@ -111,10 +125,14 @@ export async function ensureRemoteBackendReachable(
           (j.ok
             ? kind === "lab"
               ? "연구실 서버 API에 연결되었습니다."
-              : "Cloud (AWS) API에 연결되었습니다."
+              : kind === "render"
+                ? "Cloud (Render) API에 연결되었습니다."
+                : "Cloud (AWS) API에 연결되었습니다."
             : kind === "lab"
               ? "연구실 서버 확인 실패"
-              : "Cloud (AWS) 확인 실패"),
+              : kind === "render"
+                ? "Cloud (Render) 확인 실패"
+                : "Cloud (AWS) 확인 실패"),
       };
     } catch (e) {
       return {
@@ -124,8 +142,9 @@ export async function ensureRemoteBackendReachable(
     }
   }
 
-  const base = kind === "lab" ? labBase() : awsBase();
-  const remoteName = kind === "lab" ? "연구실" : "Cloud (AWS)";
+  const base = kind === "lab" ? labBase() : kind === "render" ? renderBase() : awsBase();
+  const remoteName =
+    kind === "lab" ? "연구실" : kind === "render" ? "Cloud (Render)" : "Cloud (AWS)";
   try {
     const health = await fetch(`${base}/api/health`, { mode: "cors", signal });
     if (health.ok) {

@@ -6,7 +6,7 @@ import { getStoredBackendMode, setStoredBackendMode } from "./api/backendMode";
 import "./index.css";
 
 if (typeof localStorage !== "undefined" && getStoredBackendMode() == null) {
-  setStoredBackendMode("local");
+  setStoredBackendMode("render");
 }
 
 ReactDOM.createRoot(document.getElementById("root")).render(

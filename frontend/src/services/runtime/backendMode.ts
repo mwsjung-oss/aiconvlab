@@ -1,4 +1,4 @@
-/** 로그인 화면에서 선택한 백엔드(연구실 vs Cloud AWS 중심). */
+/** 로그인 화면에서 선택한 백엔드(연구실 vs Cloud[Render/AWS]). */
 
 import {
   getAwsApiUrl,
@@ -10,7 +10,7 @@ import {
 
 export const BACKEND_MODE_KEY = "ailab_backend_mode";
 
-export type BackendMode = "local" | "lab" | "aws";
+export type BackendMode = "local" | "lab" | "render" | "aws";
 
 const trimBase = (u: string) => u.replace(/\/+$/, "");
 
@@ -24,9 +24,9 @@ const awsDefault = trimBase(getAwsApiUrl());
 export function getStoredBackendMode(): BackendMode | null {
   if (typeof window === "undefined") return null;
   const v = localStorage.getItem(BACKEND_MODE_KEY);
-  // 운영 UX에서는 local 옵션을 숨기므로 기존 local 저장값은 aws로 승격합니다.
-  if (v === "local") return "aws";
-  if (v === "local" || v === "lab" || v === "aws") return v;
+  // 운영 UX에서는 local 옵션을 숨기므로 기존 local 저장값은 render로 승격합니다.
+  if (v === "local") return "render";
+  if (v === "local" || v === "lab" || v === "render" || v === "aws") return v;
   return null;
 }
 
@@ -56,10 +56,9 @@ export function getResolvedApiBase(): string {
 export function getBackendModeLabel(): string {
   const mode = getStoredBackendMode();
   if (mode === "lab") return "연구실 서버";
-  if (mode === "aws") return "Cloud (AWS)";
-  if (mode === "local") return "Cloud (AWS)";
+  if (mode === "render" || mode === "aws" || mode === "local") return "Cloud";
   // 기본 라벨은 cloud로 고정해 배포 API 같은 추상 표현 대신 실제 선택지를 노출합니다.
-  return "Cloud (AWS)";
+  return "Cloud";
 }
 
 export function getBackendHint(mode: BackendMode): string {
@@ -72,6 +71,13 @@ export function getBackendHint(mode: BackendMode): string {
     }
     return `API → ${labDefault} (선택 시 연결·헬스를 확인합니다. 서버가 켜져 있어야 합니다.)`;
   }
+  if (mode === "render") {
+    const fixed = trimBase(getPublicApiBaseUrl());
+    if (fixed) {
+      return `API → ${fixed} (Cloud-Render 운영 백엔드)`;
+    }
+    return "Cloud-Render: VITE_API_BASE_URL 을 설정하세요.";
+  }
   if (mode === "aws" && awsDefault) {
     return `API → ${awsDefault} (Cloud 백엔드 주소. 서버가 켜져 있어야 합니다.)`;
   }
@@ -83,5 +89,5 @@ export function getBackendHint(mode: BackendMode): string {
 
 /** 원격(비로컬) 모드인지 — lab 또는 aws */
 export function isRemoteBackendMode(m: BackendMode): boolean {
-  return m === "lab" || m === "aws";
+  return m === "lab" || m === "render" || m === "aws";
 }
