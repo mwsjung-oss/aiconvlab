@@ -30,4 +30,3 @@ services:
         value: false
       - key: AWS_ENABLED
         value: false
-
