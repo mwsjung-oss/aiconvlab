@@ -110,6 +110,11 @@
 }
 
 .lab-platform-main {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.14rem;
   font-size: 1.5rem;
   font-weight: 800;
   letter-spacing: -0.025em;
@@ -137,6 +142,13 @@
   text-shadow:
     0 1px 0 rgba(255, 255, 255, 0.65),
     0 -1px 0 rgba(30, 58, 90, 0.06);
+}
+
+.lab-platform-main-text {
+  font-size: 1.5rem;
+  font-weight: 800;
+  letter-spacing: -0.025em;
+  line-height: 1.1;
 }
 
 .lab-platform-main-btn {
@@ -361,6 +373,10 @@
     display: block;
     width: fit-content;
     max-width: 100%;
+  }
+
+  .lab-platform-main-text {
+    font-size: 1.32rem;
   }
 
   .lab-header-guest-meta {

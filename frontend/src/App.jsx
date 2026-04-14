@@ -670,7 +670,8 @@ export default function App() {
               onClick={() => setArchitectureOpen(true)}
               title="Show platform architecture"
             >
-              AI Experiment Platform
+              <span className="lab-platform-main-text">AI Practice Studio</span>
+              <span className="lab-platform-sub">Interactive AI Decision Workflow</span>
             </button>
             <nav className="lab-header-quicknav" aria-label="Platform">
               <div className="lab-header-quicknav-btns">
