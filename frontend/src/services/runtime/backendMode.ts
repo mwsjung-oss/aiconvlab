@@ -1,4 +1,4 @@
-/** 로그인 화면에서 선택한 백엔드(로컬 uvicorn vs 연구실 vs Cloud AWS). */
+/** 로그인 화면에서 선택한 백엔드(연구실 vs Cloud AWS 중심). */
 
 import {
   getAwsApiUrl,
@@ -24,6 +24,8 @@ const awsDefault = trimBase(getAwsApiUrl());
 export function getStoredBackendMode(): BackendMode | null {
   if (typeof window === "undefined") return null;
   const v = localStorage.getItem(BACKEND_MODE_KEY);
+  // 운영 UX에서는 local 옵션을 숨기므로 기존 local 저장값은 aws로 승격합니다.
+  if (v === "local") return "aws";
   if (v === "local" || v === "lab" || v === "aws") return v;
   return null;
 }
@@ -52,14 +54,12 @@ export function getResolvedApiBase(): string {
 }
 
 export function getBackendModeLabel(): string {
-  if (trimBase(getPublicApiBaseUrl())) {
-    return "배포 API";
-  }
   const mode = getStoredBackendMode();
   if (mode === "lab") return "연구실 서버";
   if (mode === "aws") return "Cloud (AWS)";
-  if (mode === "local") return "PC (로컬)";
-  return "Vite 프록시";
+  if (mode === "local") return "Cloud (AWS)";
+  // 기본 라벨은 cloud로 고정해 배포 API 같은 추상 표현 대신 실제 선택지를 노출합니다.
+  return "Cloud (AWS)";
 }
 
 export function getBackendHint(mode: BackendMode): string {

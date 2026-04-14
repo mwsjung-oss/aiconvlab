@@ -2,7 +2,6 @@ import { useEffect, useRef, useState } from "react";
 import {
   getBackendHint,
   getStoredBackendMode,
-  isRemoteBackendMode,
   setStoredBackendMode,
 } from "../api/backendMode";
 import {
@@ -19,7 +18,11 @@ export default function BackendModeToggle({
   disabled = false,
   onReadyChange,
 }) {
-  const [mode, setMode] = useState(() => getStoredBackendMode() || "local");
+  const [mode, setMode] = useState(() => {
+    const stored = getStoredBackendMode();
+    if (!stored || stored === "local") return "aws";
+    return stored;
+  });
   const [boot, setBoot] = useState(null);
   /** 이번 세션에서 사용자가 ‘원격 서버’ 또는 하위 항목을 직접 눌렀을 때만 true */
   const userExplicitlyChoseRemote = useRef(false);
@@ -55,9 +58,9 @@ export default function BackendModeToggle({
               !userExplicitlyChoseRemote.current
             ) {
               setDevFallbackNotice(
-                "저장된 원격 서버에 연결되지 않아 개발 모드에서 로컬로 전환했습니다. VPN·망을 확인한 뒤 필요하면 아래에서 ‘원격 서버’를 다시 선택하세요."
+                "저장된 원격 서버에 연결되지 않아 개발 모드에서 Cloud(AWS)로 전환했습니다. VPN·망을 확인한 뒤 필요하면 아래에서 서버를 다시 선택하세요."
               );
-              setMode("local");
+              setMode("aws");
               return;
             }
             setBoot({ phase: "done", ...r });
@@ -83,8 +86,6 @@ export default function BackendModeToggle({
     };
   }, [mode, onReadyChange]);
 
-  const remoteActive = isRemoteBackendMode(mode);
-
   return (
     <div className="auth-backend-mode">
       <div className="auth-backend-mode-label">백엔드 연결</div>
@@ -92,23 +93,7 @@ export default function BackendModeToggle({
         <button
           type="button"
           className={
-            mode === "local"
-              ? "auth-backend-mode-btn auth-backend-mode-btn--active"
-              : "auth-backend-mode-btn"
-          }
-          disabled={disabled}
-          onClick={() => {
-            setDevFallbackNotice(null);
-            userExplicitlyChoseRemote.current = false;
-            setMode("local");
-          }}
-        >
-          PC (로컬)
-        </button>
-        <button
-          type="button"
-          className={
-            remoteActive
+            mode === "lab"
               ? "auth-backend-mode-btn auth-backend-mode-btn--active"
               : "auth-backend-mode-btn"
           }
@@ -116,55 +101,28 @@ export default function BackendModeToggle({
           onClick={() => {
             setDevFallbackNotice(null);
             userExplicitlyChoseRemote.current = true;
-            setMode((prev) => (isRemoteBackendMode(prev) ? prev : "lab"));
+            setMode("lab");
           }}
-          aria-expanded={remoteActive}
-          aria-controls="auth-backend-remote-sub"
         >
-          원격 서버
+          연구실 서버
+        </button>
+        <button
+          type="button"
+          className={
+            mode === "aws"
+              ? "auth-backend-mode-btn auth-backend-mode-btn--active"
+              : "auth-backend-mode-btn"
+          }
+          disabled={disabled}
+          onClick={() => {
+            setDevFallbackNotice(null);
+            userExplicitlyChoseRemote.current = true;
+            setMode("aws");
+          }}
+        >
+          Cloud (AWS)
         </button>
       </div>
-      {remoteActive && (
-        <div
-          id="auth-backend-remote-sub"
-          className="auth-backend-mode-sub"
-          role="group"
-          aria-label="원격 서버 종류"
-        >
-          <button
-            type="button"
-            className={
-              mode === "lab"
-                ? "auth-backend-mode-btn auth-backend-mode-btn--sub auth-backend-mode-btn--active"
-                : "auth-backend-mode-btn auth-backend-mode-btn--sub"
-            }
-            disabled={disabled}
-            onClick={() => {
-              setDevFallbackNotice(null);
-              userExplicitlyChoseRemote.current = true;
-              setMode("lab");
-            }}
-          >
-            연구실 서버
-          </button>
-          <button
-            type="button"
-            className={
-              mode === "aws"
-                ? "auth-backend-mode-btn auth-backend-mode-btn--sub auth-backend-mode-btn--active"
-                : "auth-backend-mode-btn auth-backend-mode-btn--sub"
-            }
-            disabled={disabled}
-            onClick={() => {
-              setDevFallbackNotice(null);
-              userExplicitlyChoseRemote.current = true;
-              setMode("aws");
-            }}
-          >
-            Cloud (AWS)
-          </button>
-        </div>
-      )}
       <div className="auth-chatbot-model">
         <div className="auth-chatbot-model-label">Chatbot 모델</div>
         <select
