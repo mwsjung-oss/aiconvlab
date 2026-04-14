@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: ailab-backend
+    runtime: docker
+    dockerContext: ./backend
+    dockerfilePath: ./backend/Dockerfile
+    plan: starter
+    healthCheckPath: /api/health
+    envVars:
+      - key: AILAB_ENV
+        value: production
+      - key: AILAB_DEFAULT_RUNTIME
+        value: local
+      - key: AILAB_ALLOWED_RUNTIMES
+        value: local,lab,cloud
+      - key: OPENAI_ENABLED
+        value: false
+      - key: GEMINI_ENABLED
+        value: false
+      - key: AWS_ENABLED
+        value: false
+

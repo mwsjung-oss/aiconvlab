@@ -1,0 +1,20 @@
+[Unit]
+Description=AILab FastAPI backend (datasets, training, models)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=@AILAB_HOME@/backend
+EnvironmentFile=@AILAB_HOME@/backend/.env
+ExecStart=@AILAB_HOME@/backend/.venv/bin/uvicorn main:app --host 0.0.0.0 --port 8000
+Restart=on-failure
+RestartSec=5
+TimeoutStartSec=120
+
+# 전용 계정을 쓸 경우(선택): useradd -r -d @AILAB_HOME@ ailab 후 아래 주석 해제
+# User=ailab
+# Group=ailab
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,50 @@
+{
+  "history": [
+    {
+      "model_id": "44e2d42a-df40-4188-8228-00b3bae564df",
+      "dataset": "_const_y.csv",
+      "created_at": "2026-04-11T13:09:03.955934Z",
+      "target_column": "y",
+      "feature_columns": [
+        "x"
+      ],
+      "model_type": "linear_regression",
+      "task_type": "regression",
+      "metrics": {
+        "mse": 0.0,
+        "rmse": 0.0,
+        "mae": 0.0,
+        "r2": 1.0
+      },
+      "model_path": "_tmp_models\\44e2d42a-df40-4188-8228-00b3bae564df.joblib",
+      "output_chart_path": "_tmp_out\\44e2d42a-df40-4188-8228-00b3bae564df_regression.png",
+      "reproducibility": {
+        "dataset_filename": "_const_y.csv",
+        "dataset_sha256": "5962c3f0d5cad6640523510c77422860441c8883049d19abcb8f23fe7b669b67",
+        "git_commit": null,
+        "requirements_sha256": "6c86b6eaf51da269ece0f3038143060af630a678095ba3c0c4e87d4298914419",
+        "python": "3.11.9",
+        "train_request": {
+          "filename": "_const_y.csv",
+          "target_column": "y",
+          "task": "regression",
+          "model_type": "linear_regression",
+          "feature_columns": [
+            "x"
+          ],
+          "test_size": 0.2,
+          "random_state": 42
+        },
+        "started_at_unix": 1775912943.7084577,
+        "duration_sec": 0.3039,
+        "metrics_snapshot": {
+          "mse": 0.0,
+          "rmse": 0.0,
+          "mae": 0.0,
+          "r2": 1.0
+        },
+        "model_id": "44e2d42a-df40-4188-8228-00b3bae564df"
+      }
+    }
+  ]
+}

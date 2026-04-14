@@ -1,0 +1,404 @@
+{
+  "history": [
+    {
+      "model_id": "36f1abf5-08a2-4064-a557-af69aa1dbdb0",
+      "dataset": "lee_daehyun_demand_260408_long.csv",
+      "created_at": "2026-04-08T12:02:04.217124Z",
+      "target_column": "demand",
+      "feature_columns": [
+        "product_id",
+        "group_id",
+        "year",
+        "month",
+        "day",
+        "dayofweek",
+        "weekofyear",
+        "dayofyear",
+        "is_weekend"
+      ],
+      "model_type": "xgboost",
+      "task_type": "regression",
+      "metrics": {
+        "mse": 55200249.39492549,
+        "rmse": 7429.687032098021,
+        "mae": 906.2864558149163,
+        "r2": 0.9830889489445702
+      },
+      "model_path": "C:\\Users\\\uc815\uc6c5\uc2dd\\AILab\\backend\\models\\36f1abf5-08a2-4064-a557-af69aa1dbdb0.joblib",
+      "output_chart_path": "C:\\Users\\\uc815\uc6c5\uc2dd\\AILab\\backend\\outputs\\36f1abf5-08a2-4064-a557-af69aa1dbdb0_regression.png"
+    },
+    {
+      "model_id": "b0a28bb1-0cbe-4158-9cf2-642fb86a90b5",
+      "dataset": "metal_sales_3y_weekly.csv",
+      "created_at": "2026-04-11T06:14:58.985048Z",
+      "target_column": "sales_units",
+      "feature_columns": [
+        "product_code",
+        "year_week",
+        "fx_index",
+        "holiday_ratio",
+        "list_price_index",
+        "week_sin",
+        "week_cos"
+      ],
+      "model_type": "random_forest",
+      "task_type": "regression",
+      "metrics": {
+        "mse": 74.43688033657051,
+        "rmse": 8.627681052088708,
+        "mae": 6.833590384615381,
+        "r2": 0.9804163595568902
+      },
+      "model_path": "C:\\Users\\\uc815\uc6c5\uc2dd\\AILab\\backend\\models\\b0a28bb1-0cbe-4158-9cf2-642fb86a90b5.joblib",
+      "output_chart_path": "C:\\Users\\\uc815\uc6c5\uc2dd\\AILab\\backend\\outputs\\b0a28bb1-0cbe-4158-9cf2-642fb86a90b5_regression.png"
+    },
+    {
+      "model_id": "d4b9940d-8d6d-449b-a2b4-54cc676e3e9d",
+      "dataset": "metal_sales_3y_weekly.csv",
+      "created_at": "2026-04-11T06:15:12.166596Z",
+      "target_column": "sales_units",
+      "feature_columns": [
+        "product_code",
+        "year_week",
+        "fx_index",
+        "holiday_ratio",
+        "list_price_index",
+        "week_sin",
+        "week_cos"
+      ],
+      "model_type": "random_forest",
+      "task_type": "regression",
+      "metrics": {
+        "mse": 74.43688033657051,
+        "rmse": 8.627681052088708,
+        "mae": 6.833590384615381,
+        "r2": 0.9804163595568902
+      },
+      "model_path": "C:\\Users\\\uc815\uc6c5\uc2dd\\AILab\\backend\\models\\d4b9940d-8d6d-449b-a2b4-54cc676e3e9d.joblib",
+      "output_chart_path": "C:\\Users\\\uc815\uc6c5\uc2dd\\AILab\\backend\\outputs\\d4b9940d-8d6d-449b-a2b4-54cc676e3e9d_regression.png"
+    },
+    {
+      "model_id": "bfcad022-fc3e-48fc-adbd-393e721d8aaf",
+      "dataset": "metal_sales_3y_weekly.csv",
+      "created_at": "2026-04-11T06:15:46.166801Z",
+      "target_column": "sales_units",
+      "feature_columns": [
+        "product_code",
+        "year_week",
+        "fx_index",
+        "holiday_ratio",
+        "list_price_index",
+        "week_sin",
+        "week_cos"
+      ],
+      "model_type": "random_forest",
+      "task_type": "regression",
+      "metrics": {
+        "mse": 74.43688033657051,
+        "rmse": 8.627681052088708,
+        "mae": 6.833590384615381,
+        "r2": 0.9804163595568902
+      },
+      "model_path": "C:\\Users\\\uc815\uc6c5\uc2dd\\AILab\\backend\\models\\bfcad022-fc3e-48fc-adbd-393e721d8aaf.joblib",
+      "output_chart_path": "C:\\Users\\\uc815\uc6c5\uc2dd\\AILab\\backend\\outputs\\bfcad022-fc3e-48fc-adbd-393e721d8aaf_regression.png"
+    },
+    {
+      "model_id": "1027c0df-f630-43ab-9beb-48d1bf3084bf",
+      "dataset": "metal_sales_3y_weekly.csv",
+      "created_at": "2026-04-11T07:09:35.303250Z",
+      "target_column": "sales_units",
+      "feature_columns": [
+        "product_code",
+        "year_week",
+        "fx_index",
+        "holiday_ratio",
+        "list_price_index",
+        "week_sin",
+        "week_cos"
+      ],
+      "model_type": "random_forest",
+      "task_type": "regression",
+      "metrics": {
+        "mse": 74.43688033657051,
+        "rmse": 8.627681052088708,
+        "mae": 6.833590384615381,
+        "r2": 0.9804163595568902
+      },
+      "model_path": "C:\\Users\\\uc815\uc6c5\uc2dd\\AILab\\backend\\models\\1027c0df-f630-43ab-9beb-48d1bf3084bf.joblib",
+      "output_chart_path": "C:\\Users\\\uc815\uc6c5\uc2dd\\AILab\\backend\\outputs\\1027c0df-f630-43ab-9beb-48d1bf3084bf_regression.png",
+      "reproducibility": {
+        "dataset_filename": "metal_sales_3y_weekly.csv",
+        "dataset_sha256": "b1b79977863cc654b812bb4c95b76621038cfb3bce221b799f8736833c0eee57",
+        "git_commit": null,
+        "requirements_sha256": "6c86b6eaf51da269ece0f3038143060af630a678095ba3c0c4e87d4298914419",
+        "python": "3.11.9",
+        "train_request": {
+          "filename": "metal_sales_3y_weekly.csv",
+          "target_column": "sales_units",
+          "task": "regression",
+          "model_type": "random_forest",
+          "feature_columns": [
+            "product_code",
+            "year_week",
+            "fx_index",
+            "holiday_ratio",
+            "list_price_index",
+            "week_sin",
+            "week_cos"
+          ],
+          "test_size": 0.2,
+          "random_state": 42
+        },
+        "started_at_unix": 1775891372.7364335,
+        "duration_sec": 2.5811,
+        "metrics_snapshot": {
+          "mse": 74.43688033657051,
+          "rmse": 8.627681052088708,
+          "mae": 6.833590384615381,
+          "r2": 0.9804163595568902
+        },
+        "model_id": "1027c0df-f630-43ab-9beb-48d1bf3084bf"
+      }
+    },
+    {
+      "model_id": "cfd068aa-e1ef-41cd-907a-a0a247ca61f6",
+      "dataset": "metal_sales_3y_weekly.csv",
+      "created_at": "2026-04-11T07:10:51.150434Z",
+      "target_column": "sales_units",
+      "feature_columns": [
+        "product_code",
+        "year_week",
+        "fx_index",
+        "holiday_ratio",
+        "list_price_index",
+        "week_sin",
+        "week_cos"
+      ],
+      "model_type": "random_forest",
+      "task_type": "regression",
+      "metrics": {
+        "mse": 74.43688033657051,
+        "rmse": 8.627681052088708,
+        "mae": 6.833590384615381,
+        "r2": 0.9804163595568902
+      },
+      "model_path": "C:\\Users\\\uc815\uc6c5\uc2dd\\AILab\\backend\\models\\cfd068aa-e1ef-41cd-907a-a0a247ca61f6.joblib",
+      "output_chart_path": "C:\\Users\\\uc815\uc6c5\uc2dd\\AILab\\backend\\outputs\\cfd068aa-e1ef-41cd-907a-a0a247ca61f6_regression.png",
+      "reproducibility": {
+        "dataset_filename": "metal_sales_3y_weekly.csv",
+        "dataset_sha256": "b1b79977863cc654b812bb4c95b76621038cfb3bce221b799f8736833c0eee57",
+        "git_commit": null,
+        "requirements_sha256": "6c86b6eaf51da269ece0f3038143060af630a678095ba3c0c4e87d4298914419",
+        "python": "3.11.9",
+        "train_request": {
+          "filename": "metal_sales_3y_weekly.csv",
+          "target_column": "sales_units",
+          "task": "regression",
+          "model_type": "random_forest",
+          "feature_columns": [
+            "product_code",
+            "year_week",
+            "fx_index",
+            "holiday_ratio",
+            "list_price_index",
+            "week_sin",
+            "week_cos"
+          ],
+          "test_size": 0.2,
+          "random_state": 42
+        },
+        "started_at_unix": 1775891449.8624272,
+        "duration_sec": 1.3304,
+        "metrics_snapshot": {
+          "mse": 74.43688033657051,
+          "rmse": 8.627681052088708,
+          "mae": 6.833590384615381,
+          "r2": 0.9804163595568902
+        },
+        "model_id": "cfd068aa-e1ef-41cd-907a-a0a247ca61f6"
+      }
+    },
+    {
+      "model_id": "67ab41e4-10cd-441d-8fd4-cd5857a3c149",
+      "dataset": "metal_sales_3y_weekly.csv",
+      "created_at": "2026-04-11T07:13:21.219557Z",
+      "target_column": "sales_units",
+      "feature_columns": [
+        "product_code",
+        "year_week",
+        "fx_index",
+        "holiday_ratio",
+        "list_price_index",
+        "week_sin",
+        "week_cos"
+      ],
+      "model_type": "random_forest",
+      "task_type": "regression",
+      "metrics": {
+        "mse": 74.43688033657051,
+        "rmse": 8.627681052088708,
+        "mae": 6.833590384615381,
+        "r2": 0.9804163595568902
+      },
+      "model_path": "C:\\Users\\\uc815\uc6c5\uc2dd\\AILab\\backend\\models\\67ab41e4-10cd-441d-8fd4-cd5857a3c149.joblib",
+      "output_chart_path": "C:\\Users\\\uc815\uc6c5\uc2dd\\AILab\\backend\\outputs\\67ab41e4-10cd-441d-8fd4-cd5857a3c149_regression.png",
+      "reproducibility": {
+        "dataset_filename": "metal_sales_3y_weekly.csv",
+        "dataset_sha256": "b1b79977863cc654b812bb4c95b76621038cfb3bce221b799f8736833c0eee57",
+        "git_commit": null,
+        "requirements_sha256": "6c86b6eaf51da269ece0f3038143060af630a678095ba3c0c4e87d4298914419",
+        "python": "3.11.9",
+        "train_request": {
+          "filename": "metal_sales_3y_weekly.csv",
+          "target_column": "sales_units",
+          "task": "regression",
+          "model_type": "random_forest",
+          "feature_columns": [
+            "product_code",
+            "year_week",
+            "fx_index",
+            "holiday_ratio",
+            "list_price_index",
+            "week_sin",
+            "week_cos"
+          ],
+          "test_size": 0.2,
+          "random_state": 42
+        },
+        "started_at_unix": 1775891599.9297543,
+        "duration_sec": 1.3408,
+        "metrics_snapshot": {
+          "mse": 74.43688033657051,
+          "rmse": 8.627681052088708,
+          "mae": 6.833590384615381,
+          "r2": 0.9804163595568902
+        },
+        "model_id": "67ab41e4-10cd-441d-8fd4-cd5857a3c149"
+      }
+    },
+    {
+      "model_id": "b6005a4d-d33f-449f-a5b4-bb640e149d29",
+      "dataset": "lee_daehyun_demand_260408_long.csv",
+      "created_at": "2026-04-11T13:13:32.355619Z",
+      "target_column": "demand",
+      "feature_columns": [
+        "product_id",
+        "group_id",
+        "year",
+        "month",
+        "day",
+        "dayofweek",
+        "weekofyear",
+        "dayofyear",
+        "is_weekend"
+      ],
+      "model_type": "random_forest",
+      "task_type": "regression",
+      "metrics": {
+        "mse": 18651436.01817749,
+        "rmse": 4318.7308341893095,
+        "mae": 93.77095474092107,
+        "r2": 0.9942859789544813
+      },
+      "model_path": "C:\\Users\\\uc815\uc6c5\uc2dd\\AILab\\backend\\models\\b6005a4d-d33f-449f-a5b4-bb640e149d29.joblib",
+      "output_chart_path": "C:\\Users\\\uc815\uc6c5\uc2dd\\AILab\\backend\\outputs\\b6005a4d-d33f-449f-a5b4-bb640e149d29_regression.png",
+      "reproducibility": {
+        "dataset_filename": "lee_daehyun_demand_260408_long.csv",
+        "dataset_sha256": "ca45559c5cef2c18b5046dc2d81775c64ebacd008a6025accf659cf7f1005151",
+        "git_commit": null,
+        "requirements_sha256": "6c86b6eaf51da269ece0f3038143060af630a678095ba3c0c4e87d4298914419",
+        "python": "3.11.9",
+        "train_request": {
+          "filename": "lee_daehyun_demand_260408_long.csv",
+          "target_column": "demand",
+          "task": "regression",
+          "model_type": "random_forest",
+          "feature_columns": [
+            "product_id",
+            "group_id",
+            "year",
+            "month",
+            "day",
+            "dayofweek",
+            "weekofyear",
+            "dayofyear",
+            "is_weekend"
+          ],
+          "test_size": 0.2,
+          "random_state": 42
+        },
+        "started_at_unix": 1775913112.8443055,
+        "duration_sec": 99.484,
+        "metrics_snapshot": {
+          "mse": 18651436.01817749,
+          "rmse": 4318.7308341893095,
+          "mae": 93.77095474092107,
+          "r2": 0.9942859789544813
+        },
+        "model_id": "b6005a4d-d33f-449f-a5b4-bb640e149d29"
+      }
+    },
+    {
+      "model_id": "7bedf1b6-f786-4168-99ae-61d0b803876d",
+      "dataset": "lee_daehyun_demand_260408_long.csv",
+      "created_at": "2026-04-11T13:18:12.664281Z",
+      "target_column": "demand",
+      "feature_columns": [
+        "product_id",
+        "group_id",
+        "year",
+        "month",
+        "day",
+        "dayofweek",
+        "weekofyear",
+        "dayofyear",
+        "is_weekend"
+      ],
+      "model_type": "random_forest",
+      "task_type": "regression",
+      "metrics": {
+        "mse": 18651436.01817749,
+        "rmse": 4318.7308341893095,
+        "mae": 93.77095474092107,
+        "r2": 0.9942859789544813
+      },
+      "model_path": "C:\\Users\\\uc815\uc6c5\uc2dd\\AILab\\backend\\models\\7bedf1b6-f786-4168-99ae-61d0b803876d.joblib",
+      "output_chart_path": "C:\\Users\\\uc815\uc6c5\uc2dd\\AILab\\backend\\outputs\\7bedf1b6-f786-4168-99ae-61d0b803876d_regression.png",
+      "reproducibility": {
+        "dataset_filename": "lee_daehyun_demand_260408_long.csv",
+        "dataset_sha256": "ca45559c5cef2c18b5046dc2d81775c64ebacd008a6025accf659cf7f1005151",
+        "git_commit": null,
+        "requirements_sha256": "6c86b6eaf51da269ece0f3038143060af630a678095ba3c0c4e87d4298914419",
+        "python": "3.11.9",
+        "train_request": {
+          "filename": "lee_daehyun_demand_260408_long.csv",
+          "target_column": "demand",
+          "task": "regression",
+          "model_type": "random_forest",
+          "feature_columns": [
+            "product_id",
+            "group_id",
+            "year",
+            "month",
+            "day",
+            "dayofweek",
+            "weekofyear",
+            "dayofyear",
+            "is_weekend"
+          ],
+          "test_size": 0.2,
+          "random_state": 42
+        },
+        "started_at_unix": 1775913401.2685587,
+        "duration_sec": 91.3898,
+        "metrics_snapshot": {
+          "mse": 18651436.01817749,
+          "rmse": 4318.7308341893095,
+          "mae": 93.77095474092107,
+          "r2": 0.9942859789544813
+        },
+        "model_id": "7bedf1b6-f786-4168-99ae-61d0b803876d"
+      }
+    }
+  ]
+}

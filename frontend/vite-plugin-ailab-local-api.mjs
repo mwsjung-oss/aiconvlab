@@ -1,0 +1,226 @@
+/**
+ * 개발 모드 전용:
+ * - 쿠키 ailab_backend_mode=local|lab|aws 에 따라 /api, /history 를 로컬·연구실·Cloud 로 프록시 (브라우저 CORS 회피)
+ * - POST /__ailab/dev/start-local-backend → 로컬 uvicorn 자동 기동
+ * - GET /__ailab/dev/remote-health?kind=lab|aws → Node 에서 원격 /api/health 확인
+ * - GET /__ailab/dev/lab-health → remote-health?kind=lab 호환
+ */
+import net from "node:net";
+import path from "node:path";
+import { spawn } from "node:child_process";
+import { fileURLToPath } from "node:url";
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const backendRoot = path.resolve(__dirname, "../backend");
+
+function trim(u) {
+  return (u || "").replace(/\/+$/, "");
+}
+
+function portHasListener(port, host = "127.0.0.1") {
+  return new Promise((resolve) => {
+    const s = net.createConnection({ port, host }, () => {
+      s.end();
+      resolve(true);
+    });
+    s.on("error", () => resolve(false));
+  });
+}
+
+function isLocalReq(req) {
+  const h = req.socket?.remoteAddress || "";
+  return (
+    h === "127.0.0.1" ||
+    h === "::1" ||
+    h === "::ffff:127.0.0.1" ||
+    h.endsWith("127.0.0.1")
+  );
+}
+
+/** /api/health 가 없거나 404/5xx 일 때 FastAPI 표준 /openapi.json 으로 연결 여부 확인 */
+async function probeRemoteBackend(baseUrl, kind = "lab") {
+  const b = trim(baseUrl);
+  const shortLabel = kind === "aws" ? "Cloud (AWS)" : "연구실 서버";
+  const tryFetch = (path) => fetch(`${b}${path}`, { redirect: "follow" });
+
+  const health = await tryFetch("/api/health");
+  if (health.ok) {
+    return { ok: true, message: `${shortLabel} API에 연결되었습니다.` };
+  }
+
+  const openapi = await tryFetch("/openapi.json");
+  if (openapi.ok) {
+    return {
+      ok: true,
+      message:
+        health.status === 404
+          ? `${shortLabel} FastAPI에 연결되었습니다. (/api/health 없음·OpenAPI로 확인)`
+          : `${shortLabel} FastAPI에 연결되었습니다. (/api/health 비정상·OpenAPI로 확인)`,
+    };
+  }
+
+  return {
+    ok: false,
+    message: `${shortLabel} 응답: health HTTP ${health.status}, openapi HTTP ${openapi.status}. 주소(${b})·경로·배포를 확인하세요.`,
+  };
+}
+
+export function ailabDevApiPlugin(opts = {}) {
+  const labTarget = trim(opts.labApiUrl || "");
+  const awsTarget = trim(opts.awsApiUrl || "");
+
+  return {
+    name: "ailab-dev-api",
+    configureServer(server) {
+      server.middlewares.use((req, res, next) => {
+        const url = req.url || "";
+        const pathOnly = url.split("?")[0];
+
+        if (pathOnly.startsWith("/__ailab/dev/remote-health") && req.method === "GET") {
+          if (!isLocalReq(req)) {
+            res.statusCode = 403;
+            res.setHeader("Content-Type", "application/json; charset=utf-8");
+            res.end(JSON.stringify({ ok: false, message: "localhost 전용입니다." }));
+            return;
+          }
+          const u = new URL(url, "http://vite.local");
+          const kind = u.searchParams.get("kind") === "aws" ? "aws" : "lab";
+          const base = kind === "aws" ? awsTarget : labTarget;
+          if (kind === "lab" && !base) {
+            res.setHeader("Content-Type", "application/json; charset=utf-8");
+            res.end(
+              JSON.stringify({
+                ok: false,
+                message:
+                  "VITE_LAB_API_URL (or VITE_DEV_PROXY_TARGET) is empty. Set it in frontend/.env.",
+              })
+            );
+            return;
+          }
+          if (kind === "aws" && !base) {
+            res.setHeader("Content-Type", "application/json; charset=utf-8");
+            res.end(
+              JSON.stringify({
+                ok: false,
+                message: "VITE_AWS_API_URL 이 비어 있습니다. `.env`에 설정하세요.",
+              })
+            );
+            return;
+          }
+          (async () => {
+            try {
+              const result = await probeRemoteBackend(base, kind);
+              res.setHeader("Content-Type", "application/json; charset=utf-8");
+              res.end(JSON.stringify({ ok: result.ok, message: result.message }));
+            } catch (e) {
+              res.setHeader("Content-Type", "application/json; charset=utf-8");
+              res.end(
+                JSON.stringify({
+                  ok: false,
+                  message: `노트북에서 원격 주소로 접속하지 못했습니다: ${e.message}. VPN·망·IP(${base})를 확인하세요.`,
+                })
+              );
+            }
+          })();
+          return;
+        }
+
+        if (pathOnly.startsWith("/__ailab/dev/lab-health") && req.method === "GET") {
+          if (!isLocalReq(req)) {
+            res.statusCode = 403;
+            res.setHeader("Content-Type", "application/json; charset=utf-8");
+            res.end(JSON.stringify({ ok: false, message: "localhost 전용입니다." }));
+            return;
+          }
+          if (!labTarget) {
+            res.setHeader("Content-Type", "application/json; charset=utf-8");
+            res.end(
+              JSON.stringify({
+                ok: false,
+                message:
+                  "VITE_LAB_API_URL (or VITE_DEV_PROXY_TARGET) is empty. Set it in frontend/.env.",
+              })
+            );
+            return;
+          }
+          (async () => {
+            try {
+              const result = await probeRemoteBackend(labTarget, "lab");
+              res.setHeader("Content-Type", "application/json; charset=utf-8");
+              res.end(JSON.stringify({ ok: result.ok, message: result.message }));
+            } catch (e) {
+              res.setHeader("Content-Type", "application/json; charset=utf-8");
+              res.end(
+                JSON.stringify({
+                  ok: false,
+                  message: `노트북에서 연구실 주소로 접속하지 못했습니다: ${e.message}. VPN·망·IP(${labTarget})를 확인하세요.`,
+                })
+              );
+            }
+          })();
+          return;
+        }
+
+        if (pathOnly.startsWith("/__ailab/dev/start-local-backend")) {
+          if (req.method !== "POST") {
+            res.statusCode = 405;
+            res.end();
+            return;
+          }
+          if (!isLocalReq(req)) {
+            res.statusCode = 403;
+            res.setHeader("Content-Type", "application/json; charset=utf-8");
+            res.end(JSON.stringify({ ok: false, message: "localhost 전용입니다." }));
+            return;
+          }
+
+          (async () => {
+            const listening = await portHasListener(8000);
+            if (listening) {
+              res.setHeader("Content-Type", "application/json; charset=utf-8");
+              res.end(
+                JSON.stringify({
+                  ok: true,
+                  already: true,
+                  message: "이미 127.0.0.1:8000 에서 API가 수신 중입니다.",
+                })
+              );
+              return;
+            }
+
+            const child = spawn(
+              "python",
+              ["-m", "uvicorn", "main:app", "--reload", "--host", "127.0.0.1", "--port", "8000"],
+              {
+                cwd: backendRoot,
+                shell: true,
+                detached: true,
+                stdio: "ignore",
+                windowsHide: true,
+              }
+            );
+            child.unref();
+            child.on("error", (err) => {
+              console.error("[ailab-dev-api] uvicorn spawn:", err.message);
+            });
+
+            res.setHeader("Content-Type", "application/json; charset=utf-8");
+            res.end(
+              JSON.stringify({
+                ok: true,
+                started: true,
+                message: "로컬 uvicorn 프로세스를 시작했습니다.",
+              })
+            );
+          })().catch((e) => {
+            res.statusCode = 500;
+            res.setHeader("Content-Type", "application/json; charset=utf-8");
+            res.end(JSON.stringify({ ok: false, message: String(e?.message || e) }));
+          });
+          return;
+        }
+
+        next();
+      });
+    },
+  };
+}

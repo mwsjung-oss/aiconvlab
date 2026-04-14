@@ -1,0 +1,60 @@
+:root {
+  /* 기존 콘셉트 유지 + 밝은 톤 */
+  --bg: #1b2634;
+  --surface: #2a3648;
+  --surface2: #3a4a61;
+  --border: #5b6f8b;
+  --text: #f5f8ff;
+  --muted: #bcc8db;
+  --accent: #5ec9ff;
+  --accent-dim: #29b4f6;
+  --ok: #34d399;
+  --warn: #fbbf24;
+  --font: "DM Sans", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  overflow-y: auto;
+  overflow-x: clip;
+  font-family: var(--font);
+  /* public/lab-background.png — 퍼스펙티브 데이터 배경 + 밝은 중앙 완화(가독성) */
+  background-color: #071018;
+  background-image:
+    radial-gradient(ellipse 95% 85% at 50% 48%, rgba(5, 12, 24, 0.45), transparent 58%),
+    linear-gradient(
+      180deg,
+      rgba(6, 14, 26, 0.68) 0%,
+      rgba(8, 16, 30, 0.55) 42%,
+      rgba(10, 18, 32, 0.72) 100%
+    ),
+    radial-gradient(ellipse 110% 50% at 50% 0%, rgba(94, 201, 255, 0.07), transparent 52%),
+    url("/lab-background.png");
+  background-position: center center;
+  background-size: cover, cover, cover;
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+  color: var(--text);
+}
+
+#root {
+  min-height: 100vh;
+  max-width: 100%;
+  overflow-x: clip;
+}
+
+button,
+input,
+select {
+  font-family: inherit;
+}
+
+a {
+  color: var(--accent);
+}

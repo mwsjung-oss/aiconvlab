@@ -1,0 +1,43 @@
+연구실 서버(Linux, Tailscale) — AILab 백엔드 배포 요약
+=====================================================
+
+전제: 이 저장소가 서버에 클론되어 있음 (예: /opt/AILab 또는 홈 디렉터리).
+
+1) 환경 파일
+   cd backend
+   cp .env.lab.example .env
+   nano .env
+   - JWT_SECRET: openssl rand -hex 32 결과로 설정
+   - MASTER_EMAIL / MASTER_PASSWORD: 초기 관리 계정
+   - BACKEND_PUBLIC_URL: 서버의 Tailscale IP 기준, 예 http://100.70.20.91:8000
+   - AILAB_STORAGE_ROOT: 대용량 디스크 경로(선택), 예 /var/lib/ailab
+   - CORS_ORIGINS: 노트북 Vite용 http://localhost:5174,http://127.0.0.1:5174 유지
+
+2) venv 및 패키지
+   bash scripts/lab-server/setup-lab-backend.sh
+
+3) 동작 확인(기존 8000 포트에 다른 서비스가 있으면 먼저 중지)
+   bash scripts/lab-server/verify-backend.sh http://127.0.0.1:8000
+
+4) 수동 실행(테스트)
+   cd backend && source .venv/bin/activate
+   uvicorn main:app --host 0.0.0.0 --port 8000
+
+5) 부팅 시 자동 시작(systemd)
+   sudo bash scripts/lab-server/install-systemd.sh
+
+6) 방화벽
+   Tailscale만 쓰면 공인 인바운드 8000 개방은 필수 아님.
+   동일 LAN에서 접속하면 ufw 로 8000 제한 가능.
+
+7) 노트북 프론트
+   frontend/.env 의 VITE_DEV_PROXY_TARGET 을 서버 Tailscale 주소:8000 과 맞출 것.
+
+문제 시: journalctl -u ailab-backend -n 100 --no-pager
+
+8) 코드 업데이트(노트북에서 push 후, 연구실 서버에서)
+   저장소 루트에서:
+     bash scripts/lab-server/update-and-restart.sh
+   - git pull → requirements 재설치 → systemctl restart ailab-backend
+   - 이 PC에서 원격으로 할 때(SSH 예시, 사용자·호스트는 환경에 맞게):
+     ssh USER@연구실호스트 'cd /opt/AILab && bash scripts/lab-server/update-and-restart.sh'

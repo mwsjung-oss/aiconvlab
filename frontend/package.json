@@ -1,0 +1,28 @@
+{
+  "name": "local-ailab",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "start": "npm run dev:stack",
+    "dev": "vite",
+    "dev:api": "cd ../backend && python -m uvicorn main:app --reload --host 127.0.0.1 --port 8000",
+    "dev:api:8001": "cd ../backend && python -m uvicorn main:app --reload --host 127.0.0.1 --port 8001",
+    "dev:stack": "concurrently -k -n api,vite -c cyan,magenta \"npm run dev:api\" \"npm run dev:web\"",
+    "dev:web": "wait-on http://127.0.0.1:8000/api/health -t 120000 -i 300 && vite",
+    "dev:lab": "node ./scripts/dev-web-lab.mjs",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.4",
+    "concurrently": "^9.2.1",
+    "http-proxy-middleware": "^3.0.5",
+    "vite": "^5.4.11",
+    "wait-on": "^9.0.5"
+  }
+}

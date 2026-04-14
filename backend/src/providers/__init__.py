@@ -1,0 +1,1 @@
+"""External provider abstraction layer."""

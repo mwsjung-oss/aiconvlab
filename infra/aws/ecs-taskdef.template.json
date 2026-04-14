@@ -1,0 +1,40 @@
+{
+  "family": "ailab-backend",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "512",
+  "memory": "1024",
+  "executionRoleArn": "arn:aws:iam::<account-id>:role/ecsTaskExecutionRole",
+  "taskRoleArn": "arn:aws:iam::<account-id>:role/ailabBackendTaskRole",
+  "containerDefinitions": [
+    {
+      "name": "backend",
+      "image": "<ecr-repo-uri>:<tag>",
+      "essential": true,
+      "portMappings": [
+        {
+          "containerPort": 8000,
+          "hostPort": 8000,
+          "protocol": "tcp"
+        }
+      ],
+      "environment": [
+        { "name": "AILAB_ENV", "value": "production" },
+        { "name": "AILAB_DEFAULT_RUNTIME", "value": "local" },
+        { "name": "AILAB_ALLOWED_RUNTIMES", "value": "local,lab,cloud" },
+        { "name": "OPENAI_ENABLED", "value": "false" },
+        { "name": "GEMINI_ENABLED", "value": "false" },
+        { "name": "AWS_ENABLED", "value": "false" }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/ailab-backend",
+          "awslogs-region": "<region>",
+          "awslogs-stream-prefix": "ecs"
+        }
+      }
+    }
+  ]
+}
+

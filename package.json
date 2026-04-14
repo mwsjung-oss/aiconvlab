@@ -1,0 +1,14 @@
+{
+  "name": "ailab-workspace",
+  "private": true,
+  "description": "AILab — 프론트+백엔드 한 번에 기동",
+  "scripts": {
+    "install:frontend": "npm install --prefix frontend",
+    "install:backend": "pip install -r backend/requirements.txt",
+    "setup": "npm run install:frontend && npm run install:backend",
+    "dev": "npm run dev:stack --prefix frontend",
+    "dev:api": "npm run dev:api --prefix frontend",
+    "dev:web": "npm run dev --prefix frontend",
+    "build": "npm run build --prefix frontend"
+  }
+}

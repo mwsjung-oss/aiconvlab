@@ -1,0 +1,47 @@
+# Python
+backend/__pycache__/
+backend/.venv/
+backend/venv/
+backend/.pytest_cache/
+backend/.mypy_cache/
+backend/.ruff_cache/
+*.pyc
+*.pyo
+*.pyd
+
+# Environment files
+backend/.env
+backend/.env.local
+frontend/.env
+frontend/.env.local
+
+# Data & artifacts (keep folders via .gitkeep)
+backend/data/*.csv
+backend/data/workspaces/
+backend/data/notebooks/
+backend/data/artifacts/
+backend/_tmp_models/
+backend/models/*
+!backend/models/.gitkeep
+backend/outputs/*
+!backend/outputs/.gitkeep
+backend/logs/
+backend/job_registry.json
+backend/.coverage
+backend/htmlcov/
+
+# Node
+frontend/node_modules/
+frontend/dist/
+frontend/.cache/
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Build / packaging
+*.log
+*.tmp
+*.swp
