@@ -24,6 +24,31 @@ pip install -r requirements.txt
 python -m uvicorn main:app --reload --host 127.0.0.1 --port 8000
 ```
 
+PostgreSQL 사용 시 `.env`에 `DATABASE_URL`을 설정하세요.
+
+```env
+DATABASE_URL=postgresql+psycopg://user:password@host:5432/ailab
+```
+
+기존 SQLite(`data/app.db`)를 PostgreSQL로 완전 이관:
+
+```powershell
+cd backend
+python migrate_sqlite_to_postgres.py --pg-url "postgresql+psycopg://user:password@host:5432/ailab" --truncate-target
+```
+
+Windows 원클릭 자동화(설치+기동+이관+컷오버):
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\migrate_postgres_and_cutover.ps1
+```
+
+로그인 시 PostgreSQL 자동 기동 등록:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\scripts\windows\install_postgres_autostart.ps1
+```
+
 ### 2) 프론트엔드
 
 ```powershell
