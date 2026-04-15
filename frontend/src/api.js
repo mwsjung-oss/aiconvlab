@@ -22,7 +22,7 @@ export function setAdminPanelToken(token) {
 }
 
 export async function apiJson(path, options = {}) {
-  const token = getToken();
+  const token = options.omitAuth ? null : getToken();
   const isFormData = typeof FormData !== "undefined" && options.body instanceof FormData;
   const headers = {
     ...(isFormData ? {} : { "Content-Type": "application/json" }),

@@ -82,6 +82,11 @@ const TASK_MODEL_OPTIONS = {
   anomaly_detection: [{ value: "isolation_forest", label: "Isolation Forest" }],
 };
 
+/** 백엔드 가용성 프로브: 콜드 스타트·일시 지연 허용, 단발 실패로 배너 비표시 */
+const BACKEND_HEALTH_TIMEOUT_MS = 18_000;
+const BACKEND_HEALTH_POLL_MS = 28_000;
+const BACKEND_HEALTH_FAIL_STREAK = 2;
+
 export default function App() {
   const { token, user, loading, logout } = useAuth();
   const isAuthenticated = !!token && !!user;
@@ -104,20 +109,38 @@ export default function App() {
   }, [token, user]);
 
   useEffect(() => {
-    let alive = true;
-    async function ping() {
-      try {
-        await apiJson("/api/health", { timeoutMs: 5000 });
-        if (alive) setBackendReachable(true);
-      } catch {
-        if (alive) setBackendReachable(false);
-      }
+    let cancelled = false;
+    let failStreak = 0;
+    let timeoutId = null;
+
+    function schedule(delay) {
+      if (cancelled) return;
+      timeoutId = window.setTimeout(run, delay);
     }
-    ping();
-    const t = setInterval(ping, 20000);
+
+    async function run() {
+      if (cancelled) return;
+      try {
+        await apiJson("/api/health", {
+          timeoutMs: BACKEND_HEALTH_TIMEOUT_MS,
+          omitAuth: true,
+        });
+        failStreak = 0;
+        if (!cancelled) setBackendReachable(true);
+      } catch {
+        failStreak += 1;
+        if (!cancelled && failStreak >= BACKEND_HEALTH_FAIL_STREAK) {
+          setBackendReachable(false);
+        }
+      }
+      if (cancelled) return;
+      schedule(BACKEND_HEALTH_POLL_MS);
+    }
+
+    run();
     return () => {
-      alive = false;
-      clearInterval(t);
+      cancelled = true;
+      if (timeoutId != null) window.clearTimeout(timeoutId);
     };
   }, []);
 
