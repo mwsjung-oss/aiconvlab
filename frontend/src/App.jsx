@@ -155,6 +155,9 @@ export default function App() {
   const [currentPage, setCurrentPage] = useState("home");
   /** Experiment 퀵메뉴로 들어왔을 때만 6단계 워크플로·서브내비 표시 */
   const [experimentWorkflowOpen, setExperimentWorkflowOpen] = useState(false);
+  const [experimentEntryOpen, setExperimentEntryOpen] = useState(false);
+  const [experimentEntryResolved, setExperimentEntryResolved] = useState(false);
+  const [projectsAutoStartToken, setProjectsAutoStartToken] = useState(0);
   /** Experiment 워크플로를 열 때 스크롤이 맨 위로 붙는 것을 막기 위한 복원 값 */
   const experimentScrollRestoreY = useRef(null);
   /** AI 채팅 프리셋 (overview | project | data | model | insights) */
@@ -325,6 +328,7 @@ export default function App() {
     const pname = project?.name || "";
     setCurrentProjectId(pid);
     setCurrentProjectName(pname);
+    setExperimentEntryResolved(true);
     try {
       await apiJson("/api/portal/profile/current-project", {
         method: "POST",
@@ -334,6 +338,35 @@ export default function App() {
       // 서버 저장에 실패해도 UI 맥락은 유지 (새로고침 시 재동기화)
     }
   }, []);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setExperimentEntryOpen(false);
+      setExperimentEntryResolved(false);
+    }
+  }, [isAuthenticated]);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      // 로그인 이후 첫 Experiment 진입 시 기존 프로젝트 이어하기 여부를 선택하도록 합니다.
+      setExperimentEntryOpen(false);
+      setExperimentEntryResolved(false);
+    }
+  }, [isAuthenticated, user?.id]);
+
+  const openExperimentWorkspace = useCallback(async ({ startNew } = { startNew: false }) => {
+    if (startNew) {
+      await setActiveProject(null);
+      setProjectsAutoStartToken((v) => v + 1);
+    }
+    if (!experimentWorkflowOpen && typeof window !== "undefined") {
+      experimentScrollRestoreY.current = window.scrollY;
+    }
+    setExperimentEntryResolved(true);
+    setExperimentEntryOpen(false);
+    setExperimentWorkflowOpen(true);
+    setCurrentPage("projects");
+  }, [experimentWorkflowOpen, setActiveProject]);
 
   const loadPortalKnowledge = useCallback(async () => {
     try {
@@ -751,11 +784,15 @@ export default function App() {
                       }
                       onClick={() => {
                         if (isExperimentTab) {
-                          if (!experimentWorkflowOpen && typeof window !== "undefined") {
-                            experimentScrollRestoreY.current = window.scrollY;
+                          if (!isAuthenticated) {
+                            setCurrentPage("dashboard");
+                            return;
                           }
-                          setExperimentWorkflowOpen(true);
-                          setCurrentPage("projects");
+                          if (!experimentEntryResolved && currentProjectId) {
+                            setExperimentEntryOpen(true);
+                            return;
+                          }
+                          void openExperimentWorkspace({ startNew: false });
                           return;
                         }
                         setExperimentWorkflowOpen(false);
@@ -983,6 +1020,7 @@ export default function App() {
                   await loadUserProfile();
                 }}
                 currentProjectId={currentProjectId}
+                autoStartToken={projectsAutoStartToken}
                 onProjectActivated={setActiveProject}
               />
             )}
@@ -1106,6 +1144,7 @@ export default function App() {
             await loadUserProfile();
           }}
           currentProjectId={currentProjectId}
+          autoStartToken={projectsAutoStartToken}
           onProjectActivated={setActiveProject}
         />
       )}
@@ -1276,6 +1315,51 @@ export default function App() {
         open={adminPanelOpen}
         onClose={() => setAdminPanelOpen(false)}
       />
+
+      {isAuthenticated && experimentEntryOpen && (
+        <div
+          className="experiment-entry-backdrop"
+          role="presentation"
+          onClick={() => setExperimentEntryOpen(false)}
+        >
+          <div
+            className="experiment-entry-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="experiment-entry-title"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 id="experiment-entry-title">Experiment 진행 방식 선택</h3>
+            <p className="hint">
+              현재 활성 프로젝트 <strong>{currentProjectName || "기존 프로젝트"}</strong>가 있습니다.
+              이어서 진행하시겠습니까, 아니면 신규 프로젝트를 등록하면서 시작하시겠습니까?
+            </p>
+            <div className="experiment-entry-actions">
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => void openExperimentWorkspace({ startNew: false })}
+              >
+                기존 프로젝트 이어서 진행
+              </button>
+              <button
+                type="button"
+                className="auth-submit"
+                onClick={() => void openExperimentWorkspace({ startNew: true })}
+              >
+                신규 프로젝트로 시작
+              </button>
+              <button
+                type="button"
+                className="btn btn-secondary"
+                onClick={() => setExperimentEntryOpen(false)}
+              >
+                취소
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {architectureOpen && (
         <div className="arch-overlay" onClick={() => setArchitectureOpen(false)}>

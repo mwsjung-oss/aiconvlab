@@ -148,7 +148,12 @@ function fileExtension(name) {
   return i < 0 ? "" : name.slice(i).toLowerCase();
 }
 
-export default function ProjectsPage({ onRefresh, currentProjectId, onProjectActivated }) {
+export default function ProjectsPage({
+  onRefresh,
+  currentProjectId,
+  onProjectActivated,
+  autoStartToken = 0,
+}) {
   const [briefErr, setBriefErr] = useState(null);
   const [msg, setMsg] = useState(null);
 
@@ -159,6 +164,7 @@ export default function ProjectsPage({ onRefresh, currentProjectId, onProjectAct
   const [registerLoading, setRegisterLoading] = useState(false);
   const [briefDragging, setBriefDragging] = useState(false);
   const briefDragDepth = useRef(0);
+  const briefTitleInputRef = useRef(null);
 
   const [dataGuideOpen, setDataGuideOpen] = useState(false);
   const [dataGuideLoading, setDataGuideLoading] = useState(false);
@@ -185,6 +191,24 @@ export default function ProjectsPage({ onRefresh, currentProjectId, onProjectAct
     window.addEventListener("ailab-brief-applied", onBriefApplied);
     return () => window.removeEventListener("ailab-brief-applied", onBriefApplied);
   }, []);
+
+  useEffect(() => {
+    if (!autoStartToken) return;
+    setBriefErr(null);
+    setAnalysis(null);
+    setBriefTitle("");
+    setBriefContent("");
+    setMsg("신규 프로젝트 등록을 시작합니다. 제목과 본문을 입력해 주세요.");
+    try {
+      sessionStorage.removeItem(BRIEF_SUPPLEMENT_KEY);
+      sessionStorage.removeItem(BRIEF_DRAFT_KEY);
+    } catch {
+      /* ignore */
+    }
+    queueMicrotask(() => {
+      briefTitleInputRef.current?.focus();
+    });
+  }, [autoStartToken]);
 
   function readTextFile(file) {
     return new Promise((resolve, reject) => {
@@ -577,6 +601,7 @@ export default function ProjectsPage({ onRefresh, currentProjectId, onProjectAct
             제목
             <div className="projects-brief-title-wrap">
               <input
+                ref={briefTitleInputRef}
                 id="brief-title"
                 type="text"
                 value={briefTitle}
