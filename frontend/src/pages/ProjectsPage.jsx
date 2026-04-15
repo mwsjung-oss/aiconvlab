@@ -262,7 +262,7 @@ export default function ProjectsPage({ onRefresh }) {
       );
       const hint = t.length > 36 ? `${t.slice(0, 36)}…` : t;
       setMsg(
-        `파일 로드: ${filenameHint} · 제목 후보 「${hint}」— Chatbot에서 확인하거나 제목 칸에 직접 입력하세요.`
+        `파일 로드: ${filenameHint} · 제목 후보 「${hint}」— AI Agent에서 확인하거나 제목 칸에 직접 입력하세요.`
       );
     } catch (ex) {
       const m = ex?.message || String(ex);
@@ -405,7 +405,7 @@ export default function ProjectsPage({ onRefresh }) {
       }
       setAnalysis(data);
       setMsg(
-        "분석이 완료되었습니다. 오른쪽 Chatbot에 요약·보완 안내가 표시됩니다. 필요하면 메시지로 수정을 요청하세요."
+        "분석이 완료되었습니다. 오른쪽 AI Agent에 요약·보완 안내가 표시됩니다. 필요하면 메시지로 수정을 요청하세요."
       );
       try {
         sessionStorage.setItem(BRIEF_SUPPLEMENT_KEY, "1");

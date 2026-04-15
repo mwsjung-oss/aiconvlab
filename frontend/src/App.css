@@ -1178,13 +1178,13 @@ th {
   font-weight: 600;
 }
 
-.auth-chatbot-model {
+.auth-ai-agent-model {
   display: flex;
   flex-direction: column;
   gap: 0.3rem;
 }
 
-.auth-chatbot-model-label {
+.auth-ai-agent-model-label {
   font-size: 0.72rem;
   font-weight: 600;
   color: var(--muted);
@@ -1192,7 +1192,7 @@ th {
   text-transform: uppercase;
 }
 
-.auth-chatbot-model-select {
+.auth-ai-agent-model-select {
   width: 100%;
   padding: 0.4rem 0.5rem;
   font-size: 0.82rem;
@@ -1804,7 +1804,7 @@ th {
   padding: 0.25rem 0.45rem;
 }
 
-/* Experiment: 좌 1/3 챗봇 · 우 2/3 실행/결과 */
+/* Experiment: 좌 1/3 AI Agent · 우 2/3 실행/결과 */
 .experiment-workspace-outer {
   display: flex;
   flex-direction: column;

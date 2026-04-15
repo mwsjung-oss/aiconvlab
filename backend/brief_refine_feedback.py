@@ -1,5 +1,5 @@
 """
-프로젝트 브리프에 대한 Chatbot 보완 메시지를 제목·본문에 반영 (규칙 + 선택적 OpenAI).
+프로젝트 브리프에 대한 AI Agent 보완 메시지를 제목·본문에 반영 (규칙 + 선택적 OpenAI).
 """
 from __future__ import annotations
 
@@ -130,7 +130,7 @@ def refine_brief_from_user_message(
 
     # 기본: 본문에 사용자 문장을 보완 블록으로 추가
     sep = "\n\n" if c else ""
-    block = f"{sep}[보완·Chatbot 반영]\n{um}"
+    block = f"{sep}[보완·AI Agent 반영]\n{um}"
     nc = f"{c}{block}"
     return {
         "ok": True,

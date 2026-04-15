@@ -1,7 +1,26 @@
 """CORS policy for FastAPI (env: CORS_ORIGINS)."""
 from __future__ import annotations
 
+import logging
 import os
+
+logger = logging.getLogger(__name__)
+
+
+def warn_production_cors() -> None:
+    """운영 환경에서 CORS 미설정 시 브라우저에서 API 호출이 막히는 경우가 많아 기동 시 한 번 알립니다."""
+    env = (os.getenv("AILAB_ENV") or os.getenv("ENVIRONMENT") or "").strip().lower()
+    if env not in ("production", "prod"):
+        return
+    raw = (os.getenv("CORS_ORIGINS") or "").strip()
+    if raw:
+        return
+    logger.warning(
+        "AILAB_ENV/ENVIRONMENT 가 production 인데 CORS_ORIGINS 가 비어 있습니다. "
+        "Cloudflare Pages 등 별도 도메인의 프론트에서 API를 호출하려면 "
+        "예: CORS_ORIGINS=https://your-app.pages.dev,https://www.example.com "
+        "처럼 실제 오리진(스킴·호스트·포트)을 콤마로 넣어 주세요."
+    )
 
 
 def cors_middleware_params() -> dict:

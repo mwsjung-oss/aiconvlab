@@ -9,8 +9,10 @@
 ## Docker 기반 배포
 
 - Dockerfile: `backend/Dockerfile`
-- 기본 포트: `8000`
-- 헬스체크: `/api/health`
+- 기본 포트: `8000` (Render 등은 런타임 `PORT` 사용)
+- 헬스체크: `/api/health` 또는 `/health`
+- 컨테이너는 **uvicorn `--proxy-headers`** 로 기동합니다. 리버스 프록시(HTTPS 종료) 뒤에서도 `X-Forwarded-*` 가 반영됩니다.
+- 신뢰할 프록시 IP 범위를 좁히려면 환경변수 `FORWARDED_ALLOW_IPS`(콤마 구분)를 지정할 수 있습니다. 기본은 `*`(프록시 전체 신뢰)입니다.
 
 예시:
 

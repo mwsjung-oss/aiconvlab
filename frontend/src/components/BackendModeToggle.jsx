@@ -166,10 +166,10 @@ export default function BackendModeToggle({
           </button>
         </div>
       )}
-      <div className="auth-chatbot-model">
-        <div className="auth-chatbot-model-label">Chatbot 모델</div>
+      <div className="auth-ai-agent-model">
+        <div className="auth-ai-agent-model-label">AI Agent 모델</div>
         <select
-          className="auth-chatbot-model-select"
+          className="auth-ai-agent-model-select"
           value={aiProvider}
           disabled={disabled}
           onChange={(e) => {
@@ -177,7 +177,7 @@ export default function BackendModeToggle({
             setAiProvider(v);
             writeStoredAiProvider(v);
           }}
-          aria-label="Chatbot AI 백엔드"
+          aria-label="AI Agent 백엔드"
         >
           {AI_PROVIDER_OPTIONS.map((o) => (
             <option key={o.value} value={o.value}>

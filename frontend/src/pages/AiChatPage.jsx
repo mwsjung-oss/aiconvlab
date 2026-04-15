@@ -20,6 +20,9 @@ const BASE_FOOTNOTE = `
 - **OpenAI**: 서버에 \`OPENAI_API_KEY\`가 있으면 자연어·도구 호출이 풀가동됩니다. **로컬 모드**는 슬래시·키워드 중심입니다.
 - **도구**: 데이터 목록·미리보기·학습·예측·실험 플랫폼(ml_*) 등을 대화로 요청할 수 있습니다.`;
 
+/** Experiment 사이드바·동일 UI에서 보이는 패널 제목(툴팁과 일치) */
+const AI_AGENT_PANEL_TITLE = "AI Agent";
+
 const PENDING_TITLE_STORAGE_KEY = "ailab_pending_title";
 const BRIEF_SUPPLEMENT_KEY = "ailab_brief_supplement_active";
 const BRIEF_DRAFT_KEY = "ailab_brief_draft";
@@ -43,10 +46,10 @@ function presetWelcomeAndChips(labPreset) {
   const p = LAB_PRESET_KEYS.includes(labPreset) ? labPreset : "overview";
   const common = {
     overview: {
-      title: "AI 실습 코파일럿 — 전체 흐름",
+      title: "AI Agent — 전체 흐름",
       welcome: `**프로젝트 등록 → 데이터 검증 → 모델·실험 → 결과 해설**까지 한 곳에서 대화로 진행합니다.
 
-- 단계별 메뉴(프로젝트 정의 / 데이터 검증 / 모델·실험 / 결과 해설)를 바꿔가며 같은 코파일럿을 쓸 수 있습니다.
+- 단계별 메뉴(프로젝트 정의 / 데이터 검증 / 모델·실험 / 결과 해설)를 바꿔가며 같은 AI Agent를 쓸 수 있습니다.
 - 프로젝트 내용을 구체화하고, CSV를 올린 뒤 **미리보기·품질 점검**, **학습(dry_run 포함)·예측**, **지표 해석**을 질의응답 형태로 이어가세요.${BASE_FOOTNOTE}`,
       chips: [
         { label: "전체 로드맵", text: "이 실습을 처음부터 끝까지 어떤 순서로 진행하면 좋은지 짧게 로드맵을 짜줘." },
@@ -401,9 +404,9 @@ export default function AiChatPage({
           <h2
             className="ai-chat-title-h2"
             style={{ margin: 0 }}
-            title={isSidebar ? cfg.title : undefined}
+            title={isSidebar ? AI_AGENT_PANEL_TITLE : undefined}
           >
-            {isSidebar ? "Chatbot" : cfg.title}
+            {isSidebar ? AI_AGENT_PANEL_TITLE : cfg.title}
           </h2>
           {!isSidebar && (
             <p className="hint ai-chat-phase-hint">

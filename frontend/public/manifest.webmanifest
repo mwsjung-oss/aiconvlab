@@ -1,0 +1,6 @@
+{
+  "name": "AI Practice Studio",
+  "short_name": "AI Practice Studio",
+  "start_url": "/",
+  "display": "standalone"
+}

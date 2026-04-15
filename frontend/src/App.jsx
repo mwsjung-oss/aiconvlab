@@ -897,7 +897,7 @@ export default function App() {
       {experimentShell && (
         <div className="experiment-workspace-outer">
         <div className="experiment-workspace">
-          <aside className="experiment-workspace-chat" aria-label="Experiment chatbot">
+          <aside className="experiment-workspace-chat" aria-label="Experiment AI Agent">
             <AiChatPage
               variant="sidebar"
               labPreset={aiChatPreset}

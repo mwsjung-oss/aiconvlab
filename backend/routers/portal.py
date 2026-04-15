@@ -73,7 +73,7 @@ class SuggestTitleBody(BaseModel):
 
 
 class BriefRefineBody(BaseModel):
-    """Chatbot에서 보낸 보완 문장을 제목·본문에 반영."""
+    """AI Agent에서 보낸 보완 문장을 제목·본문에 반영."""
 
     title: str = Field(default="", max_length=500)
     content: str = Field(default="", max_length=100_000)

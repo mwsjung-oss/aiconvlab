@@ -363,6 +363,8 @@ def _tables() -> set[str]:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    warn_production_cors()
+
     from database import Base
 
     Base.metadata.create_all(bind=engine)
@@ -402,7 +404,7 @@ async def lifespan(app: FastAPI):
         logging.getLogger(__name__).exception("Notebook subprocess shutdown failed")
 
 
-from core.cors import cors_middleware_params
+from core.cors import cors_middleware_params, warn_production_cors
 
 app = FastAPI(title="Local AILab", version="1.0.0", lifespan=lifespan)
 app.include_router(auth_router.router)

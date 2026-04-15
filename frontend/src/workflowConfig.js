@@ -13,7 +13,7 @@ export const WORKFLOW_STEPS = [
     id: "step1",
     label: "문제·아이디어",
     labelEn: "Problem & Idea",
-    hint: "문제 정의, KPI, AI 코파일럿",
+    hint: "문제 정의, KPI, AI Agent",
     defaultPage: "aichat",
   },
   {
@@ -74,7 +74,7 @@ export const PAGE_TO_WORKFLOW_STEP = {
 export const WORKFLOW_SUB_PAGES = {
   step1: [
     { id: "projects", label: "프로젝트" },
-    { id: "aichat", label: "AI 코파일럿" },
+    { id: "aichat", label: "AI Agent" },
   ],
   step2: [
     { id: "upload", label: "데이터 업로드" },
@@ -93,13 +93,13 @@ export const WORKFLOW_SUB_PAGES = {
   step6: [{ id: "reports", label: "Reports" }],
 };
 
-/** AI 코파일럿 프리셋 (1단계에서만 표시) — App.jsx 상태와 동일한 preset 값 */
+/** AI Agent 프리셋 (1단계에서만 표시) — App.jsx 상태와 동일한 preset 값 */
 export const AI_CHAT_PRESETS = [
-  { preset: "overview", label: "AI · 전체" },
-  { preset: "project", label: "AI · 프로젝트 정의" },
-  { preset: "data", label: "AI · 데이터 검증" },
-  { preset: "model", label: "AI · 모델·실험" },
-  { preset: "insights", label: "AI · 결과 해설" },
+  { preset: "overview", label: "AI Agent · 전체" },
+  { preset: "project", label: "AI Agent · 프로젝트 정의" },
+  { preset: "data", label: "AI Agent · 데이터 검증" },
+  { preset: "model", label: "AI Agent · 모델·실험" },
+  { preset: "insights", label: "AI Agent · 결과 해설" },
 ];
 
 /**
@@ -111,7 +111,7 @@ export function getWorkflowStepForPage(pageId) {
   return PAGE_TO_WORKFLOW_STEP[pageId] ?? null;
 }
 /**
- * Experiment workflow sidebar (Chatbot) stage hints (markdown).
+ * Experiment workflow sidebar (AI Agent) stage hints (markdown).
  * @param {string | null | undefined} stepId
  */
 export function getWorkflowStepSidebarMessage(stepId) {
