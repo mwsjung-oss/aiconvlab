@@ -355,6 +355,13 @@ export default function App() {
     setCurrentPage("projects");
   }, [experimentWorkflowOpen]);
 
+  const openExperimentEntryPrompt = useCallback(() => {
+    // 어떤 화면에서 눌러도 동일하게 선택 모달이 보이도록 진입 상태를 표준화합니다.
+    setExperimentWorkflowOpen(false);
+    setCurrentPage("projects");
+    setExperimentEntryOpen(true);
+  }, []);
+
   const loadPortalKnowledge = useCallback(async () => {
     try {
       const d = await apiJson("/api/portal/knowledge");
@@ -811,7 +818,7 @@ export default function App() {
                             setCurrentPage("dashboard");
                             return;
                           }
-                          setExperimentEntryOpen(true);
+                          openExperimentEntryPrompt();
                           return;
                         }
                         setExperimentWorkflowOpen(false);
