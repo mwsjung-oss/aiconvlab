@@ -406,7 +406,7 @@ async def lifespan(app: FastAPI):
 
 from core.cors import cors_middleware_params, warn_production_cors
 
-app = FastAPI(title="Local AILab", version="1.0.0", lifespan=lifespan)
+app = FastAPI(title="Local AILab", version="3.0.1", lifespan=lifespan)
 app.include_router(auth_router.router)
 app.include_router(admin_router.router)
 app.include_router(admin_panel_router.router)
