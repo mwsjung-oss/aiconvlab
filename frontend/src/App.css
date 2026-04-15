@@ -2374,6 +2374,8 @@ th {
   color: #111827;
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18);
   border: 1px solid var(--border, rgba(0, 0, 0, 0.08));
+  --text: #111827;
+  --muted: #374151;
 }
 
 .projects-data-guide-dialog,
@@ -2381,12 +2383,16 @@ th {
 .projects-data-guide-dialog h4,
 .projects-data-guide-dialog p,
 .projects-data-guide-dialog li,
-.projects-data-guide-dialog code {
-  color: #111827;
+.projects-data-guide-dialog code,
+.projects-data-guide-dialog strong,
+.projects-data-guide-dialog span,
+.projects-data-guide-dialog a,
+.projects-data-guide-dialog * {
+  color: #111827 !important;
 }
 
 .projects-data-guide-dialog .hint {
-  color: #374151;
+  color: #374151 !important;
 }
 
 .projects-data-guide-dialog h3 {
@@ -2429,6 +2435,7 @@ th {
   border-radius: 8px;
   background: var(--panel-2, #f8f9fb);
   font-size: 0.86rem;
+  color: #111827;
 }
 
 .projects-data-guide-checklist h4 {
@@ -2450,18 +2457,24 @@ th {
   padding: 0.65rem 0.75rem;
   background: var(--panel-2, #f8f9fb);
   color: #111827;
+  --text: #111827;
+  --muted: #374151;
 }
 
 .projects-analysis-panel h4,
 .projects-analysis-panel h5,
 .projects-analysis-panel p,
 .projects-analysis-panel li,
-.projects-analysis-panel code {
-  color: #111827;
+.projects-analysis-panel code,
+.projects-analysis-panel strong,
+.projects-analysis-panel span,
+.projects-analysis-panel a,
+.projects-analysis-panel * {
+  color: #111827 !important;
 }
 
 .projects-analysis-panel .hint {
-  color: #374151;
+  color: #374151 !important;
 }
 
 .projects-analysis-heading {
