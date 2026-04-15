@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import "./App.css";
 import { apiJson } from "./api";
 import { getBackendModeLabel } from "./api/backendMode";
@@ -156,7 +156,6 @@ export default function App() {
   /** Experiment 퀵메뉴로 들어왔을 때만 6단계 워크플로·서브내비 표시 */
   const [experimentWorkflowOpen, setExperimentWorkflowOpen] = useState(false);
   const [experimentEntryOpen, setExperimentEntryOpen] = useState(false);
-  const [experimentEntryResolved, setExperimentEntryResolved] = useState(false);
   const [projectsAutoStartToken, setProjectsAutoStartToken] = useState(0);
   /** Experiment 워크플로를 열 때 스크롤이 맨 위로 붙는 것을 막기 위한 복원 값 */
   const experimentScrollRestoreY = useRef(null);
@@ -328,7 +327,6 @@ export default function App() {
     const pname = project?.name || "";
     setCurrentProjectId(pid);
     setCurrentProjectName(pname);
-    setExperimentEntryResolved(true);
     try {
       await apiJson("/api/portal/profile/current-project", {
         method: "POST",
@@ -342,31 +340,20 @@ export default function App() {
   useEffect(() => {
     if (!isAuthenticated) {
       setExperimentEntryOpen(false);
-      setExperimentEntryResolved(false);
     }
   }, [isAuthenticated]);
 
-  useEffect(() => {
-    if (isAuthenticated) {
-      // 로그인 이후 첫 Experiment 진입 시 기존 프로젝트 이어하기 여부를 선택하도록 합니다.
-      setExperimentEntryOpen(false);
-      setExperimentEntryResolved(false);
-    }
-  }, [isAuthenticated, user?.id]);
-
   const openExperimentWorkspace = useCallback(async ({ startNew } = { startNew: false }) => {
     if (startNew) {
-      await setActiveProject(null);
       setProjectsAutoStartToken((v) => v + 1);
     }
     if (!experimentWorkflowOpen && typeof window !== "undefined") {
       experimentScrollRestoreY.current = window.scrollY;
     }
-    setExperimentEntryResolved(true);
     setExperimentEntryOpen(false);
     setExperimentWorkflowOpen(true);
     setCurrentPage("projects");
-  }, [experimentWorkflowOpen, setActiveProject]);
+  }, [experimentWorkflowOpen]);
 
   const loadPortalKnowledge = useCallback(async () => {
     try {
@@ -731,6 +718,42 @@ export default function App() {
       ? getWorkflowStepForPage(currentPage)
       : null;
 
+  const selectableProjects = useMemo(() => {
+    const byId = new Map();
+    for (const p of portalProjects || []) {
+      if (p?.id == null) continue;
+      byId.set(p.id, { id: p.id, name: p.name || `프로젝트 ${p.id}` });
+    }
+    for (const p of userProfile?.owned_projects || []) {
+      if (p?.id == null) continue;
+      byId.set(p.id, { id: p.id, name: p.name || `프로젝트 ${p.id}` });
+    }
+    for (const p of userProfile?.joined_projects || []) {
+      if (p?.id == null) continue;
+      byId.set(p.id, { id: p.id, name: p.name || `프로젝트 ${p.id}` });
+    }
+    if (currentProjectId != null && !byId.has(currentProjectId)) {
+      byId.set(currentProjectId, {
+        id: currentProjectId,
+        name: currentProjectName || `프로젝트 ${currentProjectId}`,
+      });
+    }
+    return Array.from(byId.values()).sort((a, b) =>
+      String(a.name || "").localeCompare(String(b.name || ""), "ko")
+    );
+  }, [portalProjects, userProfile, currentProjectId, currentProjectName]);
+
+  const handleWorkflowProjectChange = useCallback((e) => {
+    const raw = e.target.value;
+    if (!raw) {
+      void setActiveProject(null);
+      return;
+    }
+    const pid = Number(raw);
+    const picked = selectableProjects.find((p) => Number(p.id) === pid);
+    void setActiveProject(picked || { id: pid, name: "" });
+  }, [selectableProjects, setActiveProject]);
+
   const handleAiAfterTool = useCallback(() => {
     loadDatasets().catch(() => {});
     loadModels().catch(() => {});
@@ -788,11 +811,7 @@ export default function App() {
                             setCurrentPage("dashboard");
                             return;
                           }
-                          if (!experimentEntryResolved && currentProjectId) {
-                            setExperimentEntryOpen(true);
-                            return;
-                          }
-                          void openExperimentWorkspace({ startNew: false });
+                          setExperimentEntryOpen(true);
                           return;
                         }
                         setExperimentWorkflowOpen(false);
@@ -849,11 +868,29 @@ export default function App() {
       {isAuthenticated && experimentWorkflowOpen ? (
         <div className="top-nav-wrap">
           <nav className="workflow-nav" aria-label="6단계 AI 워크플로">
-            {currentProjectName && (
-              <div className="workflow-current-project" aria-live="polite">
-                현재 프로젝트: <strong>{currentProjectName}</strong>
-              </div>
-            )}
+            <div className="workflow-current-project" aria-live="polite">
+              <span className="workflow-current-project-label">현재 프로젝트</span>
+              <select
+                className="workflow-project-select"
+                value={currentProjectId ?? ""}
+                onChange={handleWorkflowProjectChange}
+                title="진행 중인 프로젝트를 언제든 변경할 수 있습니다"
+              >
+                <option value="">선택 안 함</option>
+                {selectableProjects.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.name} (ID: {p.id})
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                className="btn btn-secondary workflow-project-new-btn"
+                onClick={() => void openExperimentWorkspace({ startNew: true })}
+              >
+                신규 프로젝트 등록
+              </button>
+            </div>
             <ol className="workflow-progress">
               {WORKFLOW_STEPS.map((step, idx) => {
                 const isCurrent = activeWorkflowStep === step.id;
@@ -1331,8 +1368,7 @@ export default function App() {
           >
             <h3 id="experiment-entry-title">Experiment 진행 방식 선택</h3>
             <p className="hint">
-              현재 활성 프로젝트 <strong>{currentProjectName || "기존 프로젝트"}</strong>가 있습니다.
-              이어서 진행하시겠습니까, 아니면 신규 프로젝트를 등록하면서 시작하시겠습니까?
+              기존 프로젝트를 이어서 진행하거나, 현재 프로젝트는 유지한 채 신규 프로젝트 등록을 시작할 수 있습니다.
             </p>
             <div className="experiment-entry-actions">
               <button

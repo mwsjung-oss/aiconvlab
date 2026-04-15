@@ -513,10 +513,29 @@
   margin: 0.05rem 0 0.4rem;
   font-size: 0.9rem;
   color: var(--text);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem;
 }
 
 .workflow-current-project strong {
   color: var(--accent, #5ec9ff);
+}
+
+.workflow-current-project-label {
+  font-weight: 600;
+  color: var(--accent, #5ec9ff);
+}
+
+.workflow-project-select {
+  min-width: 14rem;
+  max-width: min(42rem, 100%);
+}
+
+.workflow-project-new-btn {
+  padding: 0.42rem 0.7rem;
+  font-size: 0.82rem;
 }
 
 .workflow-progress {
