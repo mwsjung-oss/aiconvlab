@@ -639,9 +639,9 @@ export default function ProjectsPage({ onRefresh }) {
         </div>
 
         {analysis && analysis.ok && (
-          <div className="panel projects-analysis-panel">
+          <div className="panel projects-analysis-panel" style={{ color: "#111827" }}>
             <h4 className="projects-analysis-heading">추천 결과</h4>
-            <p className="hint">
+            <p className="hint" style={{ color: "#374151" }}>
               추정 과제: <strong>{(analysis.inferred_tasks || []).join(", ")}</strong>
             </p>
             <h5>데이터셋 제안</h5>
@@ -649,7 +649,7 @@ export default function ProjectsPage({ onRefresh }) {
               {(analysis.recommended_datasets || []).map((d, i) => (
                 <li key={i}>
                   <strong>{d.name}</strong> ({d.role}) — {d.schema_hint}
-                  {d.notes ? <span className="hint"> · {d.notes}</span> : null}
+                  {d.notes ? <span className="hint" style={{ color: "#374151" }}> · {d.notes}</span> : null}
                 </li>
               ))}
             </ul>
@@ -668,7 +668,7 @@ export default function ProjectsPage({ onRefresh }) {
               ))}
             </ul>
             {analysis.keywords_matched?.length > 0 && (
-              <p className="hint">
+              <p className="hint" style={{ color: "#374151" }}>
                 매칭 키워드: {analysis.keywords_matched.join(", ")}
               </p>
             )}
@@ -690,10 +690,11 @@ export default function ProjectsPage({ onRefresh }) {
             aria-modal="true"
             aria-labelledby="data-guide-title"
             onClick={(e) => e.stopPropagation()}
+            style={{ color: "#111827" }}
           >
             <h3 id="data-guide-title">데이터 준비 가이드</h3>
             {dataGuideLoading && (
-              <p className="hint" style={{ margin: "0.5rem 0" }}>
+              <p className="hint" style={{ margin: "0.5rem 0", color: "#374151" }}>
                 분석 브리프를 바탕으로 요건을 정리하는 중…
               </p>
             )}
@@ -711,7 +712,7 @@ export default function ProjectsPage({ onRefresh }) {
                   }}
                 />
                 {dataGuidePayload.model_hint && (
-                  <p className="hint" style={{ margin: "0 0 0.5rem" }}>
+                  <p className="hint" style={{ margin: "0 0 0.5rem", color: "#374151" }}>
                     참고 모델(플랫폼): <code>{dataGuidePayload.model_hint}</code>
                   </p>
                 )}
