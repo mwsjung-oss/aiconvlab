@@ -1,9 +1,15 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   getBackendHint,
   getStoredBackendMode,
   setStoredBackendMode,
 } from "../api/backendMode";
+import {
+  getAwsApiBaseWithOverride,
+  getLabApiBaseWithOverride,
+  setAwsApiBaseOverride,
+  setLabApiBaseOverride,
+} from "../services/config/publicEnv";
 import {
   ensureLocalBackendReady,
   ensureRemoteBackendReachable,
@@ -26,6 +32,10 @@ export default function BackendModeToggle({
   const [boot, setBoot] = useState(null);
   /** 이번 세션에서 사용자가 ‘원격 서버’ 또는 하위 항목을 직접 눌렀을 때만 true */
   const userExplicitlyChoseRemote = useRef(false);
+  /** 연구실·AWS URL 저장 시 헬스 재검사 */
+  const [endpointRevision, setEndpointRevision] = useState(0);
+  const [labUrlDraft, setLabUrlDraft] = useState(() => getLabApiBaseWithOverride());
+  const [awsUrlDraft, setAwsUrlDraft] = useState(() => getAwsApiBaseWithOverride());
   const [devFallbackNotice, setDevFallbackNotice] = useState(null);
   const [aiProvider, setAiProvider] = useState(() => readStoredAiProvider());
 
@@ -33,6 +43,21 @@ export default function BackendModeToggle({
     setStoredBackendMode(mode);
     window.dispatchEvent(new CustomEvent("ailab-backend-mode-change", { detail: mode }));
   }, [mode]);
+
+  useLayoutEffect(() => {
+    const stored = getStoredBackendMode();
+    if (stored === "lab" || stored === "aws") {
+      userExplicitlyChoseRemote.current = true;
+    }
+  }, []);
+
+  useEffect(() => {
+    setLabUrlDraft(getLabApiBaseWithOverride());
+  }, [mode, endpointRevision]);
+
+  useEffect(() => {
+    setAwsUrlDraft(getAwsApiBaseWithOverride());
+  }, [mode, endpointRevision]);
 
   useEffect(() => {
     const ac = new AbortController();
@@ -84,7 +109,7 @@ export default function BackendModeToggle({
       cancelled = true;
       ac.abort();
     };
-  }, [mode, onReadyChange]);
+  }, [mode, onReadyChange, endpointRevision]);
 
   return (
     <div className="auth-backend-mode">
@@ -187,6 +212,66 @@ export default function BackendModeToggle({
         </select>
       </div>
       <p className="auth-backend-mode-hint">{getBackendHint(mode)}</p>
+      {mode === "lab" && (
+        <div className="auth-backend-endpoint-row">
+          <label className="auth-backend-endpoint-label" htmlFor="ailab-lab-api-base">
+            연구실 API 베이스 URL
+          </label>
+          <input
+            id="ailab-lab-api-base"
+            type="url"
+            className="auth-backend-endpoint-input"
+            placeholder="예: http://192.168.0.10:8000 또는 Tailscale URL"
+            value={labUrlDraft}
+            disabled={disabled}
+            onChange={(e) => setLabUrlDraft(e.target.value)}
+            autoComplete="off"
+          />
+          <button
+            type="button"
+            className="btn btn-secondary auth-backend-endpoint-save"
+            disabled={disabled}
+            onClick={() => {
+              setLabApiBaseOverride(labUrlDraft.trim() || null);
+              setDevFallbackNotice(null);
+              userExplicitlyChoseRemote.current = true;
+              setEndpointRevision((n) => n + 1);
+            }}
+          >
+            저장 후 다시 확인
+          </button>
+        </div>
+      )}
+      {mode === "aws" && (
+        <div className="auth-backend-endpoint-row">
+          <label className="auth-backend-endpoint-label" htmlFor="ailab-aws-api-base">
+            AWS API 베이스 URL
+          </label>
+          <input
+            id="ailab-aws-api-base"
+            type="url"
+            className="auth-backend-endpoint-input"
+            placeholder="https://…"
+            value={awsUrlDraft}
+            disabled={disabled}
+            onChange={(e) => setAwsUrlDraft(e.target.value)}
+            autoComplete="off"
+          />
+          <button
+            type="button"
+            className="btn btn-secondary auth-backend-endpoint-save"
+            disabled={disabled}
+            onClick={() => {
+              setAwsApiBaseOverride(awsUrlDraft.trim() || null);
+              setDevFallbackNotice(null);
+              userExplicitlyChoseRemote.current = true;
+              setEndpointRevision((n) => n + 1);
+            }}
+          >
+            저장 후 다시 확인
+          </button>
+        </div>
+      )}
       {devFallbackNotice && (
         <p className="auth-backend-mode-status auth-backend-mode-status--pending">
           {devFallbackNotice}

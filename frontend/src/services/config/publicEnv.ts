@@ -43,6 +43,40 @@ export function getLabApiUrlWithLegacyFallback(): string {
   );
 }
 
+/** 브라우저 localStorage — 운영·LAN에서 빌드 없이 연구실 주소 지정 */
+export const LAB_API_BASE_STORAGE_KEY = "ailab_lab_api_base";
+export const AWS_API_BASE_STORAGE_KEY = "ailab_aws_api_base";
+
+export function getLabApiBaseWithOverride(): string {
+  if (typeof window !== "undefined") {
+    const o = trim(localStorage.getItem(LAB_API_BASE_STORAGE_KEY) || "");
+    if (o) return o;
+  }
+  return getLabApiUrlWithLegacyFallback();
+}
+
+export function setLabApiBaseOverride(url: string | null | undefined): void {
+  if (typeof window === "undefined") return;
+  const t = trim(url || "");
+  if (!t) localStorage.removeItem(LAB_API_BASE_STORAGE_KEY);
+  else localStorage.setItem(LAB_API_BASE_STORAGE_KEY, t);
+}
+
+export function getAwsApiBaseWithOverride(): string {
+  if (typeof window !== "undefined") {
+    const o = trim(localStorage.getItem(AWS_API_BASE_STORAGE_KEY) || "");
+    if (o) return o;
+  }
+  return getAwsApiUrl();
+}
+
+export function setAwsApiBaseOverride(url: string | null | undefined): void {
+  if (typeof window === "undefined") return;
+  const t = trim(url || "");
+  if (!t) localStorage.removeItem(AWS_API_BASE_STORAGE_KEY);
+  else localStorage.setItem(AWS_API_BASE_STORAGE_KEY, t);
+}
+
 export function getAwsApiUrl(): string {
   return trim(import.meta.env.VITE_AWS_API_URL || "");
 }

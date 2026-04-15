@@ -1,19 +1,83 @@
 /** 개발 시 로컬 uvicorn 자동 기동(Vite 플러그인) + 연구실 헬스 확인 */
 
 import {
-  getAwsApiUrl,
-  getLabApiUrlWithLegacyFallback,
+  getAwsApiBaseWithOverride,
+  getLabApiBaseWithOverride,
   getPublicApiBaseUrl,
 } from "../config/publicEnv";
 
 const trim = (u: string) => u.replace(/\/+$/, "");
 
 function labBase() {
-  return trim(getLabApiUrlWithLegacyFallback());
+  return trim(getLabApiBaseWithOverride());
+}
+
+function isViteLocalhostClient(): boolean {
+  if (typeof window === "undefined") return true;
+  const h = window.location.hostname;
+  return h === "localhost" || h === "127.0.0.1";
+}
+
+async function sleep(ms: number, signal?: AbortSignal) {
+  await new Promise<void>((resolve, reject) => {
+    const t = globalThis.setTimeout(() => resolve(), ms);
+    const onAbort = () => {
+      globalThis.clearTimeout(t);
+      reject(new DOMException("aborted", "AbortError"));
+    };
+    signal?.addEventListener("abort", onAbort, { once: true });
+  });
+}
+
+async function probeRemoteHealthDirect(
+  base: string,
+  remoteName: string,
+  signal?: AbortSignal
+): Promise<{ ok: boolean; message: string }> {
+  const b = trim(base);
+  let lastErr = "알 수 없는 오류";
+  for (let attempt = 0; attempt < 3; attempt++) {
+    if (signal?.aborted) {
+      return { ok: false, message: "취소되었습니다." };
+    }
+    try {
+      const health = await fetch(`${b}/api/health`, { mode: "cors", signal });
+      if (health.ok) {
+        return { ok: true, message: `${remoteName} API에 연결되었습니다.` };
+      }
+      const openapi = await fetch(`${b}/openapi.json`, { mode: "cors", signal });
+      if (openapi.ok) {
+        return {
+          ok: true,
+          message:
+            health.status === 404
+              ? `${remoteName} FastAPI에 연결되었습니다. (/api/health 없음·OpenAPI로 확인)`
+              : `${remoteName} FastAPI에 연결되었습니다. (/api/health 비정상·OpenAPI로 확인)`,
+        };
+      }
+      return {
+        ok: false,
+        message: `${remoteName} 응답: health HTTP ${health.status}, openapi HTTP ${openapi.status}.`,
+      };
+    } catch (e) {
+      lastErr = e instanceof Error ? e.message : String(e);
+      if (attempt < 2) {
+        try {
+          await sleep(600 * (attempt + 1), signal);
+        } catch {
+          return { ok: false, message: "취소되었습니다." };
+        }
+      }
+    }
+  }
+  return {
+    ok: false,
+    message: `${remoteName}에 연결할 수 없습니다 (${lastErr}). VPN·망·방화벽·서버 기동을 확인하세요.`,
+  };
 }
 
 function awsBase() {
-  return trim(getAwsApiUrl());
+  return trim(getAwsApiBaseWithOverride());
 }
 
 function renderBase() {
@@ -99,10 +163,15 @@ export async function ensureRemoteBackendReachable(
     return {
       ok: false,
       message:
-        "연구실 API 주소가 비어 있습니다. `.env`에 VITE_LAB_API_URL(또는 VITE_DEV_PROXY_TARGET)을 설정하세요.",
+        "연구실 API 주소가 비어 있습니다. 아래 입력란에 저장하거나 `.env`의 VITE_LAB_API_URL 을 설정하세요.",
     };
   }
-  if (import.meta.env.DEV) {
+
+  const base = kind === "lab" ? labBase() : kind === "render" ? renderBase() : awsBase();
+  const remoteName =
+    kind === "lab" ? "연구실" : kind === "render" ? "Cloud (Render)" : "Cloud (AWS)";
+
+  if (import.meta.env.DEV && isViteLocalhostClient()) {
     try {
       const r = await fetch(
         `/__ailab/dev/remote-health?kind=${encodeURIComponent(kind)}`,
@@ -142,32 +211,12 @@ export async function ensureRemoteBackendReachable(
     }
   }
 
-  const base = kind === "lab" ? labBase() : kind === "render" ? renderBase() : awsBase();
-  const remoteName =
-    kind === "lab" ? "연구실" : kind === "render" ? "Cloud (Render)" : "Cloud (AWS)";
-  try {
-    const health = await fetch(`${base}/api/health`, { mode: "cors", signal });
-    if (health.ok) {
-      return { ok: true, message: `${remoteName} API에 연결되었습니다.` };
-    }
-    const openapi = await fetch(`${base}/openapi.json`, { mode: "cors", signal });
-    if (openapi.ok) {
-      return {
-        ok: true,
-        message:
-          health.status === 404
-            ? `${remoteName} FastAPI에 연결되었습니다. (/api/health 없음·OpenAPI로 확인)`
-            : `${remoteName} FastAPI에 연결되었습니다. (/api/health 비정상·OpenAPI로 확인)`,
-      };
-    }
+  if (!base) {
     return {
       ok: false,
-      message: `${remoteName} 응답: health HTTP ${health.status}, openapi HTTP ${openapi.status}.`,
-    };
-  } catch {
-    return {
-      ok: false,
-      message: `${remoteName}에 연결할 수 없습니다. VPN·망·방화벽과 서버 기동 여부를 확인하세요.`,
+      message: `${remoteName} API 베이스 URL이 비어 있습니다.`,
     };
   }
+
+  return probeRemoteHealthDirect(base, remoteName, signal);
 }

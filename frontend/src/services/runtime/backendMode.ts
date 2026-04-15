@@ -1,9 +1,9 @@
 /** 로그인 화면에서 선택한 백엔드(연구실 vs Cloud[Render/AWS]). */
 
 import {
+  getAwsApiBaseWithOverride,
   getAwsApiUrl,
-  getLabApiUrl,
-  getLabApiUrlWithLegacyFallback,
+  getLabApiBaseWithOverride,
   getLocalApiUrl,
   getPublicApiBaseUrl,
 } from "../config/publicEnv";
@@ -15,10 +15,6 @@ export type BackendMode = "local" | "lab" | "render" | "aws";
 const trimBase = (u: string) => u.replace(/\/+$/, "");
 
 const localDefault = trimBase(getLocalApiUrl());
-const labConfigured = trimBase(getLabApiUrl());
-const labWithLegacy = trimBase(getLabApiUrlWithLegacyFallback());
-/** Effective lab URL for UI hints (legacy name kept for template strings below). */
-const labDefault = labConfigured || labWithLegacy;
 const awsDefault = trimBase(getAwsApiUrl());
 
 export function getStoredBackendMode(): BackendMode | null {
@@ -37,20 +33,31 @@ export function setStoredBackendMode(mode: BackendMode): void {
 }
 
 /**
- * 빌드 시 VITE_API_BASE_URL 이 있으면 최우선(별도 API 도메인).
- * 비어 있으면 항상 상대 경로 `/api` — Vite dev·preview 프록시가 동일 출처로 백엔드에 연결합니다.
- *
- * 예전에는 호스트명이 사설 IP가 아닐 때 127.0.0.1 로 직접 붙였는데, 다른 기기에서
- * `http://PC이름:5174` 로 접속하면 그 기기의 루프백으로 가서 Failed to fetch 가 납니다.
- * 원격 정적 호스팅만 쓸 때는 반드시 VITE_API_BASE_URL 을 설정하세요.
+ * 브라우저가 호출할 API 오리진.
+ * - 개발(`import.meta.env.DEV`)이고 VITE_API_BASE_URL 이 비어 있으면 상대 경로 `/api` → Vite 프록시·쿠키 모드.
+ * - 그 외: 저장된 백엔드 모드에 따라 연구실·AWS·Cloud(Render) 베이스를 고릅니다.
+ *   운영에서도 `연구실 서버` 선택 시 VITE_API_BASE_URL(Cloud) 대신 연구실 주소로 요청이 갑니다.
  */
 export function getResolvedApiBase(): string {
   const fixed = trimBase(getPublicApiBaseUrl());
-  if (fixed) return fixed;
+  const mode =
+    typeof window !== "undefined" ? getStoredBackendMode() ?? "render" : "render";
 
-  if (typeof window === "undefined") return "";
+  if (import.meta.env.DEV && !fixed) {
+    return "";
+  }
 
-  return "";
+  if (mode === "lab") {
+    const lab = trimBase(getLabApiBaseWithOverride());
+    if (lab) return lab;
+    return fixed;
+  }
+  if (mode === "aws") {
+    const aws = trimBase(getAwsApiBaseWithOverride());
+    if (aws) return aws;
+    return fixed;
+  }
+  return fixed;
 }
 
 export function getBackendModeLabel(): string {
@@ -66,10 +73,11 @@ export function getBackendHint(mode: BackendMode): string {
     return `API → ${localDefault} (개발 시 선택하면 자동 기동을 시도합니다. 이미 떠 있으면 유지됩니다.)`;
   }
   if (mode === "lab") {
-    if (!labDefault) {
-      return "연구실 모드: `.env`에 VITE_LAB_API_URL(또는 하위호환 VITE_DEV_PROXY_TARGET)을 설정하세요.";
+    const eff = trimBase(getLabApiBaseWithOverride());
+    if (!eff) {
+      return "연구실: 아래에 API 베이스 URL을 저장하거나, 빌드 시 VITE_LAB_API_URL 을 설정하세요.";
     }
-    return `API → ${labDefault} (선택 시 연결·헬스를 확인합니다. 서버가 켜져 있어야 합니다.)`;
+    return `API → ${eff} (요청·헬스는 이 주소로 전달됩니다. VPN·서버 기동을 확인하세요.)`;
   }
   if (mode === "render") {
     const fixed = trimBase(getPublicApiBaseUrl());
@@ -78,11 +86,12 @@ export function getBackendHint(mode: BackendMode): string {
     }
     return "Cloud-Render: VITE_API_BASE_URL 을 설정하세요.";
   }
-  if (mode === "aws" && awsDefault) {
-    return `API → ${awsDefault} (Cloud 백엔드 주소. 서버가 켜져 있어야 합니다.)`;
-  }
   if (mode === "aws") {
-    return "Cloud (AWS): `.env`에 VITE_AWS_API_URL 을 설정하세요.";
+    const eff = trimBase(getAwsApiBaseWithOverride());
+    if (eff) {
+      return `API → ${eff} (Cloud AWS. 서버가 켜져 있어야 합니다.)`;
+    }
+    return "Cloud (AWS): 아래에 URL을 저장하거나 `.env`에 VITE_AWS_API_URL 을 설정하세요.";
   }
   return "";
 }

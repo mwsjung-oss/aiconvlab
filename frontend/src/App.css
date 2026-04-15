@@ -1232,6 +1232,40 @@ th {
   color: #f87171;
 }
 
+.auth-backend-endpoint-row {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-top: 0.5rem;
+  padding: 0.55rem 0.6rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.auth-backend-endpoint-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.auth-backend-endpoint-input {
+  width: 100%;
+  padding: 0.45rem 0.5rem;
+  font-size: 0.8rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+}
+
+.auth-backend-endpoint-save {
+  align-self: flex-start;
+  margin-top: 0.15rem;
+  font-size: 0.78rem;
+  padding: 0.35rem 0.65rem;
+}
+
 .auth-form {
   display: flex;
   flex-direction: column;
