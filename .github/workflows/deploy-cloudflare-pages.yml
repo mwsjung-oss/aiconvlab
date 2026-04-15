@@ -1,0 +1,64 @@
+# main 푸시 시 frontend 빌드 후 Cloudflare Pages 프로덕션에 업로드합니다.
+# 저장소 Secrets·Variables 설정이 모두 있어야 실제 배포가 실행됩니다(없으면 스킵).
+
+name: Deploy frontend (Cloudflare Pages)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "frontend/**"
+      - ".github/workflows/deploy-cloudflare-pages.yml"
+
+concurrency:
+  group: deploy-cf-pages-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      deployments: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check deploy configuration
+        id: meta
+        run: |
+          missing=0
+          if [ -z "${{ secrets.CLOUDFLARE_API_TOKEN }}" ]; then echo "::notice::CLOUDFLARE_API_TOKEN not set"; missing=1; fi
+          if [ -z "${{ secrets.CLOUDFLARE_ACCOUNT_ID }}" ]; then echo "::notice::CLOUDFLARE_ACCOUNT_ID not set"; missing=1; fi
+          if [ -z "${{ secrets.CLOUDFLARE_PAGES_PROJECT_NAME }}" ]; then echo "::notice::CLOUDFLARE_PAGES_PROJECT_NAME not set"; missing=1; fi
+          if [ -z "${{ secrets.VITE_API_BASE_URL }}" ]; then echo "::notice::VITE_API_BASE_URL not set (public API origin, no trailing slash)"; missing=1; fi
+          if [ "$missing" -eq 0 ]; then
+            echo "do_deploy=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "do_deploy=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Cloudflare Pages 자동 배포를 켜려면 위 Secrets를 GitHub 저장소에 설정하세요."
+          fi
+
+      - uses: actions/setup-node@v4
+        if: steps.meta.outputs.do_deploy == 'true'
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install and build frontend
+        if: steps.meta.outputs.do_deploy == 'true'
+        working-directory: frontend
+        env:
+          VITE_APP_ENV: production
+          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
+        run: npm ci && npm run build
+
+      - name: Deploy to Cloudflare Pages
+        if: steps.meta.outputs.do_deploy == 'true'
+        uses: cloudflare/pages-action@v1
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          projectName: ${{ secrets.CLOUDFLARE_PAGES_PROJECT_NAME }}
+          directory: frontend/dist
+          gitHubToken: ${{ secrets.GITHUB_TOKEN }}

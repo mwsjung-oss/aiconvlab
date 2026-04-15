@@ -1,0 +1,30 @@
+# Render 대시보드에서 생성한 Deploy Hook URL로 백엔드 재배포를 트리거합니다.
+# Render가 이미 GitHub 연동 + Auto-Deploy를 쓰는 경우 이 워크플로는 설정하지 않아도 됩니다(중복 배포 방지).
+
+name: Trigger backend deploy (Render hook)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - ".github/workflows/deploy-render-backend.yml"
+
+concurrency:
+  group: render-hook-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  hook:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call Render deploy hook
+        env:
+          HOOK: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+        run: |
+          if [ -z "$HOOK" ]; then
+            echo "::notice::RENDER_DEPLOY_HOOK_URL 미설정 — Render Git 연동 자동 배포를 사용하거나, Hook URL을 Secrets에 추가하세요."
+            exit 0
+          fi
+          curl -fsS -X POST "$HOOK"
+          echo "Render deploy hook invoked."

@@ -43,6 +43,11 @@ docker run --rm -p 8000:8000 --env-file backend/.env ailab-backend
 - `GEMINI_ENABLED=false`
 - `AWS_ENABLED=false`
 
+## GitHub에서 백엔드 자동 배포
+
+- **Render Git 연동**: 서비스에 저장소·브랜치를 연결하고 Auto-Deploy 를 켜면 `main` 푸시만으로 배포됩니다. `infra/render/render.yaml` 은 블루프린트 참고용입니다.
+- **Deploy Hook**: 연동 대신 Hook만 쓰는 경우, Render 대시보드에서 **Deploy Hook** URL을 발급하고 GitHub 저장소 Secret `RENDER_DEPLOY_HOOK_URL` 에 넣습니다. `.github/workflows/deploy-render-backend.yml` 이 `backend/**` 변경 시 Hook 을 호출합니다(Git 연동과 동시에 켜면 중복 배포될 수 있음).
+
 ## 배포 후 점검
 
 - `GET /api/health`
