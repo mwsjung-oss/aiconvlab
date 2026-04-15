@@ -20,6 +20,7 @@
 3. Environment variables (Pages UI)
    - `VITE_APP_ENV=production`
    - `VITE_API_BASE_URL=https://<public-backend-domain>`
+   - `VITE_LAB_API_URL=https://aiconvlab.com/api` (연구실 모드 기본 API; localStorage override가 없을 때 사용)
 4. SPA fallback
    - `frontend/public/_redirects` 포함 (`/* /index.html 200`)
 
@@ -51,4 +52,9 @@ Cloudflare에서 **이미 GitHub 저장소를 Pages에 직접 연결**해 두었
 - `GET <frontend-domain>/` 응답 확인
 - 브라우저 개발자 도구에서 `/api/*` 호출이 `VITE_API_BASE_URL`로 향하는지 확인
 - 로그인/대시보드/System 페이지 진입 확인
+
+## Cloudflare Pages 메모
+
+- Cloudflare Pages → Settings → Environment Variables 에 `VITE_LAB_API_URL` 을 설정하세요.
+- 값 변경 후 반드시 Re-deploy 하세요.
 

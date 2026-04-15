@@ -43,20 +43,19 @@ export function getResolvedApiBase(): string {
   const mode =
     typeof window !== "undefined" ? getStoredBackendMode() ?? "render" : "render";
 
-  if (import.meta.env.DEV && !fixed) {
-    return "";
-  }
-
   if (mode === "lab") {
     const lab = trimBase(getLabApiBaseWithOverride());
     if (lab) return lab;
+    if (import.meta.env.DEV && !fixed) return "";
     return fixed;
   }
   if (mode === "aws") {
     const aws = trimBase(getAwsApiBaseWithOverride());
     if (aws) return aws;
+    if (import.meta.env.DEV && !fixed) return "";
     return fixed;
   }
+  if (import.meta.env.DEV && !fixed) return "";
   return fixed;
 }
 

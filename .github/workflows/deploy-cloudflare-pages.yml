@@ -31,6 +31,7 @@ jobs:
           if [ -z "${{ secrets.CLOUDFLARE_ACCOUNT_ID }}" ]; then echo "::notice::CLOUDFLARE_ACCOUNT_ID not set"; missing=1; fi
           if [ -z "${{ secrets.CLOUDFLARE_PAGES_PROJECT_NAME }}" ]; then echo "::notice::CLOUDFLARE_PAGES_PROJECT_NAME not set"; missing=1; fi
           if [ -z "${{ secrets.VITE_API_BASE_URL }}" ]; then echo "::notice::VITE_API_BASE_URL not set (public API origin, no trailing slash)"; missing=1; fi
+          if [ -z "${{ secrets.VITE_LAB_API_URL }}" ]; then echo "::notice::VITE_LAB_API_URL not set (lab API origin/proxy endpoint)"; missing=1; fi
           if [ "$missing" -eq 0 ]; then
             echo "do_deploy=true" >> "$GITHUB_OUTPUT"
           else
@@ -51,6 +52,7 @@ jobs:
         env:
           VITE_APP_ENV: production
           VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
+          VITE_LAB_API_URL: ${{ secrets.VITE_LAB_API_URL }}
         run: npm ci && npm run build
 
       - name: Deploy to Cloudflare Pages
