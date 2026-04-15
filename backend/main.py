@@ -462,18 +462,6 @@ def health_root() -> dict[str, str]:
     return _health_payload()
 
 
-@app.get("/api/ops/db-engine", tags=["health"], summary="운영 DB 엔진 진단")
-def db_engine_diagnostic() -> dict[str, Any]:
-    """Shell 권한 없이도 현재 운영 DB 백엔드를 확인하기 위한 최소 진단 정보."""
-    backend = engine.url.get_backend_name()
-    driver = engine.url.get_driver_name()
-    return {
-        "backend": backend,
-        "driver": driver,
-        "is_sqlite": backend == "sqlite",
-    }
-
-
 def _upsert_dataset_catalog_from_upload(
     db: Session,
     current_user: User,
