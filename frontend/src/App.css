@@ -2371,9 +2371,22 @@ th {
   padding: 1rem 1.15rem;
   border-radius: 10px;
   background: var(--panel, #fff);
-  color: var(--text, #111);
+  color: #111827;
   box-shadow: 0 12px 40px rgba(0, 0, 0, 0.18);
   border: 1px solid var(--border, rgba(0, 0, 0, 0.08));
+}
+
+.projects-data-guide-dialog,
+.projects-data-guide-dialog h3,
+.projects-data-guide-dialog h4,
+.projects-data-guide-dialog p,
+.projects-data-guide-dialog li,
+.projects-data-guide-dialog code {
+  color: #111827;
+}
+
+.projects-data-guide-dialog .hint {
+  color: #374151;
 }
 
 .projects-data-guide-dialog h3 {
@@ -2385,7 +2398,7 @@ th {
   margin: 0 0 0.75rem;
   font-size: 0.9rem;
   line-height: 1.5;
-  color: var(--text, #111);
+  color: #111827;
 }
 
 .projects-data-guide-section {
@@ -2396,7 +2409,7 @@ th {
   margin: 0 0 0.35rem;
   font-size: 0.88rem;
   font-weight: 600;
-  color: var(--text, #111);
+  color: #111827;
 }
 
 .projects-data-guide-section ul {
@@ -2436,6 +2449,19 @@ th {
   margin-top: 0.75rem;
   padding: 0.65rem 0.75rem;
   background: var(--panel-2, #f8f9fb);
+  color: #111827;
+}
+
+.projects-analysis-panel h4,
+.projects-analysis-panel h5,
+.projects-analysis-panel p,
+.projects-analysis-panel li,
+.projects-analysis-panel code {
+  color: #111827;
+}
+
+.projects-analysis-panel .hint {
+  color: #374151;
 }
 
 .projects-analysis-heading {
