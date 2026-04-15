@@ -148,7 +148,7 @@ function fileExtension(name) {
   return i < 0 ? "" : name.slice(i).toLowerCase();
 }
 
-export default function ProjectsPage({ onRefresh }) {
+export default function ProjectsPage({ onRefresh, currentProjectId, onProjectActivated }) {
   const [briefErr, setBriefErr] = useState(null);
   const [msg, setMsg] = useState(null);
 
@@ -516,15 +516,6 @@ export default function ProjectsPage({ onRefresh }) {
     }
     setRegisterLoading(true);
     try {
-      await apiJson("/api/portal/projects/register-from-brief", {
-        method: "POST",
-        body: JSON.stringify({
-          source_type: "project",
-          title: briefTitle.trim(),
-          content: briefContent,
-          project_name: null,
-        }),
-      });
       try {
         sessionStorage.setItem(
           LAST_REGISTERED_GUIDE_KEY,
@@ -537,7 +528,21 @@ export default function ProjectsPage({ onRefresh }) {
       } catch {
         /* ignore */
       }
-      setMsg("프로젝트가 자동 등록되었습니다.");
+      const created = await apiJson("/api/portal/projects/register-from-brief", {
+        method: "POST",
+        body: JSON.stringify({
+          source_type: "project",
+          title: briefTitle.trim(),
+          content: briefContent,
+          project_name: null,
+        }),
+      });
+      if (created?.id && created?.name) {
+        await onProjectActivated?.({ id: created.id, name: created.name });
+      }
+      setMsg(
+        `프로젝트가 자동 등록되었습니다.${created?.name ? ` (현재 프로젝트: ${created.name})` : ""}`
+      );
       setBriefTitle("");
       setBriefContent("");
       setAnalysis(null);
@@ -558,6 +563,15 @@ export default function ProjectsPage({ onRefresh }) {
   return (
     <div className="projects-page-compact">
       <section className="panel projects-smart-panel">
+        {currentProjectId ? (
+          <p className="hint" style={{ marginTop: 0 }}>
+            선택된 프로젝트 ID: <strong>{currentProjectId}</strong> (이후 단계 실행/평가/리포트에 연계)
+          </p>
+        ) : (
+          <p className="hint" style={{ marginTop: 0 }}>
+            아직 활성 프로젝트가 없습니다. “프로젝트 자동 등록” 후 단계 2~6이 해당 프로젝트에 연결됩니다.
+          </p>
+        )}
         <div className="projects-brief-compose">
           <label className="projects-brief-field" htmlFor="brief-title">
             제목

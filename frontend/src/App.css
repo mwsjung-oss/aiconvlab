@@ -509,6 +509,16 @@
   margin-bottom: 0.35rem;
 }
 
+.workflow-current-project {
+  margin: 0.05rem 0 0.4rem;
+  font-size: 0.9rem;
+  color: var(--text);
+}
+
+.workflow-current-project strong {
+  color: var(--accent, #5ec9ff);
+}
+
 .workflow-progress {
   display: flex;
   flex-wrap: wrap;

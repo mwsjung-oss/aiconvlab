@@ -210,6 +210,9 @@ export default function App() {
   const [focusJobId, setFocusJobId] = useState("");
   const [portalHome, setPortalHome] = useState(null);
   const [portalProjects, setPortalProjects] = useState([]);
+  const [userProfile, setUserProfile] = useState(null);
+  const [currentProjectId, setCurrentProjectId] = useState(null);
+  const [currentProjectName, setCurrentProjectName] = useState("");
   const [portalKnowledge, setPortalKnowledge] = useState([]);
   const [portalDatasets, setPortalDatasets] = useState([]);
   const [studentProjects, setStudentProjects] = useState([]);
@@ -298,6 +301,37 @@ export default function App() {
       setPortalProjects(d.projects || []);
     } catch {
       setPortalProjects([]);
+    }
+  }, []);
+
+  const loadUserProfile = useCallback(async () => {
+    try {
+      const d = await apiJson("/api/portal/profile");
+      setUserProfile(d);
+      const pid = d?.profile?.current_project_id ?? null;
+      setCurrentProjectId(pid);
+      const all = [...(d?.owned_projects || []), ...(d?.joined_projects || [])];
+      const hit = all.find((p) => p.id === pid);
+      setCurrentProjectName(hit?.name || "");
+    } catch {
+      setUserProfile(null);
+      setCurrentProjectId(null);
+      setCurrentProjectName("");
+    }
+  }, []);
+
+  const setActiveProject = useCallback(async (project) => {
+    const pid = project?.id ?? null;
+    const pname = project?.name || "";
+    setCurrentProjectId(pid);
+    setCurrentProjectName(pname);
+    try {
+      await apiJson("/api/portal/profile/current-project", {
+        method: "POST",
+        body: JSON.stringify({ project_id: pid }),
+      });
+    } catch {
+      // 서버 저장에 실패해도 UI 맥락은 유지 (새로고침 시 재동기화)
     }
   }, []);
 
@@ -402,6 +436,7 @@ export default function App() {
     loadArtifacts().catch(() => {});
     loadPortalHome().catch(() => {});
     loadPortalProjects().catch(() => {});
+    loadUserProfile().catch(() => {});
     loadPortalKnowledge().catch(() => {});
     loadPortalDatasets().catch(() => {});
     loadStudentProjects().catch(() => {});
@@ -411,7 +446,7 @@ export default function App() {
     loadReportSummary().catch(() => {});
     loadReportFiles().catch(() => {});
     loadRuntimeSystemInfo().catch(() => {});
-  }, [isAuthenticated, loadDatasets, loadModels, loadHistory, loadMonitoring, loadJobs, loadArtifacts, loadPortalHome, loadPortalProjects, loadPortalKnowledge, loadPortalDatasets, loadStudentProjects, loadExperimentTemplates, loadModelPresets, loadReportTemplates, loadReportSummary, loadReportFiles]);
+  }, [isAuthenticated, loadDatasets, loadModels, loadHistory, loadMonitoring, loadJobs, loadArtifacts, loadPortalHome, loadPortalProjects, loadPortalKnowledge, loadPortalDatasets, loadStudentProjects, loadExperimentTemplates, loadModelPresets, loadReportTemplates, loadReportSummary, loadReportFiles, loadUserProfile]);
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -566,6 +601,7 @@ export default function App() {
       feature_columns: feats.length ? feats : null,
       test_size: 0.2,
       random_state: 42,
+      project_id: currentProjectId,
     };
     const t0 = Date.now();
     const tick = setInterval(() => {
@@ -623,6 +659,7 @@ export default function App() {
         body: JSON.stringify({
           model_id: predictModelId,
           filename: predictFile,
+          project_id: currentProjectId,
         }),
       });
       setPredictPreview(data);
@@ -775,6 +812,11 @@ export default function App() {
       {isAuthenticated && experimentWorkflowOpen ? (
         <div className="top-nav-wrap">
           <nav className="workflow-nav" aria-label="6단계 AI 워크플로">
+            {currentProjectName && (
+              <div className="workflow-current-project" aria-live="polite">
+                현재 프로젝트: <strong>{currentProjectName}</strong>
+              </div>
+            )}
             <ol className="workflow-progress">
               {WORKFLOW_STEPS.map((step, idx) => {
                 const isCurrent = activeWorkflowStep === step.id;
@@ -935,13 +977,21 @@ export default function App() {
             aria-label="실행 및 결과"
           >
             {(currentPage === "projects" || currentPage === "aichat") && (
-              <ProjectsPage onRefresh={loadPortalProjects} />
+              <ProjectsPage
+                onRefresh={async () => {
+                  await loadPortalProjects();
+                  await loadUserProfile();
+                }}
+                currentProjectId={currentProjectId}
+                onProjectActivated={setActiveProject}
+              />
             )}
             {currentPage === "datasets_catalog" && (
               <DatasetsPage
                 datasets={portalDatasets}
                 onRefresh={loadPortalDatasets}
                 studentProjects={studentProjects}
+                currentProjectId={currentProjectId}
               />
             )}
             {currentPage === "upload" && (
@@ -1050,7 +1100,14 @@ export default function App() {
       )}
 
       {isAuthenticated && currentPage === "projects" && !experimentShell && (
-        <ProjectsPage onRefresh={loadPortalProjects} />
+        <ProjectsPage
+          onRefresh={async () => {
+            await loadPortalProjects();
+            await loadUserProfile();
+          }}
+          currentProjectId={currentProjectId}
+          onProjectActivated={setActiveProject}
+        />
       )}
 
       {isAuthenticated && currentPage === "datasets_catalog" && !experimentShell && (
@@ -1058,6 +1115,7 @@ export default function App() {
           datasets={portalDatasets}
           onRefresh={loadPortalDatasets}
           studentProjects={studentProjects}
+          currentProjectId={currentProjectId}
         />
       )}
 

@@ -29,6 +29,7 @@ from models import (
     ProjectDatasetLink,
     Project,
     ProjectMember,
+    UserProfile,
     ReportTemplate,
     Semester,
     StudentProject,
@@ -94,7 +95,7 @@ class DataPrepGuideBody(BaseModel):
 
 class ProjectMemberAdd(BaseModel):
     user_id: int
-    role: str = "member"
+    role: Literal["owner", "editor", "viewer", "member"] = "viewer"
 
 
 class CourseCreate(BaseModel):
@@ -172,6 +173,45 @@ def _json_load(value: str | None, default: Any) -> Any:
 
 def _is_operator_role(role: str) -> bool:
     return role in {"master", "director", "technical_lead", "admin", "instructor"}
+
+
+def _member_role_map(db: Session, user_id: int) -> dict[int, str]:
+    rows = db.query(ProjectMember).filter(ProjectMember.user_id == user_id).all()
+    return {r.project_id: r.role for r in rows}
+
+
+def _can_view_project(current_user: User, project: Project, member_role: str | None) -> bool:
+    if _is_operator_role(current_user.role):
+        return True
+    if project.owner_id == current_user.id:
+        return True
+    return member_role in {"owner", "editor", "viewer", "member"}
+
+
+def _can_edit_project(current_user: User, project: Project, member_role: str | None) -> bool:
+    if _is_operator_role(current_user.role):
+        return True
+    if project.owner_id == current_user.id:
+        return True
+    return member_role in {"owner", "editor"}
+
+
+def _project_or_404(db: Session, project_id: int) -> Project:
+    p = db.query(Project).filter(Project.id == project_id).first()
+    if not p:
+        raise HTTPException(status_code=404, detail="Project not found")
+    return p
+
+
+def _ensure_user_profile(db: Session, user_id: int) -> UserProfile:
+    profile = db.query(UserProfile).filter(UserProfile.user_id == user_id).first()
+    if profile:
+        return profile
+    profile = UserProfile(user_id=user_id, preferences_json="{}")
+    db.add(profile)
+    db.commit()
+    db.refresh(profile)
+    return profile
 
 
 def _try_gpu_summary() -> dict[str, Any]:
@@ -579,6 +619,7 @@ def portal_home(
     db: Session = Depends(get_db),
 ) -> dict[str, Any]:
     _ensure_spring_2026_seed(db)
+    _ensure_user_profile(db, current_user.id)
     my_projects = (
         db.query(Project)
         .filter(Project.owner_id == current_user.id)
@@ -677,14 +718,17 @@ def list_projects(
     db: Session = Depends(get_db),
 ) -> dict[str, Any]:
     _ensure_spring_2026_seed(db)
-    del current_user
-    items = db.query(Project).order_by(Project.created_at.desc()).all()
+    role_map = _member_role_map(db, current_user.id)
+    items_all = db.query(Project).order_by(Project.created_at.desc()).all()
     by_project: dict[int, StudentProject] = {}
     for sp in db.query(StudentProject).all():
         if sp.project_id:
             by_project[sp.project_id] = sp
     out_projects = []
-    for p in items:
+    for p in items_all:
+        member_role = role_map.get(p.id)
+        if not _can_view_project(current_user, p, member_role):
+            continue
         intel = None
         raw = getattr(p, "intelligence_json", None)
         if raw:
@@ -704,9 +748,93 @@ def list_projects(
                 "domain": by_project[p.id].domain if p.id in by_project else None,
                 "task_types": _json_load(by_project[p.id].task_types_json, []) if p.id in by_project else [],
                 "recommended_models": _json_load(by_project[p.id].model_candidates_json, []) if p.id in by_project else [],
+                "my_role": "owner" if p.owner_id == current_user.id else member_role,
+                "can_edit": _can_edit_project(current_user, p, member_role),
             }
         )
     return {"projects": out_projects}
+
+
+@router.get("/profile")
+def get_my_profile(
+    current_user: User = Depends(get_current_approved_member),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    profile = _ensure_user_profile(db, current_user.id)
+    role_map = _member_role_map(db, current_user.id)
+    owned = db.query(Project).filter(Project.owner_id == current_user.id).order_by(Project.created_at.desc()).all()
+    joined = []
+    if role_map:
+        joined = (
+            db.query(Project)
+            .filter(Project.id.in_(list(role_map.keys())))
+            .order_by(Project.created_at.desc())
+            .all()
+        )
+    return {
+        "user": {
+            "id": current_user.id,
+            "email": current_user.email,
+            "full_name": current_user.full_name,
+            "role": current_user.role,
+        },
+        "profile": {
+            "current_project_id": profile.current_project_id,
+            "bio": profile.bio,
+            "preferences": _json_load(profile.preferences_json, {}),
+        },
+        "owned_projects": [{"id": p.id, "name": p.name} for p in owned],
+        "joined_projects": [
+            {"id": p.id, "name": p.name, "my_role": role_map.get(p.id)} for p in joined
+        ],
+    }
+
+
+class ProfileUpdateBody(BaseModel):
+    full_name: str | None = Field(default=None, max_length=255)
+    bio: str | None = Field(default=None, max_length=3000)
+    preferences: dict[str, Any] | None = None
+
+
+@router.post("/profile")
+def update_my_profile(
+    body: ProfileUpdateBody,
+    current_user: User = Depends(get_current_approved_member),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    profile = _ensure_user_profile(db, current_user.id)
+    if body.full_name is not None:
+        current_user.full_name = body.full_name
+    if body.bio is not None:
+        profile.bio = body.bio
+    if body.preferences is not None:
+        profile.preferences_json = json.dumps(body.preferences, ensure_ascii=False)
+    db.commit()
+    return {"ok": True}
+
+
+class CurrentProjectBody(BaseModel):
+    project_id: int | None = None
+
+
+@router.post("/profile/current-project")
+def set_current_project(
+    body: CurrentProjectBody,
+    current_user: User = Depends(get_current_approved_member),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    profile = _ensure_user_profile(db, current_user.id)
+    if body.project_id is None:
+        profile.current_project_id = None
+        db.commit()
+        return {"ok": True, "current_project_id": None}
+    p = _project_or_404(db, body.project_id)
+    role_map = _member_role_map(db, current_user.id)
+    if not _can_view_project(current_user, p, role_map.get(p.id)):
+        raise HTTPException(status_code=403, detail="프로젝트 조회 권한이 없습니다.")
+    profile.current_project_id = p.id
+    db.commit()
+    return {"ok": True, "current_project_id": p.id, "project_name": p.name}
 
 
 @router.post("/projects/suggest-title")
@@ -823,6 +951,8 @@ def register_project_from_brief(
     db.commit()
     db.refresh(p)
     db.add(ProjectMember(project_id=p.id, user_id=current_user.id, role="owner"))
+    profile = _ensure_user_profile(db, current_user.id)
+    profile.current_project_id = p.id
     db.commit()
     return {
         "id": p.id,
@@ -849,6 +979,8 @@ def create_project(
     db.commit()
     db.refresh(p)
     db.add(ProjectMember(project_id=p.id, user_id=current_user.id, role="owner"))
+    profile = _ensure_user_profile(db, current_user.id)
+    profile.current_project_id = p.id
     db.commit()
     return {"id": p.id, "name": p.name}
 
@@ -860,10 +992,11 @@ def get_project(
     db: Session = Depends(get_db),
 ) -> dict[str, Any]:
     _ensure_spring_2026_seed(db)
-    del current_user
-    p = db.query(Project).filter(Project.id == project_id).first()
-    if not p:
-        raise HTTPException(status_code=404, detail="Project not found")
+    p = _project_or_404(db, project_id)
+    role_map = _member_role_map(db, current_user.id)
+    member_role = role_map.get(p.id)
+    if not _can_view_project(current_user, p, member_role):
+        raise HTTPException(status_code=403, detail="조회 권한이 없습니다.")
     members = db.query(ProjectMember).filter(ProjectMember.project_id == project_id).all()
     intel = None
     if getattr(p, "intelligence_json", None):
@@ -879,6 +1012,8 @@ def get_project(
         "source_type": getattr(p, "source_type", None),
         "intelligence": intel,
         "members": [{"user_id": m.user_id, "role": m.role} for m in members],
+        "my_role": "owner" if p.owner_id == current_user.id else member_role,
+        "can_edit": _can_edit_project(current_user, p, member_role),
     }
 
 
@@ -890,11 +1025,11 @@ def add_project_member(
     db: Session = Depends(get_db),
 ) -> dict[str, Any]:
     _ensure_spring_2026_seed(db)
-    p = db.query(Project).filter(Project.id == project_id).first()
-    if not p:
-        raise HTTPException(status_code=404, detail="Project not found")
-    if p.owner_id != current_user.id and current_user.role not in {"master", "director", "technical_lead", "admin"}:
-        raise HTTPException(status_code=403, detail="권한이 없습니다.")
+    p = _project_or_404(db, project_id)
+    role_map = _member_role_map(db, current_user.id)
+    member_role = role_map.get(project_id)
+    if not _can_edit_project(current_user, p, member_role):
+        raise HTTPException(status_code=403, detail="프로젝트 권한을 변경할 수 없습니다.")
     exists = db.query(ProjectMember).filter(ProjectMember.project_id == project_id, ProjectMember.user_id == body.user_id).first()
     if exists:
         exists.role = body.role
@@ -1062,8 +1197,21 @@ def list_dataset_catalog(
     db: Session = Depends(get_db),
 ) -> dict[str, Any]:
     _ensure_spring_2026_seed(db)
-    del current_user
-    items = db.query(DatasetCatalog).order_by(DatasetCatalog.created_at.desc()).all()
+    role_map = _member_role_map(db, current_user.id)
+    items_all = db.query(DatasetCatalog).order_by(DatasetCatalog.created_at.desc()).all()
+    items: list[DatasetCatalog] = []
+    for d in items_all:
+        if _is_operator_role(current_user.role):
+            items.append(d)
+            continue
+        if d.project_id:
+            p = db.query(Project).filter(Project.id == d.project_id).first()
+            if p and _can_view_project(current_user, p, role_map.get(p.id)):
+                items.append(d)
+            continue
+        # 프로젝트에 연결되지 않은 개인 데이터는 생성자만 조회
+        if d.owner_id == current_user.id:
+            items.append(d)
     return {
         "datasets": [
             {
@@ -1094,6 +1242,11 @@ def create_dataset_catalog(
     db: Session = Depends(get_db),
 ) -> dict[str, Any]:
     _ensure_spring_2026_seed(db)
+    if body.project_id is not None:
+        p = _project_or_404(db, body.project_id)
+        role_map = _member_role_map(db, current_user.id)
+        if not _can_edit_project(current_user, p, role_map.get(p.id)):
+            raise HTTPException(status_code=403, detail="해당 프로젝트에 데이터셋을 등록할 권한이 없습니다.")
     d = DatasetCatalog(
         name=body.name,
         description=body.description,

@@ -51,7 +51,7 @@ from activity_service import log_activity
 from auth_utils import hash_password
 from database import SessionLocal, engine, get_db
 from dependencies import get_current_approved_member
-from models import DatasetCatalog, Experiment, ExperimentRecord, ExperimentRun, User
+from models import DatasetCatalog, Experiment, ExperimentRecord, ExperimentRun, Project, ProjectMember, User
 from admin_panel_store import ensure_admin_password_file
 from routers import admin as admin_router
 from routers import admin_panel as admin_panel_router
@@ -629,6 +629,7 @@ class TrainRequest(BaseModel):
     feature_columns: List[str] | None = None
     test_size: float = Field(0.2, ge=0.1, le=0.5)
     random_state: int = 42
+    project_id: int | None = None
     extra_context: dict[str, Any] | None = Field(
         default=None,
         description="내부용(스윕 메타 등). API JSON에는 포함하지 않습니다.",
@@ -1547,6 +1548,8 @@ def train(
     current_user: User = Depends(get_current_approved_member),
     db: Session = Depends(get_db),
 ) -> dict[str, Any]:
+    if req.project_id is not None and not _can_edit_project_for_user(db, current_user, req.project_id):
+        raise HTTPException(status_code=403, detail="해당 프로젝트 실행 권한이 없습니다.")
     ws = workspace_for_user(current_user)
     ensure_workspace_dirs(ws)
     meta = _train_impl(req, ws, current_user=current_user, job_id=None)
@@ -1557,6 +1560,7 @@ def train(
 class PredictRequest(BaseModel):
     model_id: str
     filename: str
+    project_id: int | None = None
 
 
 def _record_prediction_lineage(
@@ -2297,11 +2301,13 @@ class TrainJobPayload(BaseModel):
     feature_columns: List[str] | None = None
     test_size: float = Field(0.2, ge=0.1, le=0.5)
     random_state: int = 42
+    project_id: int | None = None
 
 
 class PredictJobPayload(BaseModel):
     model_id: str
     filename: str
+    project_id: int | None = None
 
 
 JOBS_META_PATH = STORAGE_ROOT / "job_registry.json"
@@ -2343,8 +2349,46 @@ def _is_privileged(user: User) -> bool:
     return user.role in ALL_ACCESS_ROLES
 
 
-def _has_job_access(current_user: User, job: dict[str, Any]) -> bool:
-    return _is_privileged(current_user) or job.get("user_id") == current_user.id
+def _can_view_project_for_user(db: Session, current_user: User, project_id: int) -> bool:
+    if _is_privileged(current_user):
+        return True
+    p = db.query(Project).filter(Project.id == project_id).first()
+    if not p:
+        return False
+    if p.owner_id == current_user.id:
+        return True
+    member = (
+        db.query(ProjectMember)
+        .filter(ProjectMember.project_id == project_id, ProjectMember.user_id == current_user.id)
+        .first()
+    )
+    return bool(member and member.role in {"owner", "editor", "viewer", "member"})
+
+
+def _can_edit_project_for_user(db: Session, current_user: User, project_id: int) -> bool:
+    if _is_privileged(current_user):
+        return True
+    p = db.query(Project).filter(Project.id == project_id).first()
+    if not p:
+        return False
+    if p.owner_id == current_user.id:
+        return True
+    member = (
+        db.query(ProjectMember)
+        .filter(ProjectMember.project_id == project_id, ProjectMember.user_id == current_user.id)
+        .first()
+    )
+    return bool(member and member.role in {"owner", "editor"})
+
+
+def _has_job_access(current_user: User, job: dict[str, Any], db: Session) -> bool:
+    if _is_privileged(current_user) or job.get("user_id") == current_user.id:
+        return True
+    payload = job.get("payload") or {}
+    project_id = payload.get("project_id")
+    if isinstance(project_id, int):
+        return _can_view_project_for_user(db, current_user, project_id)
+    return False
 
 
 def _is_cancel_requested(job_id: str) -> bool:
@@ -2600,7 +2644,10 @@ def _run_predict_job(
 def submit_train_job(
     payload: TrainJobPayload,
     current_user: User = Depends(get_current_approved_member),
+    db: Session = Depends(get_db),
 ) -> dict[str, Any]:
+    if payload.project_id is not None and not _can_edit_project_for_user(db, current_user, payload.project_id):
+        raise HTTPException(status_code=403, detail="해당 프로젝트 실행 권한이 없습니다.")
     ws = workspace_for_user(current_user)
     ensure_workspace_dirs(ws)
     job_id = str(uuid.uuid4())
@@ -2638,7 +2685,10 @@ def submit_train_job(
 def submit_predict_job(
     payload: PredictJobPayload,
     current_user: User = Depends(get_current_approved_member),
+    db: Session = Depends(get_db),
 ) -> dict[str, Any]:
+    if payload.project_id is not None and not _can_edit_project_for_user(db, current_user, payload.project_id):
+        raise HTTPException(status_code=403, detail="해당 프로젝트 실행 권한이 없습니다.")
     ws = workspace_for_user(current_user)
     ensure_workspace_dirs(ws)
     job_id = str(uuid.uuid4())
@@ -2699,7 +2749,12 @@ def get_job(job_id: str, current_user: User = Depends(get_current_approved_membe
     job = JOBS.get(job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
-    if not _has_job_access(current_user, job):
+    db = SessionLocal()
+    try:
+        allowed = _has_job_access(current_user, job, db)
+    finally:
+        db.close()
+    if not allowed:
         raise HTTPException(status_code=403, detail="권한이 없습니다.")
     out = dict(job)
     out.setdefault("job_id", job_id)
@@ -2711,7 +2766,12 @@ def get_job_logs(job_id: str, current_user: User = Depends(get_current_approved_
     job = JOBS.get(job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
-    if not _has_job_access(current_user, job):
+    db = SessionLocal()
+    try:
+        allowed = _has_job_access(current_user, job, db)
+    finally:
+        db.close()
+    if not allowed:
         raise HTTPException(status_code=403, detail="권한이 없습니다.")
     log_path_raw = job.get("log_path")
     if not log_path_raw:
@@ -2728,7 +2788,12 @@ def cancel_job(job_id: str, current_user: User = Depends(get_current_approved_me
     job = JOBS.get(job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
-    if not _has_job_access(current_user, job):
+    db = SessionLocal()
+    try:
+        allowed = _has_job_access(current_user, job, db)
+    finally:
+        db.close()
+    if not allowed:
         raise HTTPException(status_code=403, detail="권한이 없습니다.")
     if job.get("status") not in {"queued", "running"}:
         raise HTTPException(status_code=400, detail="queued/running 작업만 취소할 수 있습니다.")
@@ -2753,7 +2818,12 @@ def retry_job(job_id: str, current_user: User = Depends(get_current_approved_mem
     old = JOBS.get(job_id)
     if not old:
         raise HTTPException(status_code=404, detail="Job not found")
-    if not _has_job_access(current_user, old):
+    db = SessionLocal()
+    try:
+        allowed = _has_job_access(current_user, old, db)
+    finally:
+        db.close()
+    if not allowed:
         raise HTTPException(status_code=403, detail="권한이 없습니다.")
     if old.get("status") not in {"failed", "cancelled", "recovered"}:
         raise HTTPException(status_code=400, detail="failed/cancelled/recovered 작업만 재시도할 수 있습니다.")

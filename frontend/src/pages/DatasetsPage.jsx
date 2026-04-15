@@ -1,7 +1,12 @@
 import { useState } from "react";
 import { apiJson } from "../api";
 
-export default function DatasetsPage({ datasets, onRefresh, studentProjects = [] }) {
+export default function DatasetsPage({
+  datasets,
+  onRefresh,
+  studentProjects = [],
+  currentProjectId = null,
+}) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [version, setVersion] = useState("v1");
@@ -25,6 +30,7 @@ export default function DatasetsPage({ datasets, onRefresh, studentProjects = []
           description,
           version,
           owner_name: ownerName || null,
+          project_id: currentProjectId,
           student_project_id: studentProjectId ? Number(studentProjectId) : null,
           dataset_type: datasetType || null,
           target_variable: targetVariable || null,
@@ -56,6 +62,15 @@ export default function DatasetsPage({ datasets, onRefresh, studentProjects = []
     <div className="grid">
       <section className="panel">
         <h2>Dataset Catalog</h2>
+        {currentProjectId ? (
+          <p className="hint" style={{ marginTop: 0 }}>
+            현재 프로젝트(ID {currentProjectId})에 데이터셋이 연결됩니다.
+          </p>
+        ) : (
+          <p className="hint" style={{ marginTop: 0 }}>
+            프로젝트를 먼저 선택/등록하면 데이터셋이 해당 프로젝트에 자동 연결됩니다.
+          </p>
+        )}
         <form className="auth-form" onSubmit={createDataset}>
           <label>
             이름
