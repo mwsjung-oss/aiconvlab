@@ -22,7 +22,27 @@ export interface ApiErrorShape {
 export function buildApiUrl(path: string): string {
   if (!path.startsWith("/")) return path;
   const base = getResolvedApiBase();
-  return base ? `${base}${path}` : path;
+  if (!base) return path;
+  const trimmedBase = base.replace(/\/+$/, "");
+  const qIdx = path.indexOf("?");
+  const hIdx = path.indexOf("#");
+  const splitIdx =
+    qIdx === -1
+      ? hIdx
+      : hIdx === -1
+        ? qIdx
+        : Math.min(qIdx, hIdx);
+  const pathOnly = splitIdx === -1 ? path : path.slice(0, splitIdx);
+  const suffix = splitIdx === -1 ? "" : path.slice(splitIdx);
+
+  // base URL이 이미 /api 또는 /history로 끝나면 동일 prefix를 중복 결합하지 않습니다.
+  if (/\/api$/i.test(trimmedBase) && /^\/api(?:\/|$)/i.test(pathOnly)) {
+    return `${trimmedBase}${pathOnly.slice(4)}${suffix}`;
+  }
+  if (/\/history$/i.test(trimmedBase) && /^\/history(?:\/|$)/i.test(pathOnly)) {
+    return `${trimmedBase}${pathOnly.slice(8)}${suffix}`;
+  }
+  return `${trimmedBase}${pathOnly}${suffix}`;
 }
 
 async function withTimeout<T>(

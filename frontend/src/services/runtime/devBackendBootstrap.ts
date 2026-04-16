@@ -8,6 +8,19 @@ import {
 
 const trim = (u: string) => u.replace(/\/+$/, "");
 
+function joinApiLikePath(base: string, path: string): string {
+  const b = trim(base);
+  if (!b) return path;
+  if (!path.startsWith("/")) return `${b}/${path}`;
+  if (/\/api$/i.test(b) && /^\/api(?:\/|$)/i.test(path)) {
+    return `${b}${path.slice(4)}`;
+  }
+  if (/\/history$/i.test(b) && /^\/history(?:\/|$)/i.test(path)) {
+    return `${b}${path.slice(8)}`;
+  }
+  return `${b}${path}`;
+}
+
 function labBase() {
   return trim(getLabApiBaseWithOverride());
 }
@@ -41,7 +54,10 @@ async function probeRemoteHealthDirect(
       return { ok: false, message: "취소되었습니다." };
     }
     try {
-      const health = await fetch(`${b}/api/health`, { mode: "cors", signal });
+      const health = await fetch(joinApiLikePath(b, "/api/health"), {
+        mode: "cors",
+        signal,
+      });
       if (health.ok) {
         return { ok: true, message: `${remoteName} API에 연결되었습니다.` };
       }

@@ -215,6 +215,7 @@ export default function App() {
   const [userProfile, setUserProfile] = useState(null);
   const [currentProjectId, setCurrentProjectId] = useState(null);
   const [currentProjectName, setCurrentProjectName] = useState("");
+  const [projectSelectionLockedEmpty, setProjectSelectionLockedEmpty] = useState(false);
   const [portalKnowledge, setPortalKnowledge] = useState([]);
   const [portalDatasets, setPortalDatasets] = useState([]);
   const [studentProjects, setStudentProjects] = useState([]);
@@ -311,20 +312,23 @@ export default function App() {
       const d = await apiJson("/api/portal/profile");
       setUserProfile(d);
       const pid = d?.profile?.current_project_id ?? null;
-      setCurrentProjectId(pid);
       const all = [...(d?.owned_projects || []), ...(d?.joined_projects || [])];
       const hit = all.find((p) => p.id === pid);
-      setCurrentProjectName(hit?.name || "");
+      if (!projectSelectionLockedEmpty || pid == null) {
+        setCurrentProjectId(pid);
+        setCurrentProjectName(hit?.name || "");
+      }
     } catch {
       setUserProfile(null);
       setCurrentProjectId(null);
       setCurrentProjectName("");
     }
-  }, []);
+  }, [projectSelectionLockedEmpty]);
 
   const setActiveProject = useCallback(async (project) => {
     const pid = project?.id ?? null;
     const pname = project?.name || "";
+    setProjectSelectionLockedEmpty(pid == null);
     setCurrentProjectId(pid);
     setCurrentProjectName(pname);
     try {
@@ -345,6 +349,11 @@ export default function App() {
 
   const openExperimentWorkspace = useCallback(async ({ startNew } = { startNew: false }) => {
     if (startNew) {
+      // 어느 단계에서 눌러도 즉시 "현재 프로젝트"를 비우고, 동기화 응답이 되돌리지 못하게 잠금.
+      setProjectSelectionLockedEmpty(true);
+      setCurrentProjectId(null);
+      setCurrentProjectName("");
+      void setActiveProject(null);
       setProjectsAutoStartToken((v) => v + 1);
     }
     if (!experimentWorkflowOpen && typeof window !== "undefined") {
@@ -353,7 +362,7 @@ export default function App() {
     setExperimentEntryOpen(false);
     setExperimentWorkflowOpen(true);
     setCurrentPage("projects");
-  }, [experimentWorkflowOpen]);
+  }, [experimentWorkflowOpen, setActiveProject]);
 
   const openExperimentEntryPrompt = useCallback(() => {
     // 어떤 화면에서 눌러도 동일하게 선택 모달이 보이도록 진입 상태를 표준화합니다.
@@ -750,6 +759,11 @@ export default function App() {
     );
   }, [portalProjects, userProfile, currentProjectId, currentProjectName]);
 
+  const currentProjectSelectValue =
+    projectSelectionLockedEmpty || currentProjectId == null
+      ? ""
+      : String(currentProjectId);
+
   const handleWorkflowProjectChange = useCallback((e) => {
     const raw = e.target.value;
     if (!raw) {
@@ -879,7 +893,7 @@ export default function App() {
               <span className="workflow-current-project-label">현재 프로젝트</span>
               <select
                 className="workflow-project-select"
-                value={currentProjectId ?? ""}
+                value={currentProjectSelectValue}
                 onChange={handleWorkflowProjectChange}
                 title="진행 중인 프로젝트를 언제든 변경할 수 있습니다"
               >

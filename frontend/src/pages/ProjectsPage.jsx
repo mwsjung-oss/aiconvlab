@@ -561,11 +561,21 @@ export default function ProjectsPage({
           project_name: null,
         }),
       });
-      if (created?.id && created?.name) {
-        await onProjectActivated?.({ id: created.id, name: created.name });
+      const createdId =
+        created?.id ??
+        created?.project_id ??
+        created?.project?.id ??
+        null;
+      const createdName =
+        created?.name ??
+        created?.project_name ??
+        created?.project?.name ??
+        (createdId != null ? `프로젝트 ${createdId}` : "");
+      if (createdId != null) {
+        await onProjectActivated?.({ id: createdId, name: createdName });
       }
       setMsg(
-        `프로젝트가 자동 등록되었습니다.${created?.name ? ` (현재 프로젝트: ${created.name})` : ""}`
+        `프로젝트가 자동 등록되었습니다.${createdName ? ` (현재 프로젝트: ${createdName})` : ""}`
       );
       setBriefTitle("");
       setBriefContent("");
@@ -577,6 +587,10 @@ export default function ProjectsPage({
         /* ignore */
       }
       await onRefresh?.();
+      // 목록 재동기화 과정에서 선택값이 덮여도, 방금 등록한 프로젝트를 다시 활성화합니다.
+      if (createdId != null) {
+        await onProjectActivated?.({ id: createdId, name: createdName });
+      }
     } catch (ex) {
       setBriefErr(ex.message);
     } finally {
