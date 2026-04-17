@@ -2404,11 +2404,11 @@ th {
 }
 
 .experiment-top-strip-row--primary {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.45rem 0.65rem;
-  padding: 0.35rem 0.45rem;
+  display: grid;
+  grid-template-columns: minmax(240px, 1.5fr) minmax(260px, 1.2fr) auto auto;
+  align-items: end;
+  gap: 0.4rem 0.55rem;
+  padding: 0.35rem 0.5rem 0.42rem;
   border-radius: 10px;
   border: 1px solid rgba(148, 163, 184, 0.22);
   background: rgba(15, 23, 42, 0.35);
@@ -2416,25 +2416,56 @@ th {
 
 .experiment-top-strip-cluster {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.35rem;
+  align-items: flex-end;
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.experiment-top-strip-cluster--project,
+.experiment-top-strip-cluster--model {
+  min-width: 0;
 }
 
 .experiment-top-strip-cluster--model {
-  flex: 1 1 240px;
+  display: grid;
+  grid-template-columns: minmax(82px, 0.42fr) minmax(130px, 0.58fr);
+  gap: 0.45rem;
 }
 
 .experiment-top-strip-cluster--status {
-  align-items: center;
+  justify-content: flex-start;
 }
 
 .experiment-top-strip-cluster--actions {
-  margin-left: auto;
+  justify-content: flex-end;
+  align-items: flex-end;
+  white-space: nowrap;
+}
+
+.experiment-top-strip-field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.22rem;
+  min-width: 0;
+}
+
+.experiment-top-strip-inline {
+  display: flex;
+  align-items: center;
+  gap: 0.38rem;
+  min-width: 0;
+}
+
+.experiment-top-strip-field-label {
+  font-size: 0.67rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--muted);
 }
 
 .experiment-top-strip-status-label {
-  font-size: 0.68rem;
+  font-size: 0.67rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.05em;
@@ -2444,15 +2475,38 @@ th {
 .experiment-model-label {
   display: flex;
   align-items: center;
-  gap: 0.35rem;
+  gap: 0;
   font-size: 0.75rem;
   color: var(--muted);
+  min-width: 0;
 }
 
 .experiment-model-select {
-  min-width: 8.5rem;
-  max-width: 14rem;
+  min-width: 0;
+  width: 100%;
   font-size: 0.8rem;
+}
+
+.experiment-model-select--wide {
+  min-width: 8.4rem;
+}
+
+.experiment-top-strip-action-btn {
+  min-height: 2rem;
+  padding: 0.34rem 0.58rem;
+  font-size: 0.74rem;
+}
+
+.experiment-top-strip .workflow-project-select {
+  min-width: 0;
+  width: min(100%, 21rem);
+}
+
+.experiment-top-strip .workflow-project-new-btn {
+  flex: 0 0 auto;
+  min-height: 2rem;
+  padding: 0.34rem 0.62rem;
+  font-size: 0.74rem;
 }
 
 .experiment-top-strip-sub .workflow-step-hint {
@@ -2594,6 +2648,19 @@ th {
       minmax(260px, 1.25fr)
       minmax(200px, 28vw);
   }
+
+  .experiment-top-strip-row--primary {
+    grid-template-columns: minmax(220px, 1.3fr) minmax(230px, 1fr) auto;
+  }
+
+  .experiment-top-strip-cluster--status {
+    grid-column: 3;
+  }
+
+  .experiment-top-strip-cluster--actions {
+    grid-column: 1 / -1;
+    justify-content: flex-end;
+  }
 }
 
 @media (min-width: 1440px) {
@@ -2649,6 +2716,23 @@ th {
   .experiment-workbench-center > .ai-chat-page {
     max-height: min(38vh, 400px);
   }
+
+  .experiment-top-strip-row--primary {
+    grid-template-columns: 1fr 1fr;
+    align-items: stretch;
+  }
+
+  .experiment-top-strip-cluster--project {
+    grid-column: 1 / -1;
+  }
+
+  .experiment-top-strip-cluster--status {
+    justify-content: flex-start;
+  }
+
+  .experiment-top-strip-cluster--actions {
+    justify-content: flex-end;
+  }
 }
 
 /* <768: 단일 열 스택 */
@@ -2686,6 +2770,41 @@ th {
     margin-left: 0;
     width: 100%;
     justify-content: flex-start;
+  }
+
+  .experiment-top-strip-row--primary {
+    grid-template-columns: 1fr;
+    gap: 0.35rem;
+    padding: 0.4rem 0.42rem 0.45rem;
+  }
+
+  .experiment-top-strip-cluster--model {
+    grid-template-columns: 1fr;
+    gap: 0.35rem;
+  }
+
+  .experiment-top-strip-inline {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.3rem;
+  }
+
+  .experiment-top-strip .workflow-project-select {
+    width: 100%;
+  }
+
+  .experiment-top-strip .workflow-project-new-btn {
+    width: 100%;
+  }
+
+  .experiment-top-strip-cluster--actions {
+    flex-wrap: wrap;
+  }
+
+  .experiment-top-strip-action-btn {
+    flex: 1 1 30%;
+    min-width: 5.9rem;
+    justify-content: center;
   }
 
   .experiment-mobile-jump {
