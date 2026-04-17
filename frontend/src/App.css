@@ -2799,6 +2799,12 @@ th {
   max-height: min(52vh, 560px);
 }
 
+/* Experiment workbench에서는 입력창 고정을 위해 thread 높이 제한을 해제 */
+.app--experiment-shell .ai-chat-page--workbench.ai-chat-page .ai-chat-thread {
+  min-height: 0 !important;
+  max-height: none !important;
+}
+
 .ai-chat-msg {
   display: grid;
   grid-template-columns: 52px 1fr;
@@ -2987,6 +2993,10 @@ th {
   align-items: flex-end;
   gap: 0.5rem;
   width: 100%;
+}
+
+.app--experiment-shell .ai-chat-page--workbench.ai-chat-page {
+  overflow: hidden;
 }
 
 .ai-chat-input {
