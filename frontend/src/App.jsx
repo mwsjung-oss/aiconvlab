@@ -27,6 +27,8 @@ import ExperimentsPlatformPage from "./pages/ExperimentsPlatformPage";
 import AiChatPage from "./pages/AiChatPage";
 import NotebookPage from "./pages/NotebookPage";
 import SystemStatusPage from "./pages/SystemStatusPage";
+import ExperimentTopStrip from "./components/experiment/ExperimentTopStrip.jsx";
+import ExperimentWorkbenchLayout from "./components/experiment/ExperimentWorkbenchLayout.jsx";
 import {
   readSelectedRuntime,
   writeSelectedRuntime,
@@ -162,6 +164,9 @@ export default function App() {
   /** AI 채팅 프리셋 (overview | project | data | model | insights) */
   const [aiChatPreset, setAiChatPreset] = useState("overview");
   const [workflowChatResetSeq, setWorkflowChatResetSeq] = useState(0);
+  const [experimentSidebarCollapsed, setExperimentSidebarCollapsed] = useState(false);
+  const [experimentResultsCollapsed, setExperimentResultsCollapsed] = useState(false);
+  const [experimentResultsFullscreen, setExperimentResultsFullscreen] = useState(false);
   const [adminPanelOpen, setAdminPanelOpen] = useState(false);
   const [architectureOpen, setArchitectureOpen] = useState(false);
 
@@ -787,8 +792,48 @@ export default function App() {
     experimentWorkflowOpen &&
     isExperimentWorkflowPage(currentPage);
 
+  const experimentRunStatus = useMemo(() => {
+    const busy =
+      trainLoading || predictLoading || uploadLoading || dataLoading;
+    const err = !!(trainErr || predictErr || uploadErr);
+    if (busy) return "running";
+    if (err) return "error";
+    if (trainResult?.model_id || (predictPreview && predictMsg))
+      return "completed";
+    if (currentProjectId) return "ready";
+    return "idle";
+  }, [
+    trainLoading,
+    predictLoading,
+    uploadLoading,
+    dataLoading,
+    trainErr,
+    predictErr,
+    uploadErr,
+    trainResult,
+    predictPreview,
+    predictMsg,
+    currentProjectId,
+  ]);
+
+  const experimentModelLabel = useMemo(() => {
+    const opts = TASK_MODEL_OPTIONS[task] || [];
+    const hit = opts.find((o) => o.value === modelType);
+    return hit ? `${hit.label} (${modelType})` : modelType;
+  }, [task, modelType]);
+
+  const handleWorkbenchStepSelect = useCallback((stepId) => {
+    const step = WORKFLOW_STEPS.find((s) => s.id === stepId);
+    if (!step) return;
+    setWorkflowChatResetSeq((s) => s + 1);
+    setCurrentPage(step.defaultPage);
+    if (stepId === "step1") {
+      setAiChatPreset("overview");
+    }
+  }, []);
+
   return (
-    <div className="app">
+    <div className={experimentShell ? "app app--experiment-shell" : "app"}>
       <header className="lab-hero">
         <div className="lab-topbar">
           <div className="lab-brand">
@@ -888,121 +933,75 @@ export default function App() {
 
       {isAuthenticated && experimentWorkflowOpen ? (
         <div className="top-nav-wrap">
-          <nav className="workflow-nav" aria-label="6단계 AI 워크플로">
-            <div className="workflow-current-project" aria-live="polite">
-              <span className="workflow-current-project-label">현재 프로젝트</span>
-              <select
-                className="workflow-project-select"
-                value={currentProjectSelectValue}
-                onChange={handleWorkflowProjectChange}
-                title="진행 중인 프로젝트를 언제든 변경할 수 있습니다"
-              >
-                <option value="">선택 안 함</option>
-                {selectableProjects.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.name} (ID: {p.id})
-                  </option>
-                ))}
-              </select>
-              <button
-                type="button"
-                className="btn btn-secondary workflow-project-new-btn"
-                onClick={() => void openExperimentWorkspace({ startNew: true })}
-              >
-                신규 프로젝트 등록
-              </button>
-            </div>
-            <ol className="workflow-progress">
-              {WORKFLOW_STEPS.map((step, idx) => {
-                const isCurrent = activeWorkflowStep === step.id;
-                return (
-                  <li
-                    key={step.id}
-                    className={
-                      isCurrent
-                        ? "workflow-progress-item workflow-progress-item--current"
-                        : "workflow-progress-item"
-                    }
-                  >
-                    <button
-                      type="button"
-                      className={
-                        isCurrent
-                          ? "workflow-step-btn workflow-step-btn--active"
-                          : "workflow-step-btn"
-                      }
-                      title={`${step.labelEn}: ${step.hint}`}
-                      onClick={() => {
-                        setWorkflowChatResetSeq((s) => s + 1);
-                        setCurrentPage(step.defaultPage);
-                        if (step.id === "step1") {
-                          setAiChatPreset("overview");
+          <ExperimentTopStrip
+            currentProjectSelectValue={currentProjectSelectValue}
+            onProjectChange={handleWorkflowProjectChange}
+            selectableProjects={selectableProjects}
+            onNewProject={() => void openExperimentWorkspace({ startNew: true })}
+            runStatus={experimentRunStatus}
+            task={task}
+            onTaskChange={setTask}
+            modelType={modelType}
+            onModelTypeChange={setModelType}
+            modelOptions={modelOptions}
+            onCompareRuns={() => setCurrentPage("experiments")}
+            onExport={() => setCurrentPage("reports")}
+            childrenSubNav={
+              <>
+                {activeWorkflowStep && (
+                  <p className="workflow-step-hint">
+                    {WORKFLOW_STEPS.find((s) => s.id === activeWorkflowStep)
+                      ?.hint}
+                  </p>
+                )}
+                {activeWorkflowStep &&
+                  WORKFLOW_SUB_PAGES[activeWorkflowStep] && (
+                    <div className="top-nav-row top-nav-row--workflow-sub">
+                      <span className="top-nav-row-label">
+                        {
+                          WORKFLOW_STEPS.find(
+                            (s) => s.id === activeWorkflowStep
+                          )?.label
                         }
-                      }}
-                    >
-                      <span className="workflow-step-num">{idx + 1}</span>
-                      <span className="workflow-step-text">
-                        <span className="workflow-step-label">{step.label}</span>
-                        <span className="workflow-step-en">{step.labelEn}</span>
                       </span>
-                    </button>
-                  </li>
-                );
-              })}
-            </ol>
-            {activeWorkflowStep && (
-              <p className="workflow-step-hint">
-                {
-                  WORKFLOW_STEPS.find((s) => s.id === activeWorkflowStep)
-                    ?.hint
-                }
-              </p>
-            )}
-          </nav>
-
-          {activeWorkflowStep &&
-            WORKFLOW_SUB_PAGES[activeWorkflowStep] &&
-            !(experimentWorkflowOpen && activeWorkflowStep === "step1") && (
-            <div className="top-nav-row top-nav-row--workflow-sub">
-              <span className="top-nav-row-label">
-                {
-                  WORKFLOW_STEPS.find((s) => s.id === activeWorkflowStep)
-                    ?.label
-                }
-              </span>
-              <div className="top-nav-row-btns">
-                {WORKFLOW_SUB_PAGES[activeWorkflowStep].map((item) => (
-                  <button
-                    key={item.id}
-                    type="button"
-                    className={
-                      currentPage === item.id
-                        ? "nav-tab nav-tab-active"
-                        : "nav-tab"
-                    }
-                    onClick={() => setCurrentPage(item.id)}
-                  >
-                    {item.label}
-                  </button>
-                ))}
-                {activeWorkflowStep === "step1" &&
-                  AI_CHAT_PRESETS.map((item) => (
-                    <button
-                      key={item.preset}
-                      type="button"
-                      className={
-                        aiChatPreset === item.preset
-                          ? "nav-tab nav-tab-active nav-tab--ai"
-                          : "nav-tab nav-tab--ai"
-                      }
-                      onClick={() => setAiChatPreset(item.preset)}
-                    >
-                      {item.label}
-                    </button>
-                  ))}
-              </div>
-            </div>
-          )}
+                      <div className="top-nav-row-btns">
+                        {WORKFLOW_SUB_PAGES[activeWorkflowStep].map(
+                          (item) => (
+                            <button
+                              key={item.id}
+                              type="button"
+                              className={
+                                currentPage === item.id
+                                  ? "nav-tab nav-tab-active"
+                                  : "nav-tab"
+                              }
+                              onClick={() => setCurrentPage(item.id)}
+                            >
+                              {item.label}
+                            </button>
+                          )
+                        )}
+                        {activeWorkflowStep === "step1" &&
+                          AI_CHAT_PRESETS.map((item) => (
+                            <button
+                              key={item.preset}
+                              type="button"
+                              className={
+                                aiChatPreset === item.preset
+                                  ? "nav-tab nav-tab-active nav-tab--ai"
+                                  : "nav-tab nav-tab--ai"
+                              }
+                              onClick={() => setAiChatPreset(item.preset)}
+                            >
+                              {item.label}
+                            </button>
+                          ))}
+                      </div>
+                    </div>
+                  )}
+              </>
+            }
+          />
         </div>
       ) : null}
 
@@ -1056,142 +1055,175 @@ export default function App() {
 
       {experimentShell && (
         <div className="experiment-workspace-outer">
-        <div className="experiment-workspace">
-          <aside className="experiment-workspace-chat" aria-label="Experiment AI Agent">
+          <ExperimentWorkbenchLayout
+            activeWorkflowStep={activeWorkflowStep}
+            onSelectStep={handleWorkbenchStepSelect}
+            currentProjectId={currentProjectId}
+            currentProjectName={currentProjectName}
+            ownerLabel={user?.email || ""}
+            modelLabel={experimentModelLabel}
+            datasets={datasets}
+            history={history}
+            sidebarCollapsed={experimentSidebarCollapsed}
+            onSidebarCollapsedChange={setExperimentSidebarCollapsed}
+            resultsPanelProps={{
+              activeWorkflowStep,
+              currentProjectId,
+              trainResult,
+              plotUrl,
+              trainErr,
+              trainMsg,
+              predictPreview,
+              predictErr,
+              predictMsg,
+              history,
+              datasets,
+              selectedFile,
+              preview,
+              jobs,
+              reportSummary,
+              reportFiles,
+              resultsCollapsed: experimentResultsCollapsed,
+              onToggleResultsCollapsed: () =>
+                setExperimentResultsCollapsed((v) => !v),
+              fullscreen: experimentResultsFullscreen,
+              onToggleFullscreen: () =>
+                setExperimentResultsFullscreen((v) => !v),
+            }}
+          >
             <AiChatPage
-              variant="sidebar"
+              variant="workbench"
               labPreset={aiChatPreset}
               workflowStep={activeWorkflowStep}
               workflowChatResetSeq={workflowChatResetSeq}
               onAfterTool={handleAiAfterTool}
             />
-          </aside>
-          <div
-            className="experiment-workspace-main"
-            role="main"
-            aria-label="실행 및 결과"
-          >
-            {(currentPage === "projects" || currentPage === "aichat") && (
-              <ProjectsPage
-                onRefresh={async () => {
-                  await loadPortalProjects();
-                  await loadUserProfile();
-                }}
-                currentProjectId={currentProjectId}
-                autoStartToken={projectsAutoStartToken}
-                onProjectActivated={setActiveProject}
-              />
-            )}
-            {currentPage === "datasets_catalog" && (
-              <DatasetsPage
-                datasets={portalDatasets}
-                onRefresh={loadPortalDatasets}
-                studentProjects={studentProjects}
-                currentProjectId={currentProjectId}
-              />
-            )}
-            {currentPage === "upload" && (
-              <UploadPage
-                onUpload={handleUpload}
-                loading={uploadLoading}
-                message={uploadMsg}
-                error={uploadErr}
-              />
-            )}
-            {currentPage === "preview" && (
-              <PreviewPage
-                datasets={datasets}
-                selectedFile={selectedFile}
-                onSelectFile={setSelectedFile}
-                preview={preview}
-                loading={dataLoading}
-                error={dataErr}
-                onRefresh={refreshPreview}
-              />
-            )}
-            {currentPage === "train" && (
-              <TrainPage
-                datasets={datasets}
-                selectedFile={selectedFile}
-                setSelectedFile={setSelectedFile}
-                preview={preview}
-                targetColumn={targetColumn}
-                setTargetColumn={setTargetColumn}
-                task={task}
-                setTask={setTask}
-                modelType={modelType}
-                setModelType={setModelType}
-                modelOptions={modelOptions}
-                featureSelection={featureSelection}
-                setFeatureSelection={setFeatureSelection}
-                onTrain={runTrain}
-                onCancelTrain={cancelTrain}
-                trainElapsedSec={trainElapsedSec}
-                loading={trainLoading}
-                message={trainMsg}
-                error={trainErr}
-                trainResult={trainResult}
-                plotUrl={plotUrl}
-              />
-            )}
-            {currentPage === "predict" && (
-              <PredictionPage
-                datasets={datasets}
-                models={models}
-                predictModelId={predictModelId}
-                setPredictModelId={setPredictModelId}
-                predictFile={predictFile}
-                setPredictFile={setPredictFile}
-                onPredict={runPredict}
-                loading={predictLoading}
-                message={predictMsg}
-                error={predictErr}
-                preview={predictPreview}
-                predictOutputFilename={predictOutputFilename}
-              />
-            )}
-            {currentPage === "results" && (
-              <ResultsPage
-                trainResult={trainResult}
-                plotUrl={plotUrl}
-                predictPreview={predictPreview}
-                predictOutputFilename={predictOutputFilename}
-                history={history}
-              />
-            )}
-            {currentPage === "history" && (
-              <HistoryPage
-                history={history}
-                onRefresh={loadHistory}
-                onOpenJobs={(jobId) => {
-                  setCurrentPage("jobs");
-                  if (jobId) {
-                    setFocusJobId(jobId);
-                    loadJobs();
-                  }
-                }}
-                onOpenArtifacts={() => setCurrentPage("artifacts")}
-              />
-            )}
-            {currentPage === "experiments" && <ExperimentsPlatformPage />}
-            {currentPage === "notebook" && <NotebookPage />}
-            {currentPage === "reports" && (
-              <ReportsPage
-                history={history}
-                reportTemplates={reportTemplates}
-                reportSummary={reportSummary}
-                reportFiles={reportFiles}
-              />
-            )}
-            {currentPage === "jobs" && (
-              <JobsPage
-                jobs={jobs}
-                onRefresh={loadJobs}
-                focusJobId={focusJobId}
-              />
-            )}
-          </div>
-        </div>
+            <div
+              className="experiment-main-stage panel"
+              role="main"
+              aria-label="단계 작업 영역"
+            >
+              {(currentPage === "projects" || currentPage === "aichat") && (
+                <ProjectsPage
+                  onRefresh={async () => {
+                    await loadPortalProjects();
+                    await loadUserProfile();
+                  }}
+                  currentProjectId={currentProjectId}
+                  autoStartToken={projectsAutoStartToken}
+                  onProjectActivated={setActiveProject}
+                />
+              )}
+              {currentPage === "datasets_catalog" && (
+                <DatasetsPage
+                  datasets={portalDatasets}
+                  onRefresh={loadPortalDatasets}
+                  studentProjects={studentProjects}
+                  currentProjectId={currentProjectId}
+                />
+              )}
+              {currentPage === "upload" && (
+                <UploadPage
+                  onUpload={handleUpload}
+                  loading={uploadLoading}
+                  message={uploadMsg}
+                  error={uploadErr}
+                />
+              )}
+              {currentPage === "preview" && (
+                <PreviewPage
+                  datasets={datasets}
+                  selectedFile={selectedFile}
+                  onSelectFile={setSelectedFile}
+                  preview={preview}
+                  loading={dataLoading}
+                  error={dataErr}
+                  onRefresh={refreshPreview}
+                />
+              )}
+              {currentPage === "train" && (
+                <TrainPage
+                  datasets={datasets}
+                  selectedFile={selectedFile}
+                  setSelectedFile={setSelectedFile}
+                  preview={preview}
+                  targetColumn={targetColumn}
+                  setTargetColumn={setTargetColumn}
+                  task={task}
+                  setTask={setTask}
+                  modelType={modelType}
+                  setModelType={setModelType}
+                  modelOptions={modelOptions}
+                  featureSelection={featureSelection}
+                  setFeatureSelection={setFeatureSelection}
+                  onTrain={runTrain}
+                  onCancelTrain={cancelTrain}
+                  trainElapsedSec={trainElapsedSec}
+                  loading={trainLoading}
+                  message={trainMsg}
+                  error={trainErr}
+                  trainResult={trainResult}
+                  plotUrl={plotUrl}
+                />
+              )}
+              {currentPage === "predict" && (
+                <PredictionPage
+                  datasets={datasets}
+                  models={models}
+                  predictModelId={predictModelId}
+                  setPredictModelId={setPredictModelId}
+                  predictFile={predictFile}
+                  setPredictFile={setPredictFile}
+                  onPredict={runPredict}
+                  loading={predictLoading}
+                  message={predictMsg}
+                  error={predictErr}
+                  preview={predictPreview}
+                  predictOutputFilename={predictOutputFilename}
+                />
+              )}
+              {currentPage === "results" && (
+                <ResultsPage
+                  trainResult={trainResult}
+                  plotUrl={plotUrl}
+                  predictPreview={predictPreview}
+                  predictOutputFilename={predictOutputFilename}
+                  history={history}
+                />
+              )}
+              {currentPage === "history" && (
+                <HistoryPage
+                  history={history}
+                  onRefresh={loadHistory}
+                  onOpenJobs={(jobId) => {
+                    setCurrentPage("jobs");
+                    if (jobId) {
+                      setFocusJobId(jobId);
+                      loadJobs();
+                    }
+                  }}
+                  onOpenArtifacts={() => setCurrentPage("artifacts")}
+                />
+              )}
+              {currentPage === "experiments" && <ExperimentsPlatformPage />}
+              {currentPage === "notebook" && <NotebookPage />}
+              {currentPage === "reports" && (
+                <ReportsPage
+                  history={history}
+                  reportTemplates={reportTemplates}
+                  reportSummary={reportSummary}
+                  reportFiles={reportFiles}
+                />
+              )}
+              {currentPage === "jobs" && (
+                <JobsPage
+                  jobs={jobs}
+                  onRefresh={loadJobs}
+                  focusJobId={focusJobId}
+                />
+              )}
+            </div>
+          </ExperimentWorkbenchLayout>
         </div>
       )}
 

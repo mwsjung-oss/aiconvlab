@@ -5,7 +5,10 @@ import {
   readStoredAiProvider,
   writeStoredAiProvider,
 } from "../api/aiProviderPref.js";
-import { getWorkflowStepSidebarMessage } from "../workflowConfig.js";
+import {
+  getWorkflowStepSidebarMessage,
+  WORKFLOW_STEPS,
+} from "../workflowConfig.js";
 
 /** 상단 메뉴 3번째 줄과 동일한 키 */
 export const LAB_PRESET_KEYS = [
@@ -139,9 +142,17 @@ export default function AiChatPage({
   workflowChatResetSeq = 0,
 }) {
   const isSidebar = variant === "sidebar";
+  const isWorkbench = variant === "workbench";
+  const useSidebarRules = isSidebar || isWorkbench;
   const cfg = useMemo(() => presetWelcomeAndChips(labPreset), [labPreset]);
+  const stepDef = useMemo(
+    () =>
+      WORKFLOW_STEPS.find((s) => s.id === (workflowStep || "step1")) ||
+      WORKFLOW_STEPS[0],
+    [workflowStep]
+  );
   const [messages, setMessages] = useState(() => {
-    if (variant === "sidebar") {
+    if (variant === "sidebar" || variant === "workbench") {
       const step = workflowStep || "step1";
       return [
         {
@@ -154,6 +165,16 @@ export default function AiChatPage({
       { role: "assistant", content: presetWelcomeAndChips(labPreset).welcome },
     ];
   });
+  function clearConversation() {
+    const tip = getWorkflowStepSidebarMessage(workflowStep || "step1");
+    setMessages([{ role: "assistant", content: tip }]);
+    setErr(null);
+  }
+  function scrollToBriefPanel() {
+    document
+      .querySelector(".projects-brief-compose")
+      ?.scrollIntoView({ behavior: "smooth", block: "center" });
+  }
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState(null);
@@ -163,10 +184,10 @@ export default function AiChatPage({
   const bottomRef = useRef(null);
 
   useEffect(() => {
-    if (!isSidebar || !workflowStep) return;
+    if (!useSidebarRules || !workflowStep) return;
     const tip = getWorkflowStepSidebarMessage(workflowStep);
     setMessages([{ role: "assistant", content: tip }]);
-  }, [isSidebar, workflowStep, workflowChatResetSeq]);
+  }, [useSidebarRules, workflowStep, workflowChatResetSeq]);
 
   useEffect(() => {
     writeStoredAiProvider(aiProvider);
@@ -194,20 +215,20 @@ export default function AiChatPage({
   }, []);
 
   const scrollToBottom = useCallback(() => {
-    if (isSidebar && threadRef.current) {
+    if (useSidebarRules && threadRef.current) {
       const t = threadRef.current;
       t.scrollTo({ top: t.scrollHeight, behavior: "smooth" });
       return;
     }
     bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-  }, [isSidebar]);
+  }, [useSidebarRules]);
 
   useEffect(() => {
     scrollToBottom();
   }, [messages, loading, scrollToBottom]);
 
   useEffect(() => {
-    if (!isSidebar) return;
+    if (!useSidebarRules) return;
     function onInject(e) {
       const c = e.detail?.content;
       if (typeof c !== "string" || !c.trim()) return;
@@ -215,7 +236,7 @@ export default function AiChatPage({
     }
     window.addEventListener("ailab-inject-assistant", onInject);
     return () => window.removeEventListener("ailab-inject-assistant", onInject);
-  }, [isSidebar]);
+  }, [useSidebarRules]);
 
   const runChatFromMessages = useCallback(
     async (nextMessages) => {
@@ -270,7 +291,7 @@ export default function AiChatPage({
     const text = input.trim();
     if (!text || loading) return;
 
-    if (isSidebar) {
+    if (useSidebarRules) {
       if (sessionStorage.getItem(BRIEF_SUPPLEMENT_KEY) === "1") {
         let draft = null;
         try {
@@ -392,23 +413,41 @@ export default function AiChatPage({
   return (
     <section
       className={
-        isSidebar ? "ai-chat-page ai-chat-page--sidebar panel" : "ai-chat-page panel"
+        isWorkbench
+          ? "ai-chat-page ai-chat-page--workbench panel"
+          : isSidebar
+            ? "ai-chat-page ai-chat-page--sidebar panel"
+            : "ai-chat-page panel"
       }
     >
       <div
         className={
-          isSidebar ? "ai-chat-header ai-chat-header--sidebar" : "ai-chat-header"
+          isWorkbench
+            ? "ai-chat-header ai-chat-header--sidebar ai-chat-header--workbench"
+            : isSidebar
+              ? "ai-chat-header ai-chat-header--sidebar"
+              : "ai-chat-header"
         }
       >
         <div className="ai-chat-header-titles">
           <h2
             className="ai-chat-title-h2"
             style={{ margin: 0 }}
-            title={isSidebar ? AI_AGENT_PANEL_TITLE : undefined}
+            title={useSidebarRules ? AI_AGENT_PANEL_TITLE : undefined}
           >
-            {isSidebar ? AI_AGENT_PANEL_TITLE : cfg.title}
+            {isWorkbench
+              ? AI_AGENT_PANEL_TITLE
+              : isSidebar
+                ? AI_AGENT_PANEL_TITLE
+                : cfg.title}
           </h2>
-          {!isSidebar && (
+          {isWorkbench && (
+            <p className="hint ai-chat-workbench-role" style={{ margin: "0.15rem 0 0" }}>
+              <strong>{stepDef.label}</strong> · <em>{stepDef.labelEn}</em> — 단계 맞춤
+              가이드가 아래 스레드에 표시됩니다.
+            </p>
+          )}
+          {!isSidebar && !isWorkbench && (
             <p className="hint ai-chat-phase-hint">
               상단 <strong>AI 실습</strong> 메뉴에서 단계를 바꾸면 이 화면 안내가 바뀝니다. 대화형으로 프로젝트·데이터·모델·결과를
               함께 다듬을 수 있습니다.
@@ -433,7 +472,7 @@ export default function AiChatPage({
           </label>
         </div>
       </div>
-      {providerMeta && !isSidebar && (
+      {providerMeta && !isSidebar && !isWorkbench && (
         <p className="hint ai-chat-provider-hint" aria-live="polite">
           OpenAI: {providerMeta.openai_configured ? "키 있음" : "키 없음"} · Gemini:{" "}
           {providerMeta.gemini_configured ? "키 있음" : "키 없음"} · Ollama:{" "}
@@ -442,12 +481,19 @@ export default function AiChatPage({
             : "미연결 (Ollama 기동·모델 pull 필요)"}
         </p>
       )}
-      {!isSidebar && (
+      {providerMeta && isWorkbench && (
+        <p className="hint ai-chat-provider-hint ai-chat-provider-hint--compact" aria-live="polite">
+          LLM: OpenAI {providerMeta.openai_configured ? "✓" : "—"} · Gemini{" "}
+          {providerMeta.gemini_configured ? "✓" : "—"} · Ollama{" "}
+          {providerMeta.ollama_reachable ? "✓" : "—"}
+        </p>
+      )}
+      {!isSidebar && !isWorkbench && (
         <p className="hint">
           자연어로 질문하거나, 로컬 모드에서 <code>/help</code> 로 명령 목록을 확인하세요.
         </p>
       )}
-      {!isSidebar && (
+      {(!isSidebar || isWorkbench) && (
         <div className="ai-chat-quick-chips" aria-label="빠른 질문">
           {cfg.chips.map((c) => (
             <button
@@ -499,10 +545,38 @@ export default function AiChatPage({
         <div ref={bottomRef} />
       </div>
 
+      {isWorkbench && (
+        <div className="ai-chat-workbench-toolbar" aria-label="대화 도구">
+          <button
+            type="button"
+            className="btn btn-secondary"
+            disabled={loading}
+            onClick={clearConversation}
+          >
+            Clear
+          </button>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            title="파일·CSV는 데이터 업로드 단계나 왼쪽 워크스페이스 목록에서 추가합니다."
+            onClick={scrollToBriefPanel}
+          >
+            Attach
+          </button>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            title="프로젝트 브리프 패널로 이동해 분석을 실행합니다."
+            onClick={scrollToBriefPanel}
+          >
+            Analyze
+          </button>
+        </div>
+      )}
       <div className="ai-chat-input-row">
         <textarea
           className="ai-chat-input"
-          rows={isSidebar ? 2 : 3}
+          rows={isWorkbench ? 4 : isSidebar ? 2 : 3}
           placeholder="메시지를 입력… (Enter 전송, Shift+Enter 줄바꿈)"
           value={input}
           onChange={(e) => setInput(e.target.value)}
@@ -517,7 +591,7 @@ export default function AiChatPage({
           title="보내기"
           aria-label="보내기"
         >
-          ➤
+          Send
         </button>
       </div>
     </section>
