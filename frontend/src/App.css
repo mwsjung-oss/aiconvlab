@@ -1937,8 +1937,8 @@ th {
   display: grid;
   grid-template-columns:
     minmax(200px, var(--exp-sidebar-w, 260px))
-    minmax(280px, 1.35fr)
-    minmax(240px, min(32vw, 420px));
+    minmax(320px, 1.55fr)
+    minmax(220px, min(29vw, 380px));
   gap: 0;
   align-items: stretch;
   flex: 1 1 auto;
@@ -2216,7 +2216,7 @@ th {
 
 .experiment-workbench-center > .ai-chat-page {
   flex: 0 0 auto;
-  max-height: min(46vh, 520px);
+  max-height: min(58vh, 660px);
   min-height: 220px;
   display: flex;
   flex-direction: column;
@@ -2565,10 +2565,11 @@ th {
 }
 
 .ai-chat-page--workbench .ai-chat-input {
-  min-height: 5.25rem;
+  min-height: 2.9rem;
   border-color: rgba(56, 189, 248, 0.72);
   background: rgba(15, 23, 42, 0.86);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  resize: none;
 }
 
 .app--experiment-shell .ai-chat-page--workbench .ai-chat-input-row {
@@ -2591,11 +2592,11 @@ th {
 }
 
 .app--experiment-shell .ai-chat-page--workbench .ai-chat-send {
-  min-width: 3.15rem;
-  width: 3.15rem;
-  height: 3.15rem;
+  min-width: 2.2rem;
+  width: 2.2rem;
+  height: 2.2rem;
   border-radius: 10px;
-  font-size: 0.86rem;
+  font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0.02em;
   border: 1px solid rgba(125, 211, 252, 0.72);
@@ -2645,8 +2646,8 @@ th {
     --exp-sidebar-w: 220px;
     grid-template-columns:
       minmax(180px, var(--exp-sidebar-w))
-      minmax(260px, 1.25fr)
-      minmax(200px, 28vw);
+      minmax(300px, 1.45fr)
+      minmax(190px, 24vw);
   }
 
   .experiment-top-strip-row--primary {

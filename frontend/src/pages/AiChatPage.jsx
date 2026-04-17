@@ -481,13 +481,6 @@ export default function AiChatPage({
             : "미연결 (Ollama 기동·모델 pull 필요)"}
         </p>
       )}
-      {providerMeta && isWorkbench && (
-        <p className="hint ai-chat-provider-hint ai-chat-provider-hint--compact" aria-live="polite">
-          LLM: OpenAI {providerMeta.openai_configured ? "✓" : "—"} · Gemini{" "}
-          {providerMeta.gemini_configured ? "✓" : "—"} · Ollama{" "}
-          {providerMeta.ollama_reachable ? "✓" : "—"}
-        </p>
-      )}
       {!isSidebar && !isWorkbench && (
         <p className="hint">
           자연어로 질문하거나, 로컬 모드에서 <code>/help</code> 로 명령 목록을 확인하세요.
@@ -576,7 +569,7 @@ export default function AiChatPage({
       <div className="ai-chat-input-row">
         <textarea
           className="ai-chat-input"
-          rows={isWorkbench ? 4 : isSidebar ? 2 : 3}
+          rows={isWorkbench ? 2 : isSidebar ? 2 : 3}
           placeholder="메시지를 입력… (Enter 전송, Shift+Enter 줄바꿈)"
           value={input}
           onChange={(e) => setInput(e.target.value)}
