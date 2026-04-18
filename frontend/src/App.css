@@ -2215,9 +2215,9 @@ th {
 }
 
 .experiment-workbench-center > .ai-chat-page {
-  flex: 0 0 auto;
-  max-height: min(58vh, 660px);
-  min-height: 220px;
+  flex: 1.25 1 0;
+  min-height: 240px;
+  max-height: none;
   display: flex;
   flex-direction: column;
   border-radius: 0;
@@ -2228,13 +2228,13 @@ th {
 
 .experiment-workbench-center > .ai-chat-page .ai-chat-thread {
   flex: 1 1 auto;
-  min-height: 120px;
+  min-height: 140px;
   max-height: none;
 }
 
 .experiment-main-stage {
-  flex: 1 1 auto;
-  min-height: 0;
+  flex: 1 1 0;
+  min-height: 180px;
   overflow: auto;
   margin: 0;
   border-radius: 0;
@@ -2715,7 +2715,9 @@ th {
   }
 
   .experiment-workbench-center > .ai-chat-page {
-    max-height: min(38vh, 400px);
+    flex: 1.1 1 0;
+    min-height: 220px;
+    max-height: none;
   }
 
   .experiment-top-strip-row--primary {
@@ -2760,7 +2762,9 @@ th {
   }
 
   .experiment-workbench-center > .ai-chat-page {
-    max-height: min(48vh, 440px);
+    flex: 1 1 auto;
+    min-height: 240px;
+    max-height: none;
   }
 
   .experiment-results {
