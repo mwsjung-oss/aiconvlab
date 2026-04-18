@@ -2216,6 +2216,8 @@ th {
 
 .experiment-workbench-center > .ai-chat-page {
   flex: 1.25 1 0;
+  width: 100%;
+  max-width: none;
   min-height: 240px;
   max-height: none;
   display: flex;
@@ -2554,6 +2556,12 @@ th {
   flex-wrap: wrap;
   gap: 0.35rem;
   margin-top: 0.35rem;
+}
+
+.ai-chat-page--workbench {
+  max-width: none;
+  width: 100%;
+  margin: 0;
 }
 
 .ai-chat-page--workbench .ai-chat-title-h2 {
