@@ -5,8 +5,6 @@ import RunStatusBadge from "./RunStatusBadge.jsx";
  */
 export default function ExperimentTopStrip({
   currentProjectSelectValue,
-  currentProjectName,
-  currentProjectId,
   onProjectChange,
   selectableProjects,
   onNewProject,
@@ -20,57 +18,8 @@ export default function ExperimentTopStrip({
   onExport,
   childrenSubNav,
 }) {
-  const TASK_LABELS = {
-    classification: "분류",
-    regression: "회귀",
-    time_series: "시계열",
-    anomaly_detection: "이상 탐지",
-  };
-  const taskLabel = TASK_LABELS[task] || task || "-";
-  const modelLabel =
-    (modelOptions || []).find((o) => o.value === modelType)?.label ||
-    modelType ||
-    "-";
-  const displayedProjectName =
-    currentProjectName && currentProjectName.trim().length > 0
-      ? currentProjectName
-      : currentProjectId != null
-      ? `프로젝트 ${currentProjectId}`
-      : "프로젝트를 선택하세요";
-  const hasProject = currentProjectId != null;
-
   return (
     <div className="experiment-top-strip">
-      <div
-        className={
-          hasProject
-            ? "experiment-project-title-bar"
-            : "experiment-project-title-bar experiment-project-title-bar--empty"
-        }
-      >
-        <div className="experiment-project-title-main">
-          <span className="experiment-project-title-eyebrow">프로젝트 명칭</span>
-          <h2 className="experiment-project-title" title={displayedProjectName}>
-            {displayedProjectName}
-            {hasProject && currentProjectId != null ? (
-              <span className="experiment-project-title-id">
-                #{currentProjectId}
-              </span>
-            ) : null}
-          </h2>
-        </div>
-        <dl className="experiment-project-title-meta">
-          <div className="experiment-project-title-meta-item">
-            <dt>화제</dt>
-            <dd>{taskLabel}</dd>
-          </div>
-          <div className="experiment-project-title-meta-item">
-            <dt>학습 모델</dt>
-            <dd title={modelLabel}>{modelLabel}</dd>
-          </div>
-        </dl>
-      </div>
-
       <div className="experiment-top-strip-row experiment-top-strip-row--primary">
         <div className="experiment-top-strip-cluster experiment-top-strip-cluster--project">
           <div className="experiment-top-strip-field">
