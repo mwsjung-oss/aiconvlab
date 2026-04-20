@@ -1,8 +1,46 @@
+import { useCallback, useEffect, useState } from "react";
 import ExperimentSidebar from "./ExperimentSidebar.jsx";
 import ExperimentResultsPanel from "./ExperimentResultsPanel.jsx";
 
+/** 리사이저 한계·기본값 (모두 px). Cursor처럼 사용자 조정 후 영속화한다. */
+const SIDEBAR_W_KEY = "ailab_exp_sidebar_w";
+const RESULTS_W_KEY = "ailab_exp_results_w";
+const SIDEBAR_MIN = 180;
+const SIDEBAR_MAX = 480;
+const SIDEBAR_DEFAULT = 260;
+const RESULTS_MIN = 220;
+const RESULTS_MAX = 640;
+const RESULTS_DEFAULT = 340;
+
+function clamp(v, min, max) {
+  return Math.max(min, Math.min(max, v));
+}
+
+function readStoredWidth(key, dflt, min, max) {
+  if (typeof window === "undefined") return dflt;
+  try {
+    const raw = window.localStorage.getItem(key);
+    if (!raw) return dflt;
+    const n = Number(raw);
+    if (!Number.isFinite(n)) return dflt;
+    return clamp(Math.round(n), min, max);
+  } catch {
+    return dflt;
+  }
+}
+
+function writeStoredWidth(key, value) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(key, String(Math.round(value)));
+  } catch {
+    /* ignore quota errors */
+  }
+}
+
 /**
- * Colab 스타일 3열: 좌 컨텍스트 · 중앙(에이전트+단계 폼) · 우 산출물
+ * Colab 스타일 3열(+리사이즈 핸들): 좌 컨텍스트 · 중앙(에이전트+단계 폼) · 우 산출물.
+ * 데스크톱(>=1100px)에서 좌/우 패널 경계를 마우스로 드래그하여 폭을 조정할 수 있다.
  */
 export default function ExperimentWorkbenchLayout({
   activeWorkflowStep,
@@ -19,15 +57,125 @@ export default function ExperimentWorkbenchLayout({
   children,
 }) {
   const resultsCollapsed = !!resultsPanelProps?.resultsCollapsed;
+  const sidebarActuallyCollapsed = !!sidebarCollapsed;
+
+  const [sidebarWidth, setSidebarWidth] = useState(() =>
+    readStoredWidth(SIDEBAR_W_KEY, SIDEBAR_DEFAULT, SIDEBAR_MIN, SIDEBAR_MAX)
+  );
+  const [resultsWidth, setResultsWidth] = useState(() =>
+    readStoredWidth(RESULTS_W_KEY, RESULTS_DEFAULT, RESULTS_MIN, RESULTS_MAX)
+  );
+
+  useEffect(() => {
+    writeStoredWidth(SIDEBAR_W_KEY, sidebarWidth);
+  }, [sidebarWidth]);
+
+  useEffect(() => {
+    writeStoredWidth(RESULTS_W_KEY, resultsWidth);
+  }, [resultsWidth]);
+
+  /** pointer 기반 드래그: setPointerCapture로 윈도우 밖 이탈에도 안정적으로 동작한다. */
+  const handlePointerDown = useCallback(
+    (side) => (e) => {
+      if (e.button !== 0) return;
+      e.preventDefault();
+      const handleEl = e.currentTarget;
+      const startX = e.clientX;
+      const startWidth = side === "left" ? sidebarWidth : resultsWidth;
+
+      try {
+        handleEl.setPointerCapture(e.pointerId);
+      } catch {
+        /* ignore older browsers */
+      }
+
+      const prevCursor = document.body.style.cursor;
+      const prevUserSelect = document.body.style.userSelect;
+      document.body.style.cursor = "col-resize";
+      document.body.style.userSelect = "none";
+
+      const onMove = (ev) => {
+        const dx = ev.clientX - startX;
+        if (side === "left") {
+          setSidebarWidth(clamp(startWidth + dx, SIDEBAR_MIN, SIDEBAR_MAX));
+        } else {
+          // 우측 핸들은 오른쪽으로 드래그하면 산출물 패널이 좁아지도록 부호 반전
+          setResultsWidth(clamp(startWidth - dx, RESULTS_MIN, RESULTS_MAX));
+        }
+      };
+
+      const cleanup = (ev) => {
+        try {
+          if (ev && typeof ev.pointerId === "number") {
+            handleEl.releasePointerCapture(ev.pointerId);
+          }
+        } catch {
+          /* ignore */
+        }
+        handleEl.removeEventListener("pointermove", onMove);
+        handleEl.removeEventListener("pointerup", cleanup);
+        handleEl.removeEventListener("pointercancel", cleanup);
+        document.body.style.cursor = prevCursor;
+        document.body.style.userSelect = prevUserSelect;
+      };
+
+      handleEl.addEventListener("pointermove", onMove);
+      handleEl.addEventListener("pointerup", cleanup);
+      handleEl.addEventListener("pointercancel", cleanup);
+    },
+    [sidebarWidth, resultsWidth]
+  );
+
+  const resetSidebarWidth = useCallback(
+    () => setSidebarWidth(SIDEBAR_DEFAULT),
+    []
+  );
+  const resetResultsWidth = useCallback(
+    () => setResultsWidth(RESULTS_DEFAULT),
+    []
+  );
+
+  const handleKeyDown = useCallback(
+    (side) => (e) => {
+      let delta = 0;
+      if (e.key === "ArrowLeft") delta = e.shiftKey ? -40 : -10;
+      else if (e.key === "ArrowRight") delta = e.shiftKey ? 40 : 10;
+      else if (e.key === "Home") {
+        if (side === "left") resetSidebarWidth();
+        else resetResultsWidth();
+        e.preventDefault();
+        return;
+      } else {
+        return;
+      }
+      e.preventDefault();
+      if (side === "left") {
+        setSidebarWidth((v) => clamp(v + delta, SIDEBAR_MIN, SIDEBAR_MAX));
+      } else {
+        setResultsWidth((v) => clamp(v - delta, RESULTS_MIN, RESULTS_MAX));
+      }
+    },
+    [resetSidebarWidth, resetResultsWidth]
+  );
+
+  // 접힌 상태 폭은 기존 패널 내부 CSS와 일치시킴
+  // (.experiment-sidebar--collapsed: 52px, .experiment-results--collapsed: 48px)
+  const gridStyle = {
+    "--exp-sidebar-w": `${sidebarActuallyCollapsed ? 52 : sidebarWidth}px`,
+    "--exp-results-w": `${resultsCollapsed ? 48 : resultsWidth}px`,
+  };
+
+  const containerClass = [
+    "experiment-workbench",
+    resultsCollapsed ? "experiment-workbench--results-collapsed" : "",
+    sidebarActuallyCollapsed ? "experiment-workbench--sidebar-collapsed" : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+
   return (
     <div className="experiment-workbench-root">
-      <div
-        className={
-          resultsCollapsed
-            ? "experiment-workbench experiment-workbench--results-collapsed"
-            : "experiment-workbench"
-        }
-      >
+      <div className={containerClass} style={gridStyle}>
         <ExperimentSidebar
           collapsed={sidebarCollapsed}
           onToggleCollapsed={() =>
@@ -42,7 +190,39 @@ export default function ExperimentWorkbenchLayout({
           datasets={datasets}
           history={history}
         />
+        <div
+          className="experiment-resize-handle experiment-resize-handle--left"
+          role="separator"
+          aria-orientation="vertical"
+          aria-label="컨텍스트 패널 폭 조정 (←/→ 키로 조정, Home으로 초기화)"
+          aria-valuenow={sidebarActuallyCollapsed ? 52 : sidebarWidth}
+          aria-valuemin={SIDEBAR_MIN}
+          aria-valuemax={SIDEBAR_MAX}
+          tabIndex={sidebarActuallyCollapsed ? -1 : 0}
+          onPointerDown={
+            sidebarActuallyCollapsed ? undefined : handlePointerDown("left")
+          }
+          onDoubleClick={sidebarActuallyCollapsed ? undefined : resetSidebarWidth}
+          onKeyDown={sidebarActuallyCollapsed ? undefined : handleKeyDown("left")}
+          title="드래그하여 폭 조정 · 더블클릭으로 초기화"
+        />
         <div className="experiment-workbench-center">{children}</div>
+        <div
+          className="experiment-resize-handle experiment-resize-handle--right"
+          role="separator"
+          aria-orientation="vertical"
+          aria-label="산출물 패널 폭 조정 (←/→ 키로 조정, Home으로 초기화)"
+          aria-valuenow={resultsCollapsed ? 52 : resultsWidth}
+          aria-valuemin={RESULTS_MIN}
+          aria-valuemax={RESULTS_MAX}
+          tabIndex={resultsCollapsed ? -1 : 0}
+          onPointerDown={
+            resultsCollapsed ? undefined : handlePointerDown("right")
+          }
+          onDoubleClick={resultsCollapsed ? undefined : resetResultsWidth}
+          onKeyDown={resultsCollapsed ? undefined : handleKeyDown("right")}
+          title="드래그하여 폭 조정 · 더블클릭으로 초기화"
+        />
         <ExperimentResultsPanel {...resultsPanelProps} />
       </div>
       <div

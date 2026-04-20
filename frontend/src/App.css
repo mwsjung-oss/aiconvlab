@@ -1936,10 +1936,14 @@ th {
 
 .experiment-workbench {
   display: grid;
+  /* [sidebar | 좌측 리사이즈 핸들 | center | 우측 리사이즈 핸들 | results]
+     폭은 JS 상태가 인라인 스타일로 --exp-sidebar-w / --exp-results-w를 설정. */
   grid-template-columns:
-    minmax(200px, var(--exp-sidebar-w, 260px))
-    minmax(320px, 1.55fr)
-    minmax(220px, min(29vw, 380px));
+    var(--exp-sidebar-w, 260px)
+    var(--exp-handle-w-left, 6px)
+    minmax(0, 1fr)
+    var(--exp-handle-w-right, 6px)
+    var(--exp-results-w, 340px);
   gap: 0;
   align-items: stretch;
   flex: 1 1 auto;
@@ -1950,6 +1954,97 @@ th {
   border-radius: 12px;
   overflow: hidden;
   background: rgba(15, 23, 42, 0.35);
+}
+
+/* 자식 요소 위치를 5-col 그리드에 명시적으로 고정 (태블릿/모바일에선 media query로 덮어씀) */
+.experiment-workbench > .experiment-sidebar {
+  grid-column: 1;
+  grid-row: 1;
+}
+
+.experiment-workbench > .experiment-resize-handle--left {
+  grid-column: 2;
+  grid-row: 1;
+}
+
+.experiment-workbench > .experiment-workbench-center {
+  grid-column: 3;
+  grid-row: 1;
+}
+
+.experiment-workbench > .experiment-resize-handle--right {
+  grid-column: 4;
+  grid-row: 1;
+}
+
+.experiment-workbench > .experiment-results {
+  grid-column: 5;
+  grid-row: 1;
+}
+
+/* ---------- 리사이즈 핸들 ---------- */
+.experiment-resize-handle {
+  position: relative;
+  align-self: stretch;
+  cursor: col-resize;
+  background: transparent;
+  transition: background 0.15s ease;
+  touch-action: none;
+  z-index: 5;
+}
+
+.experiment-resize-handle::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 2px;
+  background: rgba(148, 163, 184, 0.22);
+  transition:
+    background 0.15s ease,
+    width 0.15s ease;
+  pointer-events: none;
+}
+
+.experiment-resize-handle:hover {
+  background: rgba(56, 189, 248, 0.08);
+}
+
+.experiment-resize-handle:hover::before,
+.experiment-resize-handle:focus-visible::before {
+  background: rgba(56, 189, 248, 0.75);
+  width: 3px;
+}
+
+.experiment-resize-handle:focus-visible {
+  outline: none;
+  background: rgba(56, 189, 248, 0.12);
+}
+
+.experiment-resize-handle:active::before {
+  background: rgba(56, 189, 248, 0.95);
+  width: 3px;
+}
+
+/* 인접 패널이 접히면 해당 핸들 트랙 폭을 0으로 → 시각적으로 사라지고 클릭 불가 */
+.experiment-workbench--sidebar-collapsed {
+  --exp-handle-w-left: 0px;
+}
+
+.experiment-workbench--sidebar-collapsed > .experiment-resize-handle--left {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+.experiment-workbench--results-collapsed {
+  --exp-handle-w-right: 0px;
+}
+
+.experiment-workbench--results-collapsed > .experiment-resize-handle--right {
+  visibility: hidden;
+  pointer-events: none;
 }
 
 .experiment-sidebar {
@@ -2666,16 +2761,9 @@ th {
   padding: 0.32rem 0.55rem;
 }
 
-/* 1100–1439: 좁은 사이드 */
+/* 1100–1439 / 1440+ 구간은 5-col 그리드는 그대로 두고, 나머지 토큰만 조정한다.
+   (예전엔 grid-template-columns를 각 구간에서 덮어썼지만, 이제 폭은 JS 상태가 제어) */
 @media (min-width: 1100px) and (max-width: 1439px) {
-  .experiment-workbench {
-    --exp-sidebar-w: 220px;
-    grid-template-columns:
-      minmax(180px, var(--exp-sidebar-w))
-      minmax(300px, 1.45fr)
-      minmax(190px, 24vw);
-  }
-
   .experiment-top-strip-row--primary {
     grid-template-columns: minmax(220px, 1.3fr) minmax(230px, 1fr) auto;
   }
@@ -2690,54 +2778,39 @@ th {
   }
 }
 
-@media (min-width: 1440px) {
-  .experiment-workbench {
-    --exp-sidebar-w: 272px;
-    grid-template-columns:
-      minmax(220px, var(--exp-sidebar-w))
-      minmax(320px, 1.4fr)
-      minmax(260px, min(30vw, 440px));
-  }
-}
-
-.experiment-workbench--results-collapsed {
-  grid-template-columns:
-    minmax(200px, var(--exp-sidebar-w, 260px)) minmax(280px, 1.45fr) 52px !important;
-}
-
-@media (min-width: 1440px) {
-  .experiment-workbench--results-collapsed {
-    grid-template-columns:
-      minmax(220px, var(--exp-sidebar-w, 272px)) minmax(320px, 1.5fr) 52px !important;
-  }
-}
-
-/* 768–1099: 좁은 좌 내비 + 우측(에이전트·산출물 스택) */
+/* 768–1099: 좁은 좌 내비 + 우측(에이전트·산출물 스택) — 리사이즈 비활성화 */
 @media (min-width: 768px) and (max-width: 1099px) {
   .experiment-workspace-outer {
     max-height: none;
   }
 
-  .experiment-workbench {
-    grid-template-columns: minmax(168px, 210px) minmax(0, 1fr);
+  .experiment-workbench,
+  .experiment-workbench--sidebar-collapsed,
+  .experiment-workbench--results-collapsed,
+  .experiment-workbench--sidebar-collapsed.experiment-workbench--results-collapsed {
+    grid-template-columns: minmax(168px, 210px) minmax(0, 1fr) !important;
     grid-template-rows: minmax(240px, auto) minmax(200px, 34vh);
   }
 
-  .experiment-sidebar {
+  .experiment-workbench > .experiment-sidebar {
     grid-column: 1;
     grid-row: 1 / -1;
   }
 
-  .experiment-workbench-center {
+  .experiment-workbench > .experiment-workbench-center {
     grid-column: 2;
     grid-row: 1;
   }
 
-  .experiment-results {
+  .experiment-workbench > .experiment-results {
     grid-column: 2;
     grid-row: 2;
     max-height: 40vh;
     border-top: 1px solid rgba(148, 163, 184, 0.22);
+  }
+
+  .experiment-resize-handle {
+    display: none;
   }
 
   .experiment-workbench-center > .ai-chat-page {
@@ -2764,16 +2837,21 @@ th {
   }
 }
 
-/* <768: 단일 열 스택 */
+/* <768: 단일 열 스택 — 리사이즈 비활성화 */
 @media (max-width: 767px) {
   .experiment-workspace-outer {
     max-height: none;
   }
 
-  .experiment-workbench {
-    display: flex;
+  .experiment-workbench,
+  .experiment-workbench--sidebar-collapsed,
+  .experiment-workbench--results-collapsed,
+  .experiment-workbench--sidebar-collapsed.experiment-workbench--results-collapsed {
+    display: flex !important;
     flex-direction: column;
     border-radius: 10px;
+    grid-template-columns: none !important;
+    grid-template-rows: none !important;
   }
 
   .experiment-sidebar {
@@ -2785,6 +2863,10 @@ th {
   .experiment-workbench-center {
     border-right: none;
     border-bottom: 1px solid rgba(148, 163, 184, 0.22);
+  }
+
+  .experiment-resize-handle {
+    display: none;
   }
 
   .experiment-workbench-center > .ai-chat-page {
