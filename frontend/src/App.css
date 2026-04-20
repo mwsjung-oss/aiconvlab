@@ -527,11 +527,16 @@
   border-bottom: 1px solid rgba(148, 163, 184, 0.22);
 }
 
-/* Experiment 모드에서는 상단 브랜딩 영역을 더 컴팩트하게 */
+/* Experiment 워크플로 진입(= "기존 프로젝트 이어서 진행" / "신규 프로젝트로 시작" 클릭 이후)
+   후에는 상단 브랜딩/플랫폼 헤더(lab-hero)를 완전히 감춰서 화면 최상단에 ExperimentTopStrip
+   (프로젝트/과제/학습 모델/실행 상태/액션)만 보이도록 한다. */
 .app--experiment-shell .lab-hero {
-  margin-bottom: 0.4rem;
-  padding-top: 0.5rem;
-  padding-bottom: 0.4rem;
+  display: none;
+}
+
+/* lab-hero가 사라졌으므로 sticky 기준선의 여백을 줄여 상단이 딱 맞도록 한다. */
+.app--experiment-shell {
+  padding-top: 0.35rem;
 }
 
 /* --- 6단계 워크플로 (primary) --- */
