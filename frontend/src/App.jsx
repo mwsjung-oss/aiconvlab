@@ -931,7 +931,10 @@ export default function App() {
         </div>
       )}
 
-      {isAuthenticated && experimentWorkflowOpen ? (
+      {isAuthenticated &&
+      (experimentWorkflowOpen ||
+        experimentEntryOpen ||
+        isExperimentWorkflowPage(currentPage)) ? (
         <div className="top-nav-wrap">
           <ExperimentTopStrip
             currentProjectSelectValue={currentProjectSelectValue}
