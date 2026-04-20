@@ -513,6 +513,27 @@
   margin-bottom: 1.25rem;
 }
 
+/* Experiment 모드에서는 상단 스트립(프로젝트/과제/학습 모델/실행 상태/액션)이
+   항상 화면 최상단에 정렬되도록 sticky 고정한다.
+   lab-hero가 위에 있어도 스크롤 시 이 스트립이 viewport 최상단에 보이고,
+   진입 시 scroll-to-top과 결합되어 "맨 위" 요구를 만족한다. */
+.app--experiment-shell .top-nav-wrap {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  margin-bottom: 0.5rem;
+  padding: 0.3rem 0 0.25rem;
+  background: var(--bg, #0b1220);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.22);
+}
+
+/* Experiment 모드에서는 상단 브랜딩 영역을 더 컴팩트하게 */
+.app--experiment-shell .lab-hero {
+  margin-bottom: 0.4rem;
+  padding-top: 0.5rem;
+  padding-bottom: 0.4rem;
+}
+
 /* --- 6단계 워크플로 (primary) --- */
 .workflow-nav {
   margin-bottom: 0.35rem;
@@ -2539,12 +2560,12 @@ th {
   overflow: hidden;
 }
 
-/* 좌측 패널에 놓인 AI 채팅: 높이 꽉 채우고 내부 스크롤 */
+/* 좌측 패널에 놓인 AI 채팅: 컨텐츠 크기만큼만 차지하고, thread만 내부 스크롤 */
 .experiment-left-panel-body > .ai-chat-page {
-  flex: 1 1 auto;
+  flex: 0 0 auto;
   width: 100%;
   max-width: none;
-  min-height: 340px;
+  min-height: 0;
   max-height: none;
   display: flex;
   flex-direction: column;
@@ -2553,10 +2574,10 @@ th {
   margin: 0;
 }
 
-.experiment-left-panel-body > .ai-chat-page .ai-chat-thread {
-  flex: 1 1 auto;
-  min-height: max(140px, var(--ai-chat-thread-min-lines));
-  max-height: none;
+.experiment-left-panel-body {
+  /* 채팅 블록이 세로로 몰리도록 start 정렬 */
+  justify-content: flex-start;
+  overflow-y: auto;
 }
 
 .experiment-left-panel-body > .ai-chat-page > .ai-chat-header,
@@ -3256,11 +3277,15 @@ th {
   max-height: min(52vh, 560px);
 }
 
-/* Experiment workbench에서는 입력창 고정을 위해 thread 최대 높이는 해제하되,
-   최소 4줄은 반드시 확보한다. */
+/* Experiment workbench에서는 기본 6줄만 표시되는 높이로 고정.
+   → 입력창과 Send 버튼이 Default 화면에서 항상 보이고, 긴 대화는 thread 내부 스크롤로 탐색.
+   (line-height 1.55 × 0.88rem × 6줄 + 상하 padding ≈ 9.7rem → 여유있게 10.5rem) */
 .app--experiment-shell .ai-chat-page--workbench.ai-chat-page .ai-chat-thread {
-  min-height: var(--ai-chat-thread-min-lines) !important;
-  max-height: none !important;
+  flex: 0 0 auto !important;
+  min-height: 10.5rem !important;
+  max-height: 10.5rem !important;
+  height: 10.5rem !important;
+  overflow-y: auto !important;
 }
 
 .ai-chat-msg {
