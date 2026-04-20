@@ -173,15 +173,26 @@ export default function App() {
 
   useLayoutEffect(() => {
     if (!experimentWorkflowOpen) return;
-    // 진입 시 상단 스트립(프로젝트/과제/학습 모델/실행 상태/액션)이 반드시
-    // 노출되도록 항상 최상단으로 스크롤. 이전 페이지의 스크롤 위치는 복원하지 않는다.
+    // 진입 시 상단 스트립(프로젝트/과제/학습 모델/실행 상태/액션)이 화면 최상단에
+    // 오도록 스크롤 위치를 조정한다. (lab-hero는 그대로 유지하고, 위로 올려둔다.)
     experimentScrollRestoreY.current = null;
-    // 1) 커밋 직후 즉시 스크롤, 2) 페인트 이후에도 한 번 더 보정,
-    //    3) 후속 레이아웃 변화(지연 로드 등)로 뷰가 밀릴 수 있어 짧은 지연 후에도 한 번 더 맞춘다.
-    const scrollTop = () => window.scrollTo({ top: 0, left: 0, behavior: "auto" });
-    scrollTop();
-    const raf = requestAnimationFrame(scrollTop);
-    const t = setTimeout(scrollTop, 60);
+    const alignTopStrip = () => {
+      const el = document.querySelector(".top-nav-wrap");
+      if (el) {
+        // sticky 상태를 피하기 위해 element의 offsetTop 기준으로 스크롤한다.
+        // getBoundingClientRect는 sticky가 적용된 뒤의 위치라 부정확할 수 있음.
+        const rect = el.getBoundingClientRect();
+        const y = rect.top + window.scrollY;
+        // 살짝 여유를 두어 상단 경계가 잘리지 않도록 한다.
+        window.scrollTo({ top: Math.max(0, y - 2), left: 0, behavior: "auto" });
+      } else {
+        window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+      }
+    };
+    // 1) 커밋 직후 즉시, 2) 페인트 후, 3) 지연 로드 이후에도 다시 한 번 보정
+    alignTopStrip();
+    const raf = requestAnimationFrame(alignTopStrip);
+    const t = setTimeout(alignTopStrip, 80);
     return () => {
       cancelAnimationFrame(raf);
       clearTimeout(t);
