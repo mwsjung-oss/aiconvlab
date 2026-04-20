@@ -1,13 +1,12 @@
-import { useCallback, useEffect, useState } from "react";
-import ExperimentSidebar from "./ExperimentSidebar.jsx";
+import { Children, useCallback, useEffect, useState } from "react";
 import ExperimentResultsPanel from "./ExperimentResultsPanel.jsx";
 
 /** 리사이저 한계·기본값 (모두 px). Cursor처럼 사용자 조정 후 영속화한다. */
 const SIDEBAR_W_KEY = "ailab_exp_sidebar_w";
 const RESULTS_W_KEY = "ailab_exp_results_w";
-const SIDEBAR_MIN = 180;
-const SIDEBAR_MAX = 480;
-const SIDEBAR_DEFAULT = 260;
+const SIDEBAR_MIN = 240;
+const SIDEBAR_MAX = 560;
+const SIDEBAR_DEFAULT = 340;
 const RESULTS_MIN = 220;
 const RESULTS_MAX = 640;
 const RESULTS_DEFAULT = 340;
@@ -39,23 +38,21 @@ function writeStoredWidth(key, value) {
 }
 
 /**
- * Colab 스타일 3열(+리사이즈 핸들): 좌 컨텍스트 · 중앙(에이전트+단계 폼) · 우 산출물.
+ * 3열(+리사이즈 핸들) 레이아웃:
+ *   좌(AI Agent 대화창) · 중앙(단계별 실행 폼) · 우(산출물)
  * 데스크톱(>=1100px)에서 좌/우 패널 경계를 마우스로 드래그하여 폭을 조정할 수 있다.
+ *
+ * children으로 [<좌: AiChatPage/>, <중앙: 실행 스테이지 div/>] 2개를 순서대로 전달받는다.
  */
 export default function ExperimentWorkbenchLayout({
-  activeWorkflowStep,
-  onSelectStep,
-  currentProjectId,
-  currentProjectName,
-  ownerLabel,
-  modelLabel,
-  datasets,
-  history,
   sidebarCollapsed,
   onSidebarCollapsedChange,
   resultsPanelProps,
   children,
 }) {
+  const childArr = Children.toArray(children);
+  const leftPanel = childArr[0] ?? null;
+  const centerPanel = childArr[1] ?? null;
   const resultsCollapsed = !!resultsPanelProps?.resultsCollapsed;
   const sidebarActuallyCollapsed = !!sidebarCollapsed;
 
@@ -176,25 +173,37 @@ export default function ExperimentWorkbenchLayout({
   return (
     <div className="experiment-workbench-root">
       <div className={containerClass} style={gridStyle}>
-        <ExperimentSidebar
-          collapsed={sidebarCollapsed}
-          onToggleCollapsed={() =>
-            onSidebarCollapsedChange?.(!sidebarCollapsed)
+        <div
+          className={
+            sidebarActuallyCollapsed
+              ? "experiment-left-panel experiment-left-panel--collapsed"
+              : "experiment-left-panel"
           }
-          activeWorkflowStep={activeWorkflowStep}
-          onSelectStep={onSelectStep}
-          currentProjectId={currentProjectId}
-          currentProjectName={currentProjectName}
-          ownerLabel={ownerLabel}
-          modelLabel={modelLabel}
-          datasets={datasets}
-          history={history}
-        />
+          aria-label="AI Agent 대화창"
+        >
+          <div className="experiment-left-panel-header">
+            <span className="experiment-left-panel-title">AI Agent</span>
+            <button
+              type="button"
+              className="experiment-left-panel-collapse-btn"
+              onClick={() =>
+                onSidebarCollapsedChange?.(!sidebarCollapsed)
+              }
+              title={sidebarActuallyCollapsed ? "펼치기" : "접기"}
+              aria-label={sidebarActuallyCollapsed ? "펼치기" : "접기"}
+            >
+              {sidebarActuallyCollapsed ? "›" : "‹"}
+            </button>
+          </div>
+          {!sidebarActuallyCollapsed && (
+            <div className="experiment-left-panel-body">{leftPanel}</div>
+          )}
+        </div>
         <div
           className="experiment-resize-handle experiment-resize-handle--left"
           role="separator"
           aria-orientation="vertical"
-          aria-label="컨텍스트 패널 폭 조정 (←/→ 키로 조정, Home으로 초기화)"
+          aria-label="AI Agent 패널 폭 조정 (←/→ 키로 조정, Home으로 초기화)"
           aria-valuenow={sidebarActuallyCollapsed ? 52 : sidebarWidth}
           aria-valuemin={SIDEBAR_MIN}
           aria-valuemax={SIDEBAR_MAX}
@@ -206,7 +215,7 @@ export default function ExperimentWorkbenchLayout({
           onKeyDown={sidebarActuallyCollapsed ? undefined : handleKeyDown("left")}
           title="드래그하여 폭 조정 · 더블클릭으로 초기화"
         />
-        <div className="experiment-workbench-center">{children}</div>
+        <div className="experiment-workbench-center">{centerPanel}</div>
         <div
           className="experiment-resize-handle experiment-resize-handle--right"
           role="separator"
@@ -235,11 +244,11 @@ export default function ExperimentWorkbenchLayout({
           className="btn btn-secondary"
           onClick={() =>
             document
-              .querySelector(".experiment-sidebar")
+              .querySelector(".experiment-left-panel")
               ?.scrollIntoView({ behavior: "smooth", block: "start" })
           }
         >
-          컨텍스트
+          AI Agent
         </button>
         <button
           type="button"

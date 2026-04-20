@@ -966,12 +966,41 @@ export default function App() {
             onExport={() => setCurrentPage("reports")}
             childrenSubNav={
               <>
-                {activeWorkflowStep && (
-                  <p className="workflow-step-hint">
-                    {WORKFLOW_STEPS.find((s) => s.id === activeWorkflowStep)
-                      ?.hint}
-                  </p>
-                )}
+                {/* 6단계 워크플로 가로 내비게이션 (상단 스트립 바로 아래) */}
+                <div className="top-nav-row top-nav-row--workflow-primary">
+                  <div className="experiment-step-nav" role="tablist" aria-label="실험 단계">
+                    {WORKFLOW_STEPS.map((step, idx) => {
+                      const isActive = activeWorkflowStep === step.id;
+                      return (
+                        <button
+                          key={step.id}
+                          type="button"
+                          role="tab"
+                          aria-selected={isActive}
+                          className={
+                            isActive
+                              ? "experiment-step-tab experiment-step-tab--active"
+                              : "experiment-step-tab"
+                          }
+                          onClick={() => handleWorkbenchStepSelect(step.id)}
+                          title={step.hint}
+                        >
+                          <span className="experiment-step-tab-num">
+                            {idx + 1}
+                          </span>
+                          <span className="experiment-step-tab-labels">
+                            <span className="experiment-step-tab-ko">
+                              {step.label}
+                            </span>
+                            <span className="experiment-step-tab-en">
+                              {step.labelEn}
+                            </span>
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
                 {activeWorkflowStep &&
                   WORKFLOW_SUB_PAGES[activeWorkflowStep] && (
                     <div className="top-nav-row top-nav-row--workflow-sub">
@@ -1074,14 +1103,6 @@ export default function App() {
       {experimentShell && (
         <div className="experiment-workspace-outer">
           <ExperimentWorkbenchLayout
-            activeWorkflowStep={activeWorkflowStep}
-            onSelectStep={handleWorkbenchStepSelect}
-            currentProjectId={currentProjectId}
-            currentProjectName={currentProjectName}
-            ownerLabel={user?.email || ""}
-            modelLabel={experimentModelLabel}
-            datasets={datasets}
-            history={history}
             sidebarCollapsed={experimentSidebarCollapsed}
             onSidebarCollapsedChange={setExperimentSidebarCollapsed}
             resultsPanelProps={{

@@ -653,6 +653,114 @@
   width: 6.5rem;
 }
 
+/* ---------- 6단계 실험 워크플로 가로 내비 ---------- */
+.top-nav-row--workflow-primary {
+  padding: 0.35rem 0;
+  border-top: 1px solid rgba(148, 163, 184, 0.18);
+  border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+.experiment-step-nav {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 0.35rem;
+  width: 100%;
+}
+
+.experiment-step-tab {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.4rem 0.55rem;
+  background: rgba(15, 23, 42, 0.35);
+  border: 1px solid rgba(148, 163, 184, 0.22);
+  border-radius: 8px;
+  color: var(--muted);
+  cursor: pointer;
+  text-align: left;
+  transition:
+    background 0.15s ease,
+    border-color 0.15s ease,
+    color 0.15s ease,
+    transform 0.15s ease;
+  min-width: 0;
+}
+
+.experiment-step-tab:hover {
+  background: rgba(56, 189, 248, 0.08);
+  border-color: rgba(56, 189, 248, 0.4);
+  color: rgb(226, 232, 240);
+}
+
+.experiment-step-tab--active {
+  background: linear-gradient(
+    180deg,
+    rgba(56, 189, 248, 0.22),
+    rgba(56, 189, 248, 0.08)
+  );
+  border-color: rgba(56, 189, 248, 0.7);
+  color: rgb(226, 232, 240);
+  box-shadow: 0 1px 0 rgba(56, 189, 248, 0.2);
+}
+
+.experiment-step-tab-num {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  border-radius: 50%;
+  background: rgba(148, 163, 184, 0.18);
+  color: rgb(226, 232, 240);
+}
+
+.experiment-step-tab--active .experiment-step-tab-num {
+  background: rgba(56, 189, 248, 0.85);
+  color: rgb(2, 6, 23);
+}
+
+.experiment-step-tab-labels {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.15;
+}
+
+.experiment-step-tab-ko {
+  font-size: 0.8rem;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.experiment-step-tab-en {
+  font-size: 0.68rem;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 1024px) {
+  .experiment-step-nav {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 640px) {
+  .experiment-step-nav {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .experiment-step-tab-en {
+    display: none;
+  }
+}
+
 @media (max-width: 720px) {
   .workflow-progress-item {
     min-width: calc(50% - 0.25rem);
@@ -1957,7 +2065,7 @@ th {
 }
 
 /* 자식 요소 위치를 5-col 그리드에 명시적으로 고정 (태블릿/모바일에선 media query로 덮어씀) */
-.experiment-workbench > .experiment-sidebar {
+.experiment-workbench > .experiment-left-panel {
   grid-column: 1;
   grid-row: 1;
 }
@@ -2054,6 +2162,83 @@ th {
   min-width: 0;
   border-right: 1px solid rgba(148, 163, 184, 0.28);
   background: rgba(15, 23, 42, 0.45);
+}
+
+/* ---------- 좌측 AI Agent 대화 패널 (sidebar 대체) ---------- */
+.experiment-left-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  border-right: 1px solid rgba(148, 163, 184, 0.28);
+  background: rgba(15, 23, 42, 0.45);
+}
+
+.experiment-left-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.35rem;
+  padding: 0.55rem 0.7rem;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.18);
+  background: rgba(15, 23, 42, 0.55);
+}
+
+.experiment-left-panel-title {
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.experiment-left-panel-collapse-btn {
+  padding: 0.2rem 0.45rem;
+  font-size: 0.85rem;
+  line-height: 1;
+  background: transparent;
+  border: 1px solid rgba(148, 163, 184, 0.3);
+  color: var(--muted);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.experiment-left-panel-collapse-btn:hover {
+  background: rgba(56, 189, 248, 0.1);
+  color: rgb(226, 232, 240);
+}
+
+.experiment-left-panel-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.experiment-left-panel-body > .ai-chat-page {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.experiment-left-panel--collapsed {
+  width: 52px;
+  min-width: 52px;
+  max-width: 52px;
+}
+
+.experiment-left-panel--collapsed .experiment-left-panel-header {
+  flex-direction: column;
+  padding: 0.45rem 0.25rem;
+}
+
+.experiment-left-panel--collapsed .experiment-left-panel-title {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  font-size: 0.7rem;
 }
 
 .experiment-sidebar-inner {
@@ -2308,48 +2493,39 @@ th {
   min-height: 0;
   border-right: 1px solid rgba(148, 163, 184, 0.22);
   background: rgba(15, 23, 42, 0.25);
+  overflow: hidden;
 }
 
-.experiment-workbench-center > .ai-chat-page {
-  flex: 1.25 1 auto;
+/* 좌측 패널에 놓인 AI 채팅: 높이 꽉 채우고 내부 스크롤 */
+.experiment-left-panel-body > .ai-chat-page {
+  flex: 1 1 auto;
   width: 100%;
   max-width: none;
-  /* 헤더(~80px) + 칩(~34px) + thread(4줄 ≥120px) + 툴바(~36px) + 입력row(~70px)
-     = 약 340px 이상 확보해야 thread가 항상 4줄 이상 보인다. */
   min-height: 340px;
   max-height: none;
   display: flex;
   flex-direction: column;
   border-radius: 0;
   border: none;
-  border-bottom: 1px solid rgba(148, 163, 184, 0.22);
   margin: 0;
 }
 
-.experiment-workbench-center > .ai-chat-page .ai-chat-thread {
+.experiment-left-panel-body > .ai-chat-page .ai-chat-thread {
   flex: 1 1 auto;
-  /* experiment workbench 중앙 컬럼에서도 최소 4줄 확보 */
   min-height: max(140px, var(--ai-chat-thread-min-lines));
   max-height: none;
 }
 
-/* thread가 항상 4줄 이상 보이도록, 다른 영역은 축소 금지 */
-.experiment-workbench-center > .ai-chat-page > .ai-chat-header,
-.experiment-workbench-center > .ai-chat-page > .ai-chat-quick-chips,
-.experiment-workbench-center > .ai-chat-page > .ai-chat-workbench-toolbar,
-.experiment-workbench-center > .ai-chat-page > .ai-chat-input-row {
+.experiment-left-panel-body > .ai-chat-page > .ai-chat-header,
+.experiment-left-panel-body > .ai-chat-page > .ai-chat-quick-chips,
+.experiment-left-panel-body > .ai-chat-page > .ai-chat-workbench-toolbar,
+.experiment-left-panel-body > .ai-chat-page > .ai-chat-input-row {
   flex-shrink: 0;
 }
 
-/* 뷰포트가 작아 AI 패널이 340px 이상 확보되지 못하는 경우,
-   main-stage를 줄이고 그래도 부족하면 center 컬럼을 내부 스크롤로 전환 */
-.experiment-workbench-center {
-  overflow-y: auto;
-}
-
 .experiment-main-stage {
-  flex: 1 1 0;
-  min-height: 180px;
+  flex: 1 1 auto;
+  min-height: 0;
   overflow: auto;
   margin: 0;
   border-radius: 0;
@@ -2792,7 +2968,7 @@ th {
     grid-template-rows: minmax(240px, auto) minmax(200px, 34vh);
   }
 
-  .experiment-workbench > .experiment-sidebar {
+  .experiment-workbench > .experiment-left-panel {
     grid-column: 1;
     grid-row: 1 / -1;
   }
@@ -2813,7 +2989,7 @@ th {
     display: none;
   }
 
-  .experiment-workbench-center > .ai-chat-page {
+  .experiment-left-panel-body > .ai-chat-page {
     flex: 1.1 1 0;
     min-height: 220px;
     max-height: none;
@@ -2854,7 +3030,7 @@ th {
     grid-template-rows: none !important;
   }
 
-  .experiment-sidebar {
+  .experiment-left-panel {
     border-right: none;
     border-bottom: 1px solid rgba(148, 163, 184, 0.22);
     max-height: 45vh;
@@ -2869,7 +3045,7 @@ th {
     display: none;
   }
 
-  .experiment-workbench-center > .ai-chat-page {
+  .experiment-left-panel-body > .ai-chat-page {
     flex: 1 1 auto;
     min-height: 240px;
     max-height: none;
