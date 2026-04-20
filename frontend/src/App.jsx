@@ -935,6 +935,10 @@ export default function App() {
         <div className="top-nav-wrap">
           <ExperimentTopStrip
             currentProjectSelectValue={currentProjectSelectValue}
+            currentProjectName={currentProjectName}
+            currentProjectId={
+              projectSelectionLockedEmpty ? null : currentProjectId
+            }
             onProjectChange={handleWorkflowProjectChange}
             selectableProjects={selectableProjects}
             onNewProject={() => void openExperimentWorkspace({ startNew: true })}
