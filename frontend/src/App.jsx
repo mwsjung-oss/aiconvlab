@@ -159,7 +159,8 @@ export default function App() {
   const [experimentWorkflowOpen, setExperimentWorkflowOpen] = useState(false);
   const [experimentEntryOpen, setExperimentEntryOpen] = useState(false);
   const [projectsAutoStartToken, setProjectsAutoStartToken] = useState(0);
-  /** Experiment 워크플로를 열 때 스크롤이 맨 위로 붙는 것을 막기 위한 복원 값 */
+  /** Experiment 워크플로 진입 시 상단 스트립(프로젝트/과제/학습 모델/상태/액션)이
+   *  항상 보이도록 스크롤을 맨 위로 정렬한다. 이전 스크롤 위치 복원은 하지 않는다. */
   const experimentScrollRestoreY = useRef(null);
   /** AI 채팅 프리셋 (overview | project | data | model | insights) */
   const [aiChatPreset, setAiChatPreset] = useState("overview");
@@ -172,10 +173,10 @@ export default function App() {
 
   useLayoutEffect(() => {
     if (!experimentWorkflowOpen) return;
-    if (experimentScrollRestoreY.current == null) return;
-    const y = experimentScrollRestoreY.current;
+    // 진입 시 상단 스트립(프로젝트/과제/학습 모델/실행 상태/액션)이 반드시
+    // 노출되도록 항상 최상단으로 스크롤. 이전 페이지의 스크롤 위치는 복원하지 않는다.
     experimentScrollRestoreY.current = null;
-    window.scrollTo({ top: y, left: 0, behavior: "auto" });
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
   }, [experimentWorkflowOpen]);
 
   const [datasets, setDatasets] = useState([]);
@@ -361,13 +362,10 @@ export default function App() {
       void setActiveProject(null);
       setProjectsAutoStartToken((v) => v + 1);
     }
-    if (!experimentWorkflowOpen && typeof window !== "undefined") {
-      experimentScrollRestoreY.current = window.scrollY;
-    }
     setExperimentEntryOpen(false);
     setExperimentWorkflowOpen(true);
     setCurrentPage("projects");
-  }, [experimentWorkflowOpen, setActiveProject]);
+  }, [setActiveProject]);
 
   const openExperimentEntryPrompt = useCallback(() => {
     // 어떤 화면에서 눌러도 동일하게 선택 모달이 보이도록 진입 상태를 표준화합니다.
