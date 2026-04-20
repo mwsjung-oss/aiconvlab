@@ -1,5 +1,10 @@
 import { Children, useCallback, useEffect, useState } from "react";
 import ExperimentResultsPanel from "./ExperimentResultsPanel.jsx";
+import {
+  AI_PROVIDER_OPTIONS,
+  readStoredAiProvider,
+  writeStoredAiProvider,
+} from "../../api/aiProviderPref.js";
 
 /** 리사이저 한계·기본값 (모두 px). Cursor처럼 사용자 조정 후 영속화한다. */
 const SIDEBAR_W_KEY = "ailab_exp_sidebar_w";
@@ -53,6 +58,19 @@ export default function ExperimentWorkbenchLayout({
   const childArr = Children.toArray(children);
   const leftPanel = childArr[0] ?? null;
   const centerPanel = childArr[1] ?? null;
+
+  // AI Agent 모델 선택 (AiChatPage와 localStorage + 커스텀 이벤트로 동기화)
+  const [aiProvider, setAiProviderState] = useState(() => readStoredAiProvider());
+  useEffect(() => {
+    const sync = () => setAiProviderState(readStoredAiProvider());
+    window.addEventListener("ailab-ai-provider-change", sync);
+    return () => window.removeEventListener("ailab-ai-provider-change", sync);
+  }, []);
+  const handleAiProviderChange = useCallback((e) => {
+    const v = e.target.value;
+    setAiProviderState(v);
+    writeStoredAiProvider(v);
+  }, []);
   const resultsCollapsed = !!resultsPanelProps?.resultsCollapsed;
   const sidebarActuallyCollapsed = !!sidebarCollapsed;
 
@@ -183,6 +201,26 @@ export default function ExperimentWorkbenchLayout({
         >
           <div className="experiment-left-panel-header">
             <span className="experiment-left-panel-title">AI Agent</span>
+            {!sidebarActuallyCollapsed && (
+              <label
+                className="experiment-left-panel-provider"
+                title="AI 모델(백엔드) 선택"
+              >
+                <span className="experiment-left-panel-provider-label">모델</span>
+                <select
+                  className="experiment-left-panel-provider-select"
+                  value={aiProvider}
+                  onChange={handleAiProviderChange}
+                  aria-label="AI 모델 선택"
+                >
+                  {AI_PROVIDER_OPTIONS.map((o) => (
+                    <option key={o.value} value={o.value}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
             <button
               type="button"
               className="experiment-left-panel-collapse-btn"

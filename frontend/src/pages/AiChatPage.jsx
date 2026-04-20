@@ -429,48 +429,43 @@ export default function AiChatPage({
               : "ai-chat-header"
         }
       >
-        <div className="ai-chat-header-titles">
-          <h2
-            className="ai-chat-title-h2"
-            style={{ margin: 0 }}
-            title={useSidebarRules ? AI_AGENT_PANEL_TITLE : undefined}
-          >
-            {isWorkbench
-              ? AI_AGENT_PANEL_TITLE
-              : isSidebar
-                ? AI_AGENT_PANEL_TITLE
-                : cfg.title}
-          </h2>
-          {isWorkbench && (
-            <p className="hint ai-chat-workbench-role" style={{ margin: "0.15rem 0 0" }}>
-              <strong>{stepDef.label}</strong> · <em>{stepDef.labelEn}</em> — 단계 맞춤
-              가이드가 아래 스레드에 표시됩니다.
-            </p>
-          )}
-          {!isSidebar && !isWorkbench && (
-            <p className="hint ai-chat-phase-hint">
-              상단 <strong>AI 실습</strong> 메뉴에서 단계를 바꾸면 이 화면 안내가 바뀝니다. 대화형으로 프로젝트·데이터·모델·결과를
-              함께 다듬을 수 있습니다.
-            </p>
-          )}
-        </div>
-        <div className="ai-chat-provider-box">
-          <label className="ai-chat-provider-label">
-            모델
-            <select
-              className="ai-chat-provider-select"
-              value={aiProvider}
-              onChange={(e) => setAiProvider(e.target.value)}
-              disabled={loading}
+        {!isWorkbench && (
+          <div className="ai-chat-header-titles">
+            <h2
+              className="ai-chat-title-h2"
+              style={{ margin: 0 }}
+              title={useSidebarRules ? AI_AGENT_PANEL_TITLE : undefined}
             >
-              {AI_PROVIDER_OPTIONS.map((o) => (
-                <option key={o.value} value={o.value}>
-                  {o.label}
-                </option>
-              ))}
-            </select>
-          </label>
-        </div>
+              {isSidebar ? AI_AGENT_PANEL_TITLE : cfg.title}
+            </h2>
+            {!isSidebar && (
+              <p className="hint ai-chat-phase-hint">
+                상단 <strong>AI 실습</strong> 메뉴에서 단계를 바꾸면 이 화면 안내가
+                바뀝니다. 대화형으로 프로젝트·데이터·모델·결과를 함께 다듬을 수
+                있습니다.
+              </p>
+            )}
+          </div>
+        )}
+        {!isWorkbench && (
+          <div className="ai-chat-provider-box">
+            <label className="ai-chat-provider-label">
+              모델
+              <select
+                className="ai-chat-provider-select"
+                value={aiProvider}
+                onChange={(e) => setAiProvider(e.target.value)}
+                disabled={loading}
+              >
+                {AI_PROVIDER_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+        )}
       </div>
       {providerMeta && !isSidebar && !isWorkbench && (
         <p className="hint ai-chat-provider-hint" aria-live="polite">
