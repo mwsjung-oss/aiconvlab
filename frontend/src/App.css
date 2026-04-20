@@ -1875,7 +1875,8 @@ th {
 
 .ai-chat-page--sidebar .ai-chat-thread {
   flex: 1 1 auto;
-  min-height: 0;
+  /* 사이드바에서도 최소 4줄은 확보 (공통 변수 사용) */
+  min-height: var(--ai-chat-thread-min-lines);
   max-height: min(92vh, 1320px);
   padding: 0.45rem 0.5rem;
   overflow-y: auto;
@@ -2215,10 +2216,12 @@ th {
 }
 
 .experiment-workbench-center > .ai-chat-page {
-  flex: 1.25 1 0;
+  flex: 1.25 1 auto;
   width: 100%;
   max-width: none;
-  min-height: 240px;
+  /* 헤더(~80px) + 칩(~34px) + thread(4줄 ≥120px) + 툴바(~36px) + 입력row(~70px)
+     = 약 340px 이상 확보해야 thread가 항상 4줄 이상 보인다. */
+  min-height: 340px;
   max-height: none;
   display: flex;
   flex-direction: column;
@@ -2230,8 +2233,23 @@ th {
 
 .experiment-workbench-center > .ai-chat-page .ai-chat-thread {
   flex: 1 1 auto;
-  min-height: 140px;
+  /* experiment workbench 중앙 컬럼에서도 최소 4줄 확보 */
+  min-height: max(140px, var(--ai-chat-thread-min-lines));
   max-height: none;
+}
+
+/* thread가 항상 4줄 이상 보이도록, 다른 영역은 축소 금지 */
+.experiment-workbench-center > .ai-chat-page > .ai-chat-header,
+.experiment-workbench-center > .ai-chat-page > .ai-chat-quick-chips,
+.experiment-workbench-center > .ai-chat-page > .ai-chat-workbench-toolbar,
+.experiment-workbench-center > .ai-chat-page > .ai-chat-input-row {
+  flex-shrink: 0;
+}
+
+/* 뷰포트가 작아 AI 패널이 340px 이상 확보되지 못하는 경우,
+   main-stage를 줄이고 그래도 부족하면 center 컬럼을 내부 스크롤로 전환 */
+.experiment-workbench-center {
+  overflow-y: auto;
 }
 
 .experiment-main-stage {
@@ -2916,9 +2934,15 @@ th {
   cursor: pointer;
 }
 
+/* AI Agent 답변 영역은 어떤 레이아웃에서도 최소 4줄은 표시되도록 보장한다.
+   (line-height 1.55 × 4줄 + 상하 padding 1.5rem ≈ 7.7rem → 여유 있게 7.5rem) */
+:root {
+  --ai-chat-thread-min-lines: 7.5rem;
+}
+
 .ai-chat-thread {
   flex: 1 1 auto;
-  min-height: 0;
+  min-height: var(--ai-chat-thread-min-lines);
   overflow-y: auto;
   border: 1px solid var(--border);
   border-radius: 12px;
@@ -2927,13 +2951,14 @@ th {
 }
 
 .ai-chat-page:not(.ai-chat-page--sidebar) .ai-chat-thread {
-  min-height: 12rem;
+  min-height: max(12rem, var(--ai-chat-thread-min-lines));
   max-height: min(52vh, 560px);
 }
 
-/* Experiment workbench에서는 입력창 고정을 위해 thread 높이 제한을 해제 */
+/* Experiment workbench에서는 입력창 고정을 위해 thread 최대 높이는 해제하되,
+   최소 4줄은 반드시 확보한다. */
 .app--experiment-shell .ai-chat-page--workbench.ai-chat-page .ai-chat-thread {
-  min-height: 0 !important;
+  min-height: var(--ai-chat-thread-min-lines) !important;
   max-height: none !important;
 }
 
