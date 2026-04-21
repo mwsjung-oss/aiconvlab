@@ -29,6 +29,8 @@ import NotebookPage from "./pages/NotebookPage";
 import SystemStatusPage from "./pages/SystemStatusPage";
 import ExperimentTopStrip from "./components/experiment/ExperimentTopStrip.jsx";
 import ExperimentWorkbenchLayout from "./components/experiment/ExperimentWorkbenchLayout.jsx";
+import ContextualAIAssist from "./components/experiment/ContextualAIAssist.jsx";
+import ExperimentDropOverlay from "./components/experiment/ExperimentDropOverlay.jsx";
 import {
   readSelectedRuntime,
   writeSelectedRuntime,
@@ -858,6 +860,74 @@ export default function App() {
     }
   }, []);
 
+  /**
+   * Phase 2a · 전역 키보드 단축키 (Experiment 쉘에서만 활성).
+   *   Alt+1..6            → 실험 단계 1~6으로 이동
+   *   Ctrl/⌘ + [          → 좌측 AI Agent 패널 토글
+   *   Ctrl/⌘ + ]          → 우측 산출물(Inspector) 패널 토글
+   *   Ctrl/⌘ + K          → 좌측 AI Agent 입력창 포커스 (검색 부재 → 챗 입력 우선)
+   *   Ctrl/⌘ + S          → 브라우저 저장 차단 + 토스트(자동 저장 안내)
+   *
+   * 원칙: <input>/<textarea>/<select>/[contenteditable]에 포커스가 있을 땐 Alt+숫자 외
+   *       모든 키를 그대로 흘려 보냄(입력 방해 금지). Ctrl+S만 페이지 저장 차단.
+   */
+  const [kbToast, setKbToast] = useState(null);
+  useEffect(() => {
+    if (!experimentShell) return undefined;
+    const showToast = (msg) => {
+      setKbToast({ id: Date.now(), msg });
+      window.setTimeout(
+        () => setKbToast((t) => (t && Date.now() - t.id > 1800 ? null : t)),
+        2000
+      );
+    };
+    const isTypingInField = (t) => {
+      if (!t) return false;
+      const tag = (t.tagName || "").toLowerCase();
+      if (tag === "input" || tag === "textarea" || tag === "select") return true;
+      if (t.getAttribute && t.getAttribute("contenteditable") === "true")
+        return true;
+      return false;
+    };
+    const onKey = (e) => {
+      const mod = e.ctrlKey || e.metaKey;
+      const inField = isTypingInField(e.target);
+      if (mod && e.key === "s") {
+        e.preventDefault();
+        showToast("자동 저장이 활성화되어 있습니다");
+        return;
+      }
+      if (mod && e.key === "[") {
+        e.preventDefault();
+        setExperimentSidebarCollapsed((v) => !v);
+        return;
+      }
+      if (mod && e.key === "]") {
+        e.preventDefault();
+        setExperimentResultsCollapsed((v) => !v);
+        return;
+      }
+      if (mod && (e.key === "k" || e.key === "K")) {
+        e.preventDefault();
+        const el = document.querySelector(".ai-chat-input");
+        if (el && typeof el.focus === "function") el.focus();
+        return;
+      }
+      if (e.altKey && !e.ctrlKey && !e.metaKey && /^[1-6]$/.test(e.key)) {
+        e.preventDefault();
+        const step = WORKFLOW_STEPS[Number(e.key) - 1];
+        if (step) {
+          handleWorkbenchStepSelect(step.id);
+          showToast(`단계 ${e.key} · ${step.label}`);
+        }
+        return;
+      }
+      if (inField) return;
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [experimentShell, handleWorkbenchStepSelect]);
+
   return (
     <div className={experimentShell ? "app app--experiment-shell" : "app"}>
       <header className="lab-hero">
@@ -1118,6 +1188,21 @@ export default function App() {
       )}
 
       {experimentShell && (
+        <ExperimentDropOverlay
+          enabled
+          loading={uploadLoading}
+          onUpload={handleUpload}
+          onNavigateToData={() => setCurrentPage("upload")}
+        />
+      )}
+
+      {experimentShell && kbToast && (
+        <div className="experiment-kb-toast" role="status" aria-live="polite">
+          {kbToast.msg}
+        </div>
+      )}
+
+      {experimentShell && (
         <div className="experiment-workspace-outer">
           <ExperimentWorkbenchLayout
             sidebarCollapsed={experimentSidebarCollapsed}
@@ -1159,6 +1244,10 @@ export default function App() {
               role="main"
               aria-label="단계 작업 영역"
             >
+              <ContextualAIAssist
+                activeStepId={activeWorkflowStep}
+                onRequestPreset={(preset) => setAiChatPreset(preset)}
+              />
               {(currentPage === "projects" || currentPage === "aichat") && (
                 <ProjectsPage
                   onRefresh={async () => {

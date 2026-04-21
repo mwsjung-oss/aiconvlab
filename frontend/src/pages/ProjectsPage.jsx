@@ -171,15 +171,39 @@ export default function ProjectsPage({
   const [dataGuidePayload, setDataGuidePayload] = useState(null);
   const [dataGuideErr, setDataGuideErr] = useState(null);
 
+  /**
+   * Phase 2a · 오토세이브 + 미저장 표시
+   *
+   * 이전: briefTitle/briefContent 변경 시 즉시 sessionStorage에 저장 → UX 상 "저장"
+   *       개념이 눈에 보이지 않았음.
+   * 이후: 입력 감지 → 상태를 "typing"(미저장)으로 전환 → 500ms 디바운스 후 실제
+   *       저장 + "saved" 상태로 전이 + 타임스탬프 기록.
+   *
+   * 최초 마운트 1회는 저장 건너뜀(기존 복원값을 그대로 저장하지 않기 위해).
+   */
+  const [briefSaveStatus, setBriefSaveStatus] = useState("idle");
+  const [briefSavedAt, setBriefSavedAt] = useState(null);
+  const briefFirstRunRef = useRef(true);
+
   useEffect(() => {
-    try {
-      sessionStorage.setItem(
-        BRIEF_DRAFT_KEY,
-        JSON.stringify({ title: briefTitle, content: briefContent })
-      );
-    } catch {
-      /* ignore */
+    if (briefFirstRunRef.current) {
+      briefFirstRunRef.current = false;
+      return undefined;
     }
+    setBriefSaveStatus("typing");
+    const t = setTimeout(() => {
+      try {
+        sessionStorage.setItem(
+          BRIEF_DRAFT_KEY,
+          JSON.stringify({ title: briefTitle, content: briefContent })
+        );
+        setBriefSavedAt(new Date());
+        setBriefSaveStatus("saved");
+      } catch {
+        setBriefSaveStatus("error");
+      }
+    }, 500);
+    return () => clearTimeout(t);
   }, [briefTitle, briefContent]);
 
   useEffect(() => {
@@ -611,6 +635,24 @@ export default function ProjectsPage({
           </p>
         )}
         <div className="projects-brief-compose">
+          <div className="projects-brief-autosave" aria-live="polite">
+            {briefSaveStatus === "typing" && (
+              <span className="projects-brief-autosave-pill projects-brief-autosave-pill--typing">
+                <span className="projects-brief-autosave-dot" /> 입력 중…
+              </span>
+            )}
+            {briefSaveStatus === "saved" && briefSavedAt && (
+              <span className="projects-brief-autosave-pill projects-brief-autosave-pill--saved">
+                ✓ 자동 저장됨 ·{" "}
+                {briefSavedAt.toLocaleTimeString("ko-KR", { hour12: false })}
+              </span>
+            )}
+            {briefSaveStatus === "error" && (
+              <span className="projects-brief-autosave-pill projects-brief-autosave-pill--error">
+                ⚠ 자동 저장 실패
+              </span>
+            )}
+          </div>
           <label className="projects-brief-field" htmlFor="brief-title">
             제목
             <div className="projects-brief-title-wrap">

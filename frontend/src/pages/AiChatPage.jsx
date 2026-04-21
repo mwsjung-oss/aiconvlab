@@ -297,6 +297,30 @@ export default function AiChatPage({
     return () => window.removeEventListener("ailab-inject-assistant", onInject);
   }, [useSidebarRules]);
 
+  /**
+   * Phase 2a · Contextual AI Assist 훅:
+   * 외부(중앙 스테이지의 컨텍스트 지원 바)에서 `ailab-ai-chat-insert-text`
+   * 이벤트로 추천 질문 텍스트를 주입할 수 있다.
+   *   - detail.text: 입력창에 채울 프롬프트(필수)
+   *   - detail.submit: true면 즉시 전송(선택, 기본 false)
+   *   - detail.preset: 선택적 프리셋 요청(현 AiChatPage는 상위에서 key로 갱신하므로
+   *     이 이벤트에서는 text만 처리하고 preset은 상위가 별도 핸들링)
+   */
+  useEffect(() => {
+    function onInsertText(e) {
+      const text = e.detail?.text;
+      if (typeof text !== "string" || !text.trim()) return;
+      setInput(text);
+      requestAnimationFrame(() => {
+        const el = document.querySelector(".ai-chat-input");
+        if (el && typeof el.focus === "function") el.focus();
+      });
+    }
+    window.addEventListener("ailab-ai-chat-insert-text", onInsertText);
+    return () =>
+      window.removeEventListener("ailab-ai-chat-insert-text", onInsertText);
+  }, []);
+
   const runChatFromMessages = useCallback(
     async (nextMessages) => {
       setErr(null);
