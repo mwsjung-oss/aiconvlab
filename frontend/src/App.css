@@ -17,10 +17,13 @@
   min-height: 0;
 }
 
-/* Experiment 워크벤치: 앱 폭 제한 해제 (헤더·다른 메뉴와 동일 토큰 유지) */
+/* Experiment 워크벤치: 앱 폭 제한 해제 + 상단 여백 최소화
+   (lab-hero 숨김 상태이므로 top-nav-wrap이 뷰포트 최상단에 딱 붙도록 top padding 제거) */
 .app.app--experiment-shell {
   max-width: none;
   width: 100%;
+  padding-top: 0;
+  padding-bottom: 0;
   padding-left: clamp(0.65rem, 1.2vw, 1.25rem);
   padding-right: clamp(0.65rem, 1.2vw, 1.25rem);
   box-sizing: border-box;
@@ -547,6 +550,96 @@
    대신 로그아웃·메인 복귀는 ExperimentTopStrip 우측 세션 클러스터에서 제공. */
 .app--experiment-shell .lab-hero {
   display: none !important;
+}
+
+/* ---------- Experiment 상단 메뉴 컴팩트화 ----------
+   아래 패널(대화·프로젝트·산출물) 가시 면적을 늘리기 위해, 상단 sticky 메뉴
+   (top-strip + 6단계 가로 내비 + 서브 내비)의 padding/gap/폰트를 축소한다. */
+.app--experiment-shell .top-nav-wrap {
+  padding: 0.15rem 0 0.1rem;
+  gap: 0.08rem;
+}
+
+.app--experiment-shell .experiment-top-strip {
+  gap: 0.2rem;
+}
+
+.app--experiment-shell .experiment-top-strip-row--primary {
+  padding: 0.22rem 0.45rem 0.26rem;
+  gap: 0.3rem 0.5rem;
+}
+
+.app--experiment-shell .experiment-top-strip-action-btn {
+  min-height: 1.7rem;
+  padding: 0.22rem 0.5rem;
+  font-size: 0.72rem;
+}
+
+.app--experiment-shell .experiment-top-strip-session-btn {
+  min-height: 1.7rem;
+  padding: 0.2rem 0.48rem;
+  font-size: 0.7rem;
+}
+
+.app--experiment-shell .workflow-project-new-btn {
+  min-height: 1.7rem !important;
+  padding: 0.22rem 0.55rem !important;
+}
+
+.app--experiment-shell .experiment-top-strip-field-label,
+.app--experiment-shell .experiment-top-strip-status-label,
+.app--experiment-shell .workflow-current-project-label {
+  font-size: 0.62rem;
+  letter-spacing: 0.04em;
+}
+
+.app--experiment-shell .top-nav-row--workflow-primary {
+  padding: 0.18rem 0;
+}
+
+.app--experiment-shell .experiment-step-nav {
+  gap: 0.25rem;
+}
+
+.app--experiment-shell .experiment-step-tab {
+  gap: 0.35rem;
+  padding: 0.24rem 0.42rem;
+}
+
+.app--experiment-shell .experiment-step-tab-num {
+  width: 1.25rem;
+  height: 1.25rem;
+  font-size: 0.68rem;
+}
+
+.app--experiment-shell .experiment-step-tab-ko {
+  font-size: 0.72rem;
+}
+
+.app--experiment-shell .experiment-step-tab-en {
+  font-size: 0.6rem;
+}
+
+.app--experiment-shell .top-nav-row--workflow-sub {
+  padding: 0.2rem 0 0.22rem;
+}
+
+.app--experiment-shell .top-nav-row-label {
+  font-size: 0.62rem;
+  padding-top: 0.12rem;
+}
+
+.app--experiment-shell .top-nav-row--workflow-sub .nav-tab {
+  padding: 0.22rem 0.5rem;
+  font-size: 0.72rem;
+}
+
+/* select/버튼 전반 높이도 살짝 축소 */
+.app--experiment-shell .experiment-top-strip-row--primary select,
+.app--experiment-shell .experiment-top-strip-row--primary input {
+  min-height: 1.75rem;
+  padding: 0.22rem 0.42rem;
+  font-size: 0.78rem;
 }
 
 /* --- 6단계 워크플로 (primary) --- */
