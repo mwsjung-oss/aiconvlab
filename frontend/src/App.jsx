@@ -30,6 +30,7 @@ import SystemStatusPage from "./pages/SystemStatusPage";
 import ExperimentTopStrip from "./components/experiment/ExperimentTopStrip.jsx";
 import ExperimentWorkbenchLayout from "./components/experiment/ExperimentWorkbenchLayout.jsx";
 import ContextualAIAssist from "./components/experiment/ContextualAIAssist.jsx";
+import ExperimentCanvas from "./components/experiment/canvas/ExperimentCanvas.jsx";
 import ExperimentDropOverlay from "./components/experiment/ExperimentDropOverlay.jsx";
 import StepProgressFooter from "./components/experiment/StepProgressFooter.jsx";
 import {
@@ -171,6 +172,20 @@ export default function App() {
   const [experimentSidebarCollapsed, setExperimentSidebarCollapsed] = useState(false);
   const [experimentResultsCollapsed, setExperimentResultsCollapsed] = useState(false);
   const [experimentResultsFullscreen, setExperimentResultsFullscreen] = useState(false);
+  /** Colab-level 노트북 캔버스 모드. 페이지 네비게이션 모드와 상호 전환 가능. */
+  const [notebookMode, setNotebookMode] = useState(() => {
+    if (typeof window === "undefined") return true;
+    const raw = window.localStorage.getItem("ailab_notebook_mode");
+    return raw === null ? true : raw === "1";
+  });
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    try {
+      window.localStorage.setItem("ailab_notebook_mode", notebookMode ? "1" : "0");
+    } catch {
+      /* ignore quota */
+    }
+  }, [notebookMode]);
   const [adminPanelOpen, setAdminPanelOpen] = useState(false);
   const [architectureOpen, setArchitectureOpen] = useState(false);
 
@@ -1321,11 +1336,43 @@ export default function App() {
               role="main"
               aria-label="단계 작업 영역"
             >
-              <ContextualAIAssist
-                activeStepId={activeWorkflowStep}
-                onRequestPreset={(preset) => setAiChatPreset(preset)}
-              />
-              {(currentPage === "projects" || currentPage === "aichat") && (
+              {notebookMode ? (
+                <ExperimentCanvas
+                  projectName={
+                    portalProjects?.find?.((p) => p.id === currentProjectId)
+                      ?.name || ""
+                  }
+                  datasetOptions={(datasets || []).map((d) => ({
+                    value: d.filename || d.id || String(d),
+                    label: d.filename || d.name || String(d),
+                  }))}
+                  onExitNotebook={() => setNotebookMode(false)}
+                />
+              ) : (
+                <>
+                  <div
+                    style={{
+                      display: "flex",
+                      justifyContent: "flex-end",
+                      marginBottom: 8,
+                    }}
+                  >
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      onClick={() => setNotebookMode(true)}
+                      title="노트북 캔버스 모드로 전환"
+                    >
+                      🧪 Notebook 모드
+                    </button>
+                  </div>
+                  <ContextualAIAssist
+                    activeStepId={activeWorkflowStep}
+                    onRequestPreset={(preset) => setAiChatPreset(preset)}
+                  />
+                </>
+              )}
+              {!notebookMode && (currentPage === "projects" || currentPage === "aichat") && (
                 <ProjectsPage
                   onRefresh={async () => {
                     await loadPortalProjects();
@@ -1336,7 +1383,7 @@ export default function App() {
                   onProjectActivated={setActiveProject}
                 />
               )}
-              {currentPage === "datasets_catalog" && (
+              {!notebookMode && currentPage === "datasets_catalog" && (
                 <DatasetsPage
                   datasets={portalDatasets}
                   onRefresh={loadPortalDatasets}
@@ -1344,7 +1391,7 @@ export default function App() {
                   currentProjectId={currentProjectId}
                 />
               )}
-              {currentPage === "upload" && (
+              {!notebookMode && currentPage === "upload" && (
                 <UploadPage
                   onUpload={handleUpload}
                   loading={uploadLoading}
@@ -1352,7 +1399,7 @@ export default function App() {
                   error={uploadErr}
                 />
               )}
-              {currentPage === "preview" && (
+              {!notebookMode && currentPage === "preview" && (
                 <PreviewPage
                   datasets={datasets}
                   selectedFile={selectedFile}
@@ -1363,7 +1410,7 @@ export default function App() {
                   onRefresh={refreshPreview}
                 />
               )}
-              {currentPage === "train" && (
+              {!notebookMode && currentPage === "train" && (
                 <TrainPage
                   datasets={datasets}
                   selectedFile={selectedFile}
@@ -1388,7 +1435,7 @@ export default function App() {
                   plotUrl={plotUrl}
                 />
               )}
-              {currentPage === "predict" && (
+              {!notebookMode && currentPage === "predict" && (
                 <PredictionPage
                   datasets={datasets}
                   models={models}
@@ -1404,7 +1451,7 @@ export default function App() {
                   predictOutputFilename={predictOutputFilename}
                 />
               )}
-              {currentPage === "results" && (
+              {!notebookMode && currentPage === "results" && (
                 <ResultsPage
                   trainResult={trainResult}
                   plotUrl={plotUrl}
@@ -1413,7 +1460,7 @@ export default function App() {
                   history={history}
                 />
               )}
-              {currentPage === "history" && (
+              {!notebookMode && currentPage === "history" && (
                 <HistoryPage
                   history={history}
                   onRefresh={loadHistory}
@@ -1427,9 +1474,9 @@ export default function App() {
                   onOpenArtifacts={() => setCurrentPage("artifacts")}
                 />
               )}
-              {currentPage === "experiments" && <ExperimentsPlatformPage />}
-              {currentPage === "notebook" && <NotebookPage />}
-              {currentPage === "reports" && (
+              {!notebookMode && currentPage === "experiments" && <ExperimentsPlatformPage />}
+              {!notebookMode && currentPage === "notebook" && <NotebookPage />}
+              {!notebookMode && currentPage === "reports" && (
                 <ReportsPage
                   history={history}
                   reportTemplates={reportTemplates}
@@ -1437,7 +1484,7 @@ export default function App() {
                   reportFiles={reportFiles}
                 />
               )}
-              {currentPage === "jobs" && (
+              {!notebookMode && currentPage === "jobs" && (
                 <JobsPage
                   jobs={jobs}
                   onRefresh={loadJobs}
