@@ -975,6 +975,12 @@ export default function App() {
             modelOptions={modelOptions}
             onCompareRuns={() => setCurrentPage("experiments")}
             onExport={() => setCurrentPage("reports")}
+            onGoMain={() => {
+              setExperimentWorkflowOpen(false);
+              setCurrentPage("dashboard");
+            }}
+            onLogout={logout}
+            userEmail={user?.email || null}
             childrenSubNav={
               <>
                 {/* 6단계 워크플로 가로 내비게이션 (상단 스트립 바로 아래) */}

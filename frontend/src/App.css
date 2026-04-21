@@ -26,6 +26,19 @@
   box-sizing: border-box;
 }
 
+/* 데스크톱(≥1100px)에서 Experiment 워크벤치는 뷰포트 한 장에 고정.
+   페이지 자체 스크롤을 막고, 내부 패널(AI Agent 스레드, 중앙 스테이지, 산출물)이
+   각자 내부에서 스크롤되도록 한다. 이로 인해 콘텐츠가 sticky 메뉴 뒤로
+   지나가는 시각적 겹침이 원천 차단된다. */
+@media (min-width: 1100px) {
+  .app.app--experiment-shell {
+    height: 100dvh;
+    min-height: 100dvh;
+    max-height: 100dvh;
+    overflow: hidden;
+  }
+}
+
 /* 상단 연구실 브랜딩 영역 */
 .lab-hero {
   margin-bottom: 1.5rem;
@@ -521,17 +534,19 @@
   position: sticky;
   top: 0;
   z-index: 40;
-  margin-bottom: 0.5rem;
+  margin-bottom: 0;
   padding: 0.3rem 0 0.25rem;
-  background: var(--bg, #0b1220);
+  /* 반투명 배경 겹침으로 콘텐츠가 비쳐 보이는 현상을 막기 위해 완전 불투명 색을
+     사용하고, 콘텐츠와 시각적으로 분리되도록 얕은 그림자를 추가한다. */
+  background: var(--bg, #1b2634);
   border-bottom: 1px solid rgba(148, 163, 184, 0.22);
+  box-shadow: 0 4px 10px -6px rgba(0, 0, 0, 0.55);
 }
 
-/* Experiment 모드에서는 상단 브랜딩 영역을 더 컴팩트하게 */
+/* Experiment 모드에서는 상단 브랜딩 영역(lab-hero)을 완전히 숨긴다.
+   대신 로그아웃·메인 복귀는 ExperimentTopStrip 우측 세션 클러스터에서 제공. */
 .app--experiment-shell .lab-hero {
-  margin-bottom: 0.4rem;
-  padding-top: 0.5rem;
-  padding-bottom: 0.4rem;
+  display: none !important;
 }
 
 /* --- 6단계 워크플로 (primary) --- */
@@ -2852,9 +2867,51 @@ th {
   font-size: 0.74rem;
 }
 
+/* --- Experiment 전용 세션 클러스터 (메인 복귀 / 이메일 / 로그아웃) --- */
+.experiment-top-strip-session {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  margin-left: 0.5rem;
+  padding-left: 0.55rem;
+  border-left: 1px solid rgba(148, 163, 184, 0.28);
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.experiment-top-strip-session-btn {
+  min-height: 2rem;
+  padding: 0.3rem 0.55rem;
+  font-size: 0.72rem;
+  border-radius: 7px;
+}
+
+.experiment-top-strip-session-btn--home {
+  font-weight: 600;
+}
+
+.experiment-top-strip-session-btn--logout {
+  color: #fecaca;
+  border-color: rgba(248, 113, 113, 0.45);
+}
+
+.experiment-top-strip-session-btn--logout:hover:not(:disabled) {
+  background: rgba(248, 113, 113, 0.12);
+  border-color: rgba(248, 113, 113, 0.7);
+}
+
+.experiment-top-strip-session-email {
+  font-size: 0.7rem;
+  color: var(--muted);
+  max-width: 12rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .experiment-top-strip .workflow-project-select {
   min-width: 0;
-  width: min(100%, 21rem);
+  width: min(100%, 25.2rem);
 }
 
 .experiment-top-strip .workflow-project-new-btn {
@@ -3015,6 +3072,13 @@ th {
   .experiment-top-strip-cluster--actions {
     grid-column: 1 / -1;
     justify-content: flex-end;
+  }
+}
+
+/* 좁은 구간에선 세션 클러스터의 이메일은 감춰 버튼만 1줄로 유지 */
+@media (max-width: 1339px) {
+  .experiment-top-strip-session-email {
+    display: none;
   }
 }
 

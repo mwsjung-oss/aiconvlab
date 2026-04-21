@@ -2,6 +2,9 @@ import RunStatusBadge from "./RunStatusBadge.jsx";
 
 /**
  * Experiment 전용 상단 스트립: 프로젝트·모델·상태·빠른 액션 + (optional) 서브 내비 슬롯
+ *
+ * Experiment 모드에서는 상단 `.lab-hero`(브랜딩/전역 탭/로그아웃) 가 CSS로 숨겨지므로,
+ * 메인 화면으로 복귀(홈/대시보드) 와 로그아웃은 이 스트립 우측의 세션 클러스터에서 처리한다.
  */
 export default function ExperimentTopStrip({
   currentProjectSelectValue,
@@ -16,6 +19,9 @@ export default function ExperimentTopStrip({
   modelOptions,
   onCompareRuns,
   onExport,
+  onGoMain,
+  onLogout,
+  userEmail,
   childrenSubNav,
 }) {
   return (
@@ -115,6 +121,42 @@ export default function ExperimentTopStrip({
           >
             Export
           </button>
+          {(onGoMain || userEmail || onLogout) && (
+            <div
+              className="experiment-top-strip-session"
+              aria-label="세션"
+            >
+              {onGoMain && (
+                <button
+                  type="button"
+                  className="btn btn-secondary experiment-top-strip-session-btn experiment-top-strip-session-btn--home"
+                  onClick={onGoMain}
+                  title="메인 화면(대시보드)으로 이동"
+                  aria-label="메인 화면으로 이동"
+                >
+                  ← 메인
+                </button>
+              )}
+              {userEmail && (
+                <span
+                  className="experiment-top-strip-session-email"
+                  title={userEmail}
+                >
+                  {userEmail}
+                </span>
+              )}
+              {onLogout && (
+                <button
+                  type="button"
+                  className="btn btn-secondary experiment-top-strip-session-btn experiment-top-strip-session-btn--logout"
+                  onClick={onLogout}
+                  title="로그아웃"
+                >
+                  로그아웃
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </div>
       {childrenSubNav ? (

@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import { apiJson } from "../api";
 import {
   AI_PROVIDER_OPTIONS,
@@ -169,6 +176,7 @@ export default function AiChatPage({
     const tip = getWorkflowStepSidebarMessage(workflowStep || "step1");
     setMessages([{ role: "assistant", content: tip }]);
     setErr(null);
+    if (threadRef.current) threadRef.current.scrollTop = 0;
   }
   function scrollToBriefPanel() {
     document
@@ -187,6 +195,8 @@ export default function AiChatPage({
     if (!useSidebarRules || !workflowStep) return;
     const tip = getWorkflowStepSidebarMessage(workflowStep);
     setMessages([{ role: "assistant", content: tip }]);
+    // 단계 전환 직후 바로 첫 줄부터 보이도록 스크롤을 맨 위로 강제한다.
+    if (threadRef.current) threadRef.current.scrollTop = 0;
   }, [useSidebarRules, workflowStep, workflowChatResetSeq]);
 
   useEffect(() => {
@@ -223,9 +233,58 @@ export default function AiChatPage({
     bottomRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
   }, [useSidebarRules]);
 
-  useEffect(() => {
+  const scrollToTop = useCallback(() => {
+    const t = threadRef.current;
+    if (!t) return;
+    // 진행 중인 smooth 스크롤을 확실히 취소하기 위해 scrollTop을 직접 설정하고,
+    // 레이아웃이 늦게 확정되는 경우(폰트 로딩·컨테이너 flex 계산)를 대비해
+    // 다음 프레임과 짧은 지연 후에도 한 번 더 보정한다.
+    t.scrollTop = 0;
+    if (typeof window !== "undefined") {
+      requestAnimationFrame(() => {
+        if (threadRef.current) threadRef.current.scrollTop = 0;
+      });
+      window.setTimeout(() => {
+        if (threadRef.current) threadRef.current.scrollTop = 0;
+      }, 60);
+      window.setTimeout(() => {
+        if (threadRef.current) threadRef.current.scrollTop = 0;
+      }, 240);
+    }
+  }, []);
+
+  // 단계 기본 안내만 떠 있는 상태(사용자 입력 전)에서는 첫 줄이 보이도록
+  // 스레드 스크롤을 맨 위로 둔다. 이후 사용자 메시지가 추가되면 자동으로
+  // 맨 아래로 스크롤되는 기존 동작을 유지한다. useLayoutEffect로 레이아웃
+  // 커밋 직후에 실행하여 기본 scrollToBottom smooth 애니메이션에 덮이지 않도록 한다.
+  useLayoutEffect(() => {
+    const hasUserMessage = messages.some((m) => m.role === "user");
+    if (!hasUserMessage && !loading) {
+      scrollToTop();
+      return;
+    }
     scrollToBottom();
-  }, [messages, loading, scrollToBottom]);
+  }, [messages, loading, scrollToBottom, scrollToTop]);
+
+  // 컨테이너 폭·높이가 변할 때(사이드바 리사이즈, 폰트 로딩 후 리플로, 창 크기 변경)
+  // 아직 사용자 입력이 없다면 스크롤을 맨 위로 재고정한다. 현재 렌더의 messages를
+  // ref 로 추적해 ResizeObserver 콜백에서 최신값을 조회한다.
+  const messagesRef = useRef(messages);
+  useEffect(() => {
+    messagesRef.current = messages;
+  }, [messages]);
+
+  useEffect(() => {
+    const t = threadRef.current;
+    if (!t || typeof ResizeObserver === "undefined") return;
+    const ro = new ResizeObserver(() => {
+      const hasUser = messagesRef.current.some((m) => m.role === "user");
+      if (hasUser) return;
+      if (threadRef.current) threadRef.current.scrollTop = 0;
+    });
+    ro.observe(t);
+    return () => ro.disconnect();
+  }, []);
 
   useEffect(() => {
     if (!useSidebarRules) return;
