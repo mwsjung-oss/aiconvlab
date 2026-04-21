@@ -31,6 +31,7 @@ import ExperimentTopStrip from "./components/experiment/ExperimentTopStrip.jsx";
 import ExperimentWorkbenchLayout from "./components/experiment/ExperimentWorkbenchLayout.jsx";
 import ContextualAIAssist from "./components/experiment/ContextualAIAssist.jsx";
 import ExperimentDropOverlay from "./components/experiment/ExperimentDropOverlay.jsx";
+import StepProgressFooter from "./components/experiment/StepProgressFooter.jsx";
 import {
   readSelectedRuntime,
   writeSelectedRuntime,
@@ -1443,6 +1444,20 @@ export default function App() {
                   focusJobId={focusJobId}
                 />
               )}
+              <StepProgressFooter
+                activeStepId={activeWorkflowStep}
+                onSelectStep={handleWorkbenchStepSelect}
+                context={{
+                  currentProjectId,
+                  datasets,
+                  trainResult,
+                  trainLoading,
+                  predictPreview,
+                  predictLoading,
+                  history,
+                  reportSummary,
+                }}
+              />
             </div>
           </ExperimentWorkbenchLayout>
         </div>
