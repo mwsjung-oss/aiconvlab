@@ -10,6 +10,9 @@ backend/.ruff_cache/
 *.pyd
 
 # Environment files
+.env
+.env.save
+.env.local
 backend/.env
 backend/.env.local
 frontend/.env
@@ -20,6 +23,7 @@ backend/data/*.csv
 backend/data/workspaces/
 backend/data/notebooks/
 backend/data/artifacts/
+backend/data/vector_db/
 backend/_tmp_models/
 backend/models/*
 !backend/models/.gitkeep

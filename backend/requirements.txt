@@ -31,6 +31,8 @@ pytorch-forecasting
 # Optional: AI chat (OpenAI / Gemini / Ollama OpenAI-compatible)
 openai>=1.51.0,<2
 google-generativeai>=0.8.0,<0.9
+# RAG / vector database (used by backend/src/services/rag/*)
+chromadb>=0.5.0,<0.6
 
 # Colab 유사 노트북 (선택): NOTEBOOK_ENABLED=1 일 때 사용
 jupyterlab>=4.0.0,<5

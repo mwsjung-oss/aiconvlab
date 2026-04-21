@@ -1,0 +1,19 @@
+{
+  "documents": [
+    {
+      "id": "aps-intro",
+      "text": "APS (AI Practice Studio) is an AI experimentation platform built by Inha University Manufacturing Innovation School. It uses FastAPI on the backend, React with Vite on the frontend, and is deployed with Cloudflare Pages and Render. The platform supports local, lab, and cloud runtimes and integrates OpenAI and Gemini as LLM providers.",
+      "metadata": {"source": "internal-overview", "topic": "platform"}
+    },
+    {
+      "id": "aps-rag",
+      "text": "The APS backend ships a lightweight RAG subsystem that persists vectors in Chroma at backend/data/vector_db. Documents are chunked into ~600 character pieces with 80 character overlap. Embeddings are produced with OpenAI's text-embedding-3-small model (1536 dimensions). Retrieval uses cosine similarity.",
+      "metadata": {"source": "docs/rag", "topic": "rag"}
+    },
+    {
+      "id": "aps-agents",
+      "text": "APS provides four AI agents: DataAgent analyzes datasets, ModelAgent recommends models and hyperparameters, ReportAgent summarizes experiment outcomes, and ExperimentAgent orchestrates the three in sequence. A SmartAgent additionally fetches RAG context before invoking a sub-agent, producing grounded answers.",
+      "metadata": {"source": "docs/agents", "topic": "agents"}
+    }
+  ]
+}
