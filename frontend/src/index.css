@@ -1,5 +1,10 @@
+/* ---------- Fonts ----------
+   Inter + Pretendard(본문) + JetBrains Mono(코드). 기존 DM Sans는 fallback 체인에서 제거. */
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap");
+@import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css");
+
 :root {
-  /* 기존 콘셉트 유지 + 밝은 톤 */
+  /* 기존 콘셉트 유지 + 밝은 톤 (로그인·대시보드 호환) */
   --bg: #1b2634;
   --surface: #2a3648;
   --surface2: #3a4a61;
@@ -10,8 +15,18 @@
   --accent-dim: #29b4f6;
   --ok: #34d399;
   --warn: #fbbf24;
-  --font: "DM Sans", system-ui, sans-serif;
-  --mono: "JetBrains Mono", ui-monospace, monospace;
+  --font: "Pretendard Variable", Pretendard, Inter, "Noto Sans KR",
+    system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Consolas,
+    monospace;
+
+  /* 공통 모션·라운드 토큰 (전역 적용) */
+  --t-fast: 150ms cubic-bezier(0.22, 0.61, 0.36, 1);
+  --t-base: 200ms cubic-bezier(0.22, 0.61, 0.36, 1);
+  --t-slow: 300ms cubic-bezier(0.22, 0.61, 0.36, 1);
+  --r-card: 14px;
+  --r-input: 12px;
+  --r-btn: 10px;
 }
 
 * {

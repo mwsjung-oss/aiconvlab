@@ -4542,3 +4542,593 @@ th {
   border: none;
   display: block;
 }
+
+/* ============================================================================
+   Experiment Shell · Colab-grade Design System Lift (Phase 1)
+   ----------------------------------------------------------------------------
+   목표: Experiment 페이지만 Colab급 몰입형 워크스페이스 톤으로 리프트.
+   범위: .app--experiment-shell 하위에만 적용 → 로그인/대시보드/지식 등 다른
+        화면의 시각 톤은 유지.
+   원칙: 기능 JSX/JS는 손대지 않고, CSS 변수·레이어드 스타일로 품질만 상향.
+   ========================================================================= */
+
+.app--experiment-shell {
+  /* 디자인 토큰(스펙 준수). 나머지 앱에 영향 없도록 스코프 한정 */
+  --exp-bg: #0f172a;
+  --exp-panel: #111827;
+  --exp-elevated: #1e293b;
+  --exp-border: #334155;
+  --exp-border-soft: rgba(51, 65, 85, 0.6);
+  --exp-primary: #2563eb;
+  --exp-primary-hover: #1d4ed8;
+  --exp-primary-soft: rgba(37, 99, 235, 0.16);
+  --exp-success: #22c55e;
+  --exp-warning: #f59e0b;
+  --exp-error: #ef4444;
+  --exp-text: #f8fafc;
+  --exp-text-secondary: #94a3b8;
+  --exp-text-muted: #64748b;
+
+  /* 타입 스케일 (14px body 기준) */
+  --exp-fs-title: 20px;
+  --exp-fs-section: 16px;
+  --exp-fs-body: 14px;
+  --exp-fs-caption: 12px;
+
+  /* 라운드 */
+  --exp-r-card: var(--r-card, 14px);
+  --exp-r-input: var(--r-input, 12px);
+  --exp-r-btn: var(--r-btn, 10px);
+
+  /* 전환 */
+  --exp-t: var(--t-base, 200ms ease);
+
+  font-family: var(--font);
+  color: var(--exp-text);
+  background: var(--exp-bg);
+}
+
+/* ----- 상단 toolbar ----- */
+.app--experiment-shell .top-nav-wrap {
+  background: linear-gradient(180deg, #111827 0%, #0f172a 100%);
+  border-bottom: 1px solid var(--exp-border);
+  box-shadow: 0 8px 24px -18px rgba(0, 0, 0, 0.75);
+  backdrop-filter: saturate(140%);
+}
+
+.app--experiment-shell .experiment-top-strip-row--primary {
+  background: var(--exp-panel);
+  border: 1px solid var(--exp-border);
+  border-radius: var(--exp-r-card);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.02) inset;
+  padding: 10px 14px 12px;
+  gap: 8px 12px;
+}
+
+.app--experiment-shell .experiment-top-strip-field-label,
+.app--experiment-shell .experiment-top-strip-status-label,
+.app--experiment-shell .workflow-current-project-label {
+  color: var(--exp-text-secondary);
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+
+.app--experiment-shell .experiment-top-strip-row--primary select,
+.app--experiment-shell .experiment-top-strip-row--primary input {
+  background: var(--exp-elevated);
+  border: 1px solid var(--exp-border);
+  border-radius: var(--exp-r-input);
+  color: var(--exp-text);
+  transition: border-color var(--exp-t), box-shadow var(--exp-t),
+    background var(--exp-t);
+}
+.app--experiment-shell .experiment-top-strip-row--primary select:hover,
+.app--experiment-shell .experiment-top-strip-row--primary input:hover {
+  border-color: #475569;
+}
+.app--experiment-shell .experiment-top-strip-row--primary select:focus-visible,
+.app--experiment-shell .experiment-top-strip-row--primary input:focus-visible {
+  outline: none;
+  border-color: var(--exp-primary);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.28);
+}
+
+/* ----- 공용 버튼 (top-strip·session·action) ----- */
+.app--experiment-shell .experiment-top-strip-action-btn,
+.app--experiment-shell .experiment-top-strip-session-btn,
+.app--experiment-shell .workflow-project-new-btn {
+  background: var(--exp-elevated);
+  border: 1px solid var(--exp-border);
+  border-radius: var(--exp-r-btn);
+  color: var(--exp-text);
+  font-weight: 500;
+  transition: all var(--exp-t);
+}
+.app--experiment-shell .experiment-top-strip-action-btn:hover:not(:disabled),
+.app--experiment-shell .experiment-top-strip-session-btn:hover:not(:disabled),
+.app--experiment-shell .workflow-project-new-btn:hover:not(:disabled) {
+  background: var(--exp-primary-soft);
+  border-color: var(--exp-primary);
+  color: #dbeafe;
+  transform: translateY(-1px);
+}
+.app--experiment-shell .experiment-top-strip-action-btn:focus-visible,
+.app--experiment-shell .experiment-top-strip-session-btn:focus-visible,
+.app--experiment-shell .workflow-project-new-btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.4);
+  border-color: var(--exp-primary);
+}
+
+.app--experiment-shell .experiment-top-strip-session-btn--logout:hover:not(:disabled) {
+  background: rgba(239, 68, 68, 0.15);
+  border-color: var(--exp-error);
+  color: #fee2e2;
+}
+
+/* ----- 6단계 가로 네비: 카드형 탭 ----- */
+.app--experiment-shell .top-nav-row--workflow-primary {
+  border-top: 1px solid var(--exp-border-soft);
+  border-bottom: 1px solid var(--exp-border-soft);
+  padding: 8px 0;
+}
+
+.app--experiment-shell .experiment-step-tab {
+  background: var(--exp-panel);
+  border: 1px solid var(--exp-border);
+  border-radius: var(--exp-r-btn);
+  color: var(--exp-text-secondary);
+  padding: 8px 12px;
+  transition: all var(--exp-t);
+  position: relative;
+  overflow: hidden;
+}
+.app--experiment-shell .experiment-step-tab:hover {
+  background: var(--exp-elevated);
+  border-color: #475569;
+  color: var(--exp-text);
+  transform: translateY(-1px);
+}
+.app--experiment-shell .experiment-step-tab--active {
+  background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+  border-color: var(--exp-primary);
+  color: #dbeafe;
+  box-shadow: 0 0 0 1px var(--exp-primary) inset,
+    0 4px 16px -8px rgba(37, 99, 235, 0.6);
+}
+.app--experiment-shell .experiment-step-tab--active::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--exp-primary);
+}
+
+.app--experiment-shell .experiment-step-tab-num {
+  background: var(--exp-border);
+  color: var(--exp-text);
+  border-radius: 999px;
+  transition: all var(--exp-t);
+}
+.app--experiment-shell .experiment-step-tab--active .experiment-step-tab-num {
+  background: var(--exp-primary);
+  color: #ffffff;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.2);
+}
+
+.app--experiment-shell .experiment-step-tab-ko {
+  font-weight: 600;
+  color: inherit;
+}
+.app--experiment-shell .experiment-step-tab-en {
+  color: var(--exp-text-muted);
+  font-family: var(--font);
+  font-weight: 400;
+}
+
+/* ----- 서브 내비(프로젝트 / AI Agent 탭) ----- */
+.app--experiment-shell .top-nav-row--workflow-sub .nav-tab {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--exp-r-btn);
+  color: var(--exp-text-secondary);
+  padding: 6px 12px;
+  transition: all var(--exp-t);
+}
+.app--experiment-shell .top-nav-row--workflow-sub .nav-tab:hover {
+  background: var(--exp-elevated);
+  color: var(--exp-text);
+}
+.app--experiment-shell .top-nav-row--workflow-sub .nav-tab.active,
+.app--experiment-shell .top-nav-row--workflow-sub .nav-tab[aria-selected="true"] {
+  background: var(--exp-primary-soft);
+  border-color: var(--exp-primary);
+  color: #dbeafe;
+}
+
+/* ----- 3패널 셸 포장 ----- */
+.app--experiment-shell .experiment-workbench {
+  background: var(--exp-bg);
+  border: 1px solid var(--exp-border);
+  border-radius: var(--exp-r-card);
+  overflow: hidden;
+  box-shadow: 0 20px 48px -24px rgba(0, 0, 0, 0.7);
+}
+
+.app--experiment-shell .experiment-left-panel,
+.app--experiment-shell .experiment-results {
+  background: var(--exp-panel);
+  border-right: 1px solid var(--exp-border-soft);
+}
+.app--experiment-shell .experiment-results {
+  border-right: none;
+  border-left: 1px solid var(--exp-border-soft);
+}
+
+.app--experiment-shell .experiment-workbench-center {
+  background: var(--exp-bg);
+}
+
+.app--experiment-shell .experiment-left-panel-header,
+.app--experiment-shell .experiment-results-head {
+  background: linear-gradient(180deg, #111827 0%, #0f172a 100%);
+  border-bottom: 1px solid var(--exp-border-soft);
+  padding: 10px 14px;
+}
+
+.app--experiment-shell .experiment-left-panel-title,
+.app--experiment-shell .experiment-results-title {
+  font-size: var(--exp-fs-section);
+  font-weight: 600;
+  color: var(--exp-text);
+  letter-spacing: -0.01em;
+}
+
+/* ----- Inspector 탭 ----- */
+.app--experiment-shell .experiment-results-tabs {
+  background: var(--exp-panel);
+  border-bottom: 1px solid var(--exp-border-soft);
+  padding: 6px 10px;
+  gap: 4px;
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+.app--experiment-shell .experiment-results-tab {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--exp-r-btn);
+  color: var(--exp-text-secondary);
+  padding: 6px 12px;
+  font-weight: 500;
+  transition: all var(--exp-t);
+}
+.app--experiment-shell .experiment-results-tab:hover {
+  color: var(--exp-text);
+  background: var(--exp-elevated);
+}
+.app--experiment-shell .experiment-results-tab--active {
+  background: var(--exp-primary-soft);
+  border-color: var(--exp-primary);
+  color: #dbeafe;
+}
+
+.app--experiment-shell .experiment-results-step-banner {
+  background: var(--exp-elevated);
+  border: 1px solid var(--exp-border-soft);
+  border-radius: var(--exp-r-input);
+  padding: 10px 12px;
+  margin: 10px;
+}
+.app--experiment-shell .experiment-results-step-banner strong {
+  color: var(--exp-text);
+  font-size: var(--exp-fs-section);
+  font-weight: 600;
+}
+.app--experiment-shell .experiment-results-step-banner .muted {
+  color: var(--exp-text-secondary);
+  font-size: var(--exp-fs-caption);
+}
+
+.app--experiment-shell .experiment-results-pre {
+  background: var(--exp-panel);
+  border: 1px solid var(--exp-border-soft);
+  border-radius: var(--exp-r-input);
+  padding: 12px 14px;
+  font-family: var(--mono);
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--exp-text);
+  overflow: auto;
+}
+.app--experiment-shell .experiment-results-pre--err {
+  border-color: var(--exp-error);
+  background: rgba(239, 68, 68, 0.08);
+  color: #fecaca;
+}
+
+/* ----- 컨텍스트(좌측) 프로젝트 카드 ----- */
+.app--experiment-shell .experiment-project-card {
+  background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+  border: 1px solid var(--exp-border);
+  border-radius: var(--exp-r-card);
+  padding: 16px;
+  transition: border-color var(--exp-t), box-shadow var(--exp-t);
+}
+.app--experiment-shell .experiment-project-card:hover {
+  border-color: var(--exp-primary);
+  box-shadow: 0 8px 28px -14px rgba(37, 99, 235, 0.35);
+}
+.app--experiment-shell .experiment-project-card-kicker {
+  color: var(--exp-text-muted);
+  font-size: var(--exp-fs-caption);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.app--experiment-shell .experiment-project-card-name {
+  font-size: var(--exp-fs-section);
+  font-weight: 600;
+  color: var(--exp-text);
+  margin: 4px 0;
+}
+
+/* ----- AI Agent 메시지 버블 톤 정리 ----- */
+.app--experiment-shell .ai-chat-msg--assistant .ai-chat-msg-body,
+.app--experiment-shell .ai-chat-msg--user .ai-chat-msg-body {
+  border-radius: var(--exp-r-card);
+  padding: 10px 14px;
+  line-height: 1.55;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.03) inset;
+}
+.app--experiment-shell .ai-chat-msg--assistant .ai-chat-msg-body {
+  background: var(--exp-elevated);
+  border: 1px solid var(--exp-border-soft);
+  color: var(--exp-text);
+}
+.app--experiment-shell .ai-chat-msg--user .ai-chat-msg-body {
+  background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%);
+  border: 1px solid #3b82f6;
+  color: #ffffff;
+}
+
+.app--experiment-shell .ai-chat-chip {
+  background: var(--exp-panel);
+  border: 1px solid var(--exp-border);
+  border-radius: 999px;
+  color: var(--exp-text-secondary);
+  transition: all var(--exp-t);
+}
+.app--experiment-shell .ai-chat-chip:hover:not(:disabled) {
+  background: var(--exp-primary-soft);
+  border-color: var(--exp-primary);
+  color: #dbeafe;
+}
+
+/* ----- Run Status Badge 세분화 ----- */
+.app--experiment-shell .experiment-run-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: 999px;
+  font-size: var(--exp-fs-caption);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  border: 1px solid transparent;
+  transition: all var(--exp-t);
+}
+.app--experiment-shell .experiment-run-badge::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: currentColor;
+  opacity: 0.9;
+  box-shadow: 0 0 0 3px color-mix(in srgb, currentColor 25%, transparent);
+}
+.app--experiment-shell .experiment-run-badge--idle {
+  background: rgba(100, 116, 139, 0.15);
+  border-color: rgba(100, 116, 139, 0.35);
+  color: var(--exp-text-secondary);
+}
+.app--experiment-shell .experiment-run-badge--ready {
+  background: rgba(37, 99, 235, 0.14);
+  border-color: rgba(37, 99, 235, 0.4);
+  color: #93c5fd;
+}
+.app--experiment-shell .experiment-run-badge--running {
+  background: rgba(245, 158, 11, 0.14);
+  border-color: rgba(245, 158, 11, 0.45);
+  color: #fcd34d;
+}
+.app--experiment-shell .experiment-run-badge--running::before {
+  animation: exp-pulse 1.25s ease-in-out infinite;
+}
+.app--experiment-shell .experiment-run-badge--completed {
+  background: rgba(34, 197, 94, 0.14);
+  border-color: rgba(34, 197, 94, 0.45);
+  color: #86efac;
+}
+.app--experiment-shell .experiment-run-badge--error {
+  background: rgba(239, 68, 68, 0.14);
+  border-color: rgba(239, 68, 68, 0.5);
+  color: #fca5a5;
+}
+
+@keyframes exp-pulse {
+  0%,
+  100% {
+    opacity: 0.55;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.25);
+  }
+}
+
+/* ----- 중앙 스테이지: 각 단계 폼을 "카드 스택"처럼 보이게 정돈 ----- */
+.app--experiment-shell .experiment-main-stage {
+  padding: 14px 16px 24px;
+  gap: 16px;
+  scrollbar-gutter: stable;
+}
+
+.app--experiment-shell .experiment-main-stage > section,
+.app--experiment-shell .experiment-main-stage > .projects-page-compact,
+.app--experiment-shell .experiment-main-stage > .panel {
+  background: var(--exp-panel);
+  border: 1px solid var(--exp-border);
+  border-radius: var(--exp-r-card);
+  padding: 16px 18px;
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.02) inset,
+    0 8px 24px -20px rgba(0, 0, 0, 0.6);
+  transition: border-color var(--exp-t), box-shadow var(--exp-t);
+}
+.app--experiment-shell .experiment-main-stage > section:hover,
+.app--experiment-shell .experiment-main-stage > .projects-page-compact:hover,
+.app--experiment-shell .experiment-main-stage > .panel:hover {
+  border-color: #475569;
+}
+
+/* Section 타이틀 계층 */
+.app--experiment-shell .experiment-main-stage h2,
+.app--experiment-shell .experiment-main-stage h3 {
+  font-size: var(--exp-fs-section);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--exp-text);
+  margin: 0 0 10px;
+}
+.app--experiment-shell .experiment-main-stage h1 {
+  font-size: var(--exp-fs-title);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--exp-text);
+}
+
+/* 입력 요소 전반 */
+.app--experiment-shell input[type="text"],
+.app--experiment-shell input[type="number"],
+.app--experiment-shell input[type="search"],
+.app--experiment-shell input[type="email"],
+.app--experiment-shell input[type="password"],
+.app--experiment-shell textarea,
+.app--experiment-shell select {
+  background: var(--exp-elevated);
+  border: 1px solid var(--exp-border);
+  border-radius: var(--exp-r-input);
+  color: var(--exp-text);
+  transition: border-color var(--exp-t), box-shadow var(--exp-t);
+}
+.app--experiment-shell input[type="text"]:focus-visible,
+.app--experiment-shell input[type="number"]:focus-visible,
+.app--experiment-shell input[type="search"]:focus-visible,
+.app--experiment-shell input[type="email"]:focus-visible,
+.app--experiment-shell input[type="password"]:focus-visible,
+.app--experiment-shell textarea:focus-visible,
+.app--experiment-shell select:focus-visible {
+  outline: none;
+  border-color: var(--exp-primary);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.28);
+}
+
+/* 기본 .btn hover/focus 품격 향상 (experiment 범위) */
+.app--experiment-shell .btn {
+  border-radius: var(--exp-r-btn);
+  transition: all var(--exp-t);
+}
+.app--experiment-shell .btn:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.4);
+}
+.app--experiment-shell .btn-secondary {
+  background: var(--exp-elevated);
+  border: 1px solid var(--exp-border);
+  color: var(--exp-text);
+}
+.app--experiment-shell .btn-secondary:hover:not(:disabled) {
+  background: var(--exp-primary-soft);
+  border-color: var(--exp-primary);
+  color: #dbeafe;
+  transform: translateY(-1px);
+}
+
+/* 스크롤바 (WebKit·macOS 포함) */
+.app--experiment-shell *::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+.app--experiment-shell *::-webkit-scrollbar-track {
+  background: transparent;
+}
+.app--experiment-shell *::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.18);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  transition: background var(--exp-t);
+}
+.app--experiment-shell *::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.35);
+  background-clip: padding-box;
+}
+
+/* 리사이즈 핸들 */
+.app--experiment-shell .experiment-resize-handle:hover {
+  background: rgba(37, 99, 235, 0.08);
+}
+.app--experiment-shell .experiment-resize-handle:hover::before,
+.app--experiment-shell .experiment-resize-handle:focus-visible::before {
+  background: var(--exp-primary);
+  width: 3px;
+}
+
+/* 표 기본 톤 */
+.app--experiment-shell table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: var(--exp-fs-body);
+}
+.app--experiment-shell table th {
+  background: var(--exp-elevated);
+  color: var(--exp-text-secondary);
+  font-weight: 600;
+  text-align: left;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--exp-border);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+.app--experiment-shell table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--exp-border-soft);
+  color: var(--exp-text);
+}
+.app--experiment-shell table tr:hover td {
+  background: rgba(37, 99, 235, 0.05);
+}
+
+/* 코드/키값 요소 mono 톤 */
+.app--experiment-shell code {
+  font-family: var(--mono);
+  background: var(--exp-elevated);
+  border: 1px solid var(--exp-border-soft);
+  border-radius: 6px;
+  padding: 1px 6px;
+  font-size: 12.5px;
+  color: #cbd5e1;
+}
+
+/* Experiment 범위: 접근성용 reduced motion 대응 */
+@media (prefers-reduced-motion: reduce) {
+  .app--experiment-shell * {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+  }
+}
