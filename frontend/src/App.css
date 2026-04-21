@@ -6101,3 +6101,645 @@ th {
     white-space: normal;
   }
 }
+
+/* ============================================================
+   Main Look & Feel Lift (Experiment와 동일한 결)
+   스코프: .app:not(.app--experiment-shell) — 실험 쉘에는 영향 없음.
+   ============================================================ */
+
+/* ---------- 루트 컨테이너 폭/간격 ---------- */
+.app:not(.app--experiment-shell) {
+  max-width: min(1240px, 100%);
+  padding: 1.25rem clamp(0.85rem, 2vw, 1.75rem) 2.5rem;
+  gap: 18px;
+  color: var(--ml-text);
+  font-family: var(--font);
+  font-size: var(--ml-fs-body);
+  line-height: 1.55;
+}
+
+/* ---------- Top Hero (lab-hero) ---------- */
+.app:not(.app--experiment-shell) .lab-hero {
+  margin-bottom: 1.25rem;
+  padding: 14px 18px 12px;
+  background: linear-gradient(180deg, #111827 0%, #0f172a 100%);
+  border: 1px solid var(--ml-border);
+  border-radius: var(--r-card);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.03) inset,
+    0 16px 40px -28px rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(10px) saturate(140%);
+  -webkit-backdrop-filter: blur(10px) saturate(140%);
+  position: relative;
+  overflow: hidden;
+}
+.app:not(.app--experiment-shell) .lab-hero::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(96, 165, 250, 0.55) 50%,
+    transparent 100%
+  );
+}
+
+.app:not(.app--experiment-shell) .lab-brand-univ {
+  color: var(--ml-text-secondary);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  font-weight: 500;
+}
+.app:not(.app--experiment-shell) .lab-brand-lab {
+  color: var(--ml-text);
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+
+.app:not(.app--experiment-shell) .lab-logo-wrap {
+  background: var(--ml-elevated);
+  border: 1px solid var(--ml-border-soft);
+  width: 44px;
+  height: 44px;
+  box-shadow: 0 8px 20px -10px rgba(37, 99, 235, 0.35);
+}
+
+/* 플랫폼 중앙 배지 — 더 컴팩트하고 세련되게 */
+.app:not(.app--experiment-shell) .lab-platform-main {
+  padding: 6px 18px;
+  border-radius: var(--r-btn);
+  transition: transform var(--t-base);
+}
+.app:not(.app--experiment-shell) .lab-platform-main:hover {
+  transform: translateY(-1px);
+}
+.app:not(.app--experiment-shell) .lab-platform-main-text {
+  font-size: 1.3rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--ml-text);
+}
+.app:not(.app--experiment-shell) .lab-platform-sub {
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  color: var(--ml-text-secondary);
+}
+
+/* ---------- 헤더 퀵 내비 (상단 탭) ---------- */
+.app:not(.app--experiment-shell) .lab-header-quicknav-btns {
+  gap: 6px;
+  padding: 4px;
+  background: var(--ml-elevated-soft);
+  border: 1px solid var(--ml-border-soft);
+  border-radius: 999px;
+  flex-wrap: wrap;
+}
+
+.app:not(.app--experiment-shell) .lab-header-quicknav-tab,
+.app:not(.app--experiment-shell) .nav-tab {
+  padding: 7px 14px;
+  border-radius: 999px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--ml-text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0;
+  cursor: pointer;
+  transition: all var(--t-base);
+}
+.app:not(.app--experiment-shell) .lab-header-quicknav-tab:hover,
+.app:not(.app--experiment-shell) .nav-tab:hover {
+  background: var(--ml-primary-soft);
+  color: var(--ml-text);
+  border-color: transparent;
+}
+.app:not(.app--experiment-shell) .lab-header-quicknav-tab.nav-tab-active,
+.app:not(.app--experiment-shell) .nav-tab.nav-tab-active {
+  background: linear-gradient(
+    135deg,
+    var(--ml-primary) 0%,
+    #1d4ed8 100%
+  );
+  color: #ffffff;
+  border-color: transparent;
+  box-shadow: 0 6px 16px -8px rgba(37, 99, 235, 0.65);
+}
+.app:not(.app--experiment-shell) .nav-tab:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.4);
+}
+
+/* ---------- 세션(헤더 우측) ---------- */
+.app:not(.app--experiment-shell) .lab-header-session {
+  gap: 10px;
+  color: var(--ml-text-secondary);
+  font-size: 12.5px;
+}
+.app:not(.app--experiment-shell) .lab-api-badge {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--ml-elevated);
+  border: 1px solid var(--ml-border-soft);
+  color: var(--ml-text-secondary);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+/* ---------- top-nav-wrap (실험 외 일반 화면) ---------- */
+.app:not(.app--experiment-shell) .top-nav-wrap {
+  margin-bottom: 14px;
+  padding: 8px 10px;
+  background: var(--ml-panel-soft);
+  border: 1px solid var(--ml-border-soft);
+  border-radius: var(--r-card);
+  backdrop-filter: blur(8px);
+}
+
+/* ---------- 패널 / 카드 / 섹션 ---------- */
+.app:not(.app--experiment-shell) .panel,
+.app:not(.app--experiment-shell) .card,
+.app:not(.app--experiment-shell) section.panel {
+  background: var(--ml-panel);
+  border: 1px solid var(--ml-border);
+  border-radius: var(--r-card);
+  padding: 16px 18px;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.02) inset,
+    0 10px 30px -24px rgba(0, 0, 0, 0.7);
+  transition: border-color var(--t-base), box-shadow var(--t-base),
+    transform var(--t-base);
+  backdrop-filter: none;
+}
+.app:not(.app--experiment-shell) .panel:hover,
+.app:not(.app--experiment-shell) .card:hover {
+  border-color: #475569;
+}
+.app:not(.app--experiment-shell) .panel--dense {
+  padding: 12px 14px;
+}
+
+/* 패널 제목 */
+.app:not(.app--experiment-shell) .panel h1,
+.app:not(.app--experiment-shell) .panel h2 {
+  font-size: var(--ml-fs-section);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--ml-text);
+  margin: 0 0 10px;
+}
+.app:not(.app--experiment-shell) .panel h3 {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--ml-text);
+  margin: 0 0 8px;
+}
+.app:not(.app--experiment-shell) .panel-heading-row {
+  font-size: var(--ml-fs-section);
+  font-weight: 600;
+  color: var(--ml-text);
+  margin: 0 0 10px;
+}
+
+/* Hint 텍스트 */
+.app:not(.app--experiment-shell) .hint,
+.app:not(.app--experiment-shell) p.hint,
+.app:not(.app--experiment-shell) .muted {
+  color: var(--ml-text-secondary);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+
+/* ---------- 버튼 ---------- */
+.app:not(.app--experiment-shell) .btn {
+  background: linear-gradient(
+    135deg,
+    var(--ml-primary) 0%,
+    var(--ml-primary-hover) 100%
+  );
+  color: #ffffff;
+  border: none;
+  border-radius: var(--r-btn);
+  padding: 8px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0;
+  transition: all var(--t-base);
+  box-shadow: 0 6px 16px -8px rgba(37, 99, 235, 0.6);
+}
+.app:not(.app--experiment-shell) .btn:hover:not(:disabled) {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+  box-shadow: 0 10px 24px -10px rgba(37, 99, 235, 0.8);
+}
+.app:not(.app--experiment-shell) .btn:active {
+  transform: translateY(0);
+}
+.app:not(.app--experiment-shell) .btn:focus-visible {
+  outline: none;
+  box-shadow:
+    0 0 0 3px rgba(37, 99, 235, 0.45),
+    0 6px 16px -8px rgba(37, 99, 235, 0.6);
+}
+.app:not(.app--experiment-shell) .btn-secondary {
+  background: var(--ml-elevated);
+  color: var(--ml-text);
+  border: 1px solid var(--ml-border);
+  box-shadow: none;
+}
+.app:not(.app--experiment-shell) .btn-secondary:hover:not(:disabled) {
+  background: var(--ml-primary-soft);
+  border-color: var(--ml-primary);
+  color: #dbeafe;
+  transform: translateY(-1px);
+}
+
+/* auth-submit: 로그인·회원가입 제출 버튼 */
+.app:not(.app--experiment-shell) .auth-submit {
+  background: linear-gradient(
+    135deg,
+    var(--ml-primary) 0%,
+    var(--ml-primary-hover) 100%
+  );
+  color: #ffffff;
+  border: none;
+  border-radius: var(--r-btn);
+  padding: 10px 18px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--t-base);
+  box-shadow: 0 8px 20px -10px rgba(37, 99, 235, 0.6);
+}
+.app:not(.app--experiment-shell) .auth-submit:hover:not(:disabled) {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+}
+
+/* ---------- 입력 요소 ---------- */
+.app:not(.app--experiment-shell) input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+.app:not(.app--experiment-shell) textarea,
+.app:not(.app--experiment-shell) select {
+  background: var(--ml-elevated);
+  border: 1px solid var(--ml-border);
+  border-radius: var(--r-input);
+  color: var(--ml-text);
+  font-family: inherit;
+  font-size: 13.5px;
+  padding: 8px 11px;
+  transition: all var(--t-base);
+  outline: none;
+}
+.app:not(.app--experiment-shell) input:focus:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+.app:not(.app--experiment-shell) textarea:focus,
+.app:not(.app--experiment-shell) select:focus {
+  border-color: var(--ml-primary);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.22);
+  background: var(--ml-elevated);
+}
+.app:not(.app--experiment-shell) input::placeholder,
+.app:not(.app--experiment-shell) textarea::placeholder {
+  color: var(--ml-text-muted);
+}
+.app:not(.app--experiment-shell) label {
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--ml-text-secondary);
+  letter-spacing: 0;
+}
+
+/* ---------- 메시지 배너 ---------- */
+.app:not(.app--experiment-shell) .msg {
+  background: var(--ml-elevated);
+  border: 1px solid var(--ml-border-soft);
+  border-radius: var(--r-input);
+  padding: 10px 12px;
+  font-size: 12.5px;
+  color: var(--ml-text);
+  margin-top: 10px;
+}
+.app:not(.app--experiment-shell) .msg.ok {
+  background: rgba(34, 197, 94, 0.1);
+  border-color: rgba(34, 197, 94, 0.4);
+  color: #86efac;
+}
+.app:not(.app--experiment-shell) .msg.error {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.45);
+  color: #fca5a5;
+}
+
+/* ---------- 테이블 ---------- */
+.app:not(.app--experiment-shell) .table-wrap {
+  border: 1px solid var(--ml-border-soft);
+  border-radius: var(--r-input);
+  overflow: auto;
+  background: rgba(15, 23, 42, 0.5);
+}
+.app:not(.app--experiment-shell) table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12.5px;
+  color: var(--ml-text);
+}
+.app:not(.app--experiment-shell) th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  background: rgba(30, 41, 59, 0.95);
+  color: var(--ml-text-secondary);
+  font-weight: 600;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 8px 10px;
+  text-align: left;
+  border-bottom: 1px solid var(--ml-border);
+}
+.app:not(.app--experiment-shell) td {
+  padding: 8px 10px;
+  border-bottom: 1px solid rgba(148, 163, 184, 0.1);
+  vertical-align: top;
+}
+.app:not(.app--experiment-shell) tr:hover td {
+  background: rgba(37, 99, 235, 0.06);
+}
+
+/* ---------- 코드 · pre ---------- */
+.app:not(.app--experiment-shell) code,
+.app:not(.app--experiment-shell) pre {
+  background: var(--ml-elevated);
+  border: 1px solid var(--ml-border-soft);
+  border-radius: 8px;
+  padding: 2px 6px;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--ml-text);
+}
+.app:not(.app--experiment-shell) pre {
+  padding: 10px 12px;
+  overflow: auto;
+  line-height: 1.5;
+}
+
+/* ---------- Dashboard: KPI / 차트 / 2 단 컬럼 ---------- */
+.app:not(.app--experiment-shell) .dash-page {
+  gap: 14px;
+}
+
+.app:not(.app--experiment-shell) .dash-kpi-panel {
+  background: linear-gradient(
+    135deg,
+    rgba(37, 99, 235, 0.08) 0%,
+    rgba(17, 24, 39, 0.9) 70%
+  );
+  border: 1px solid rgba(37, 99, 235, 0.28);
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.03) inset,
+    0 16px 36px -28px rgba(37, 99, 235, 0.55);
+}
+
+.app:not(.app--experiment-shell) .dash-kpi-grid {
+  gap: 10px;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+}
+
+.app:not(.app--experiment-shell) .stat-card {
+  background: var(--ml-elevated);
+  border: 1px solid var(--ml-border-soft);
+  border-radius: var(--r-input);
+  padding: 12px 14px;
+  transition: all var(--t-base);
+  position: relative;
+  overflow: hidden;
+}
+.app:not(.app--experiment-shell) .stat-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 3px;
+  height: 100%;
+  background: linear-gradient(180deg, var(--ml-primary) 0%, #60a5fa 100%);
+  opacity: 0;
+  transition: opacity var(--t-base);
+}
+.app:not(.app--experiment-shell) .stat-card:hover {
+  border-color: var(--ml-primary);
+  transform: translateY(-2px);
+  box-shadow: 0 16px 30px -16px rgba(37, 99, 235, 0.45);
+}
+.app:not(.app--experiment-shell) .stat-card:hover::before {
+  opacity: 1;
+}
+
+.app:not(.app--experiment-shell) .stat-card--compact {
+  padding: 10px 12px;
+}
+.app:not(.app--experiment-shell) .stat-label {
+  color: var(--ml-text-secondary);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+.app:not(.app--experiment-shell) .stat-value {
+  color: var(--ml-text);
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+}
+.app:not(.app--experiment-shell) .stat-card--compact .stat-value {
+  font-size: 20px;
+}
+.app:not(.app--experiment-shell) .stat-value--accent {
+  background: linear-gradient(135deg, #60a5fa 0%, #2563eb 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.app:not(.app--experiment-shell) .stat-value--warn {
+  color: var(--ml-warning);
+}
+
+.app:not(.app--experiment-shell) .dash-visual-row {
+  gap: 12px;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+.app:not(.app--experiment-shell) .dash-visual-cell {
+  transition: border-color var(--t-base), transform var(--t-base);
+}
+.app:not(.app--experiment-shell) .dash-visual-cell:hover {
+  border-color: var(--ml-primary);
+  transform: translateY(-1px);
+}
+.app:not(.app--experiment-shell) .dash-chart-title {
+  color: var(--ml-text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+
+.app:not(.app--experiment-shell) .dash-two-col {
+  gap: 14px;
+}
+
+/* dash-hbar (리소스 막대) 세련화 */
+.app:not(.app--experiment-shell) .dash-hbar-list {
+  gap: 8px;
+}
+.app:not(.app--experiment-shell) .dash-hbar-row {
+  grid-template-columns: 56px 1fr 44px;
+  gap: 10px;
+  font-size: 12px;
+}
+.app:not(.app--experiment-shell) .dash-hbar-label {
+  color: var(--ml-text-secondary);
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+.app:not(.app--experiment-shell) .dash-hbar-track {
+  height: 6px;
+  background: rgba(51, 65, 85, 0.55);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.02) inset;
+}
+.app:not(.app--experiment-shell) .dash-hbar-fill {
+  transition: width 320ms cubic-bezier(0.22, 0.61, 0.36, 1);
+  box-shadow: 0 0 10px -2px currentColor;
+}
+.app:not(.app--experiment-shell) .dash-hbar-val {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--ml-text-secondary);
+  font-weight: 500;
+}
+.app:not(.app--experiment-shell) .dash-chart-empty {
+  color: var(--ml-text-muted);
+  font-size: 12px;
+  font-style: italic;
+}
+
+/* KPI 카드에 은은한 glow (top-right) */
+.app:not(.app--experiment-shell) .stat-card::after {
+  content: "";
+  position: absolute;
+  top: -30%;
+  right: -20%;
+  width: 80%;
+  height: 80%;
+  background: radial-gradient(
+    circle,
+    rgba(37, 99, 235, 0.18) 0%,
+    transparent 65%
+  );
+  pointer-events: none;
+  transition: opacity var(--t-base);
+  opacity: 0.6;
+}
+.app:not(.app--experiment-shell) .stat-card:hover::after {
+  opacity: 1;
+}
+
+/* ---------- Portal Home ---------- */
+.app:not(.app--experiment-shell) .portal-home,
+.app:not(.app--experiment-shell) .portal-home-section,
+.app:not(.app--experiment-shell) .portal-home-card {
+  color: var(--ml-text);
+}
+
+/* ---------- 스크롤바 (얇고 은은하게) ---------- */
+.app:not(.app--experiment-shell) *::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+.app:not(.app--experiment-shell) *::-webkit-scrollbar-track {
+  background: transparent;
+}
+.app:not(.app--experiment-shell) *::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.28);
+  border-radius: 999px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+.app:not(.app--experiment-shell) *::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.55);
+  background-clip: padding-box;
+  border: 2px solid transparent;
+}
+
+/* ---------- Auth Panel (로그인/회원가입 카드) ---------- */
+.app:not(.app--experiment-shell) .auth-panel {
+  background: var(--ml-panel);
+  border: 1px solid var(--ml-border);
+  border-radius: var(--r-card);
+  padding: 22px 24px;
+  box-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.03) inset,
+    0 20px 50px -30px rgba(0, 0, 0, 0.8);
+  max-width: 420px;
+  margin-left: auto;
+  margin-right: auto;
+}
+.app:not(.app--experiment-shell) .auth-panel h1,
+.app:not(.app--experiment-shell) .auth-panel h2 {
+  color: var(--ml-text);
+  font-size: var(--ml-fs-title);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin: 0 0 14px;
+}
+.app:not(.app--experiment-shell) .auth-error {
+  background: rgba(239, 68, 68, 0.08);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  color: #fca5a5;
+  border-radius: var(--r-input);
+  padding: 8px 12px;
+  font-size: 12.5px;
+  margin-top: 8px;
+}
+
+/* ---------- 반응형 ---------- */
+@media (max-width: 900px) {
+  .app:not(.app--experiment-shell) {
+    padding: 1rem 0.85rem 2rem;
+  }
+  .app:not(.app--experiment-shell) .lab-hero {
+    padding: 12px 14px 10px;
+  }
+  .app:not(.app--experiment-shell) .dash-kpi-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 640px) {
+  .app:not(.app--experiment-shell) .lab-header-quicknav-btns {
+    border-radius: 14px;
+    flex-direction: row;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .app:not(.app--experiment-shell) .lab-header-quicknav-tab {
+    white-space: nowrap;
+  }
+  .app:not(.app--experiment-shell) .dash-visual-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ---------- 접근성: reduced motion ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .app:not(.app--experiment-shell) * {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+  }
+}

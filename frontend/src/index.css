@@ -27,6 +27,29 @@
   --r-card: 14px;
   --r-input: 12px;
   --r-btn: 10px;
+
+  /* ---------- 공통 디자인 토큰 (Main 화면 = Experiment 톤 통일) ----------
+     --ml-* 는 Experiment의 --exp-* 와 동일 값. 추후 전역에서 재사용 가능. */
+  --ml-bg: #0f172a;
+  --ml-panel: #111827;
+  --ml-panel-soft: rgba(17, 24, 39, 0.72);
+  --ml-elevated: #1e293b;
+  --ml-elevated-soft: rgba(30, 41, 59, 0.72);
+  --ml-border: #334155;
+  --ml-border-soft: rgba(51, 65, 85, 0.55);
+  --ml-primary: #2563eb;
+  --ml-primary-hover: #1d4ed8;
+  --ml-primary-soft: rgba(37, 99, 235, 0.16);
+  --ml-success: #22c55e;
+  --ml-warning: #f59e0b;
+  --ml-error: #ef4444;
+  --ml-text: #f8fafc;
+  --ml-text-secondary: #94a3b8;
+  --ml-text-muted: #64748b;
+  --ml-fs-title: 20px;
+  --ml-fs-section: 16px;
+  --ml-fs-body: 14px;
+  --ml-fs-caption: 12px;
 }
 
 * {
