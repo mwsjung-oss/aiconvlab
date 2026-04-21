@@ -844,6 +844,34 @@ export default function App() {
     currentProjectId,
   ]);
 
+  /**
+   * Phase 2c-1 · 프런트 로딩 플래그를 파이프라인 phase로 휴리스틱 매핑.
+   * 백엔드 이벤트가 없으므로:
+   *   - uploadLoading → loading_data
+   *   - dataLoading   → preprocessing
+   *   - trainLoading  → training (trainElapsedSec ≥ 7 → evaluating 로 전이)
+   *   - predictLoading → evaluating
+   *   - 산출물 확보 완료 → completed, 아니면 queued/ready
+   */
+  const experimentRunPhase = useMemo(() => {
+    if (uploadLoading) return "loading_data";
+    if (dataLoading) return "preprocessing";
+    if (trainLoading) return trainElapsedSec >= 7 ? "evaluating" : "training";
+    if (predictLoading) return "evaluating";
+    if (trainResult?.model_id || (predictPreview && predictMsg))
+      return "completed";
+    return "queued";
+  }, [
+    uploadLoading,
+    dataLoading,
+    trainLoading,
+    predictLoading,
+    trainElapsedSec,
+    trainResult,
+    predictPreview,
+    predictMsg,
+  ]);
+
   const experimentModelLabel = useMemo(() => {
     const opts = TASK_MODEL_OPTIONS[task] || [];
     const hit = opts.find((o) => o.value === modelType);
@@ -1275,6 +1303,9 @@ export default function App() {
               fullscreen: experimentResultsFullscreen,
               onToggleFullscreen: () =>
                 setExperimentResultsFullscreen((v) => !v),
+              runPhase: experimentRunPhase,
+              runFailed: experimentRunStatus === "error",
+              runElapsedSec: trainElapsedSec,
             }}
           >
             <AiChatPage

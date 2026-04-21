@@ -1,14 +1,178 @@
 import { useMemo, useState } from "react";
 import { WORKFLOW_STEPS } from "../../workflowConfig.js";
+import RunPhaseStepper from "./RunPhaseStepper.jsx";
 
 const TABS = [
   { id: "results", label: "Results" },
+  { id: "history", label: "History" },
   { id: "logs", label: "Logs" },
   { id: "charts", label: "Charts" },
   { id: "tables", label: "Tables" },
   { id: "files", label: "Files" },
   { id: "report", label: "Report Draft" },
 ];
+
+function fmtMetricValue(v) {
+  if (v == null) return "—";
+  if (typeof v === "number") {
+    if (!Number.isFinite(v)) return String(v);
+    const abs = Math.abs(v);
+    if (abs >= 1000) return v.toFixed(1);
+    if (abs >= 1) return v.toFixed(3);
+    return v.toFixed(4);
+  }
+  return String(v);
+}
+
+/**
+ * Phase 2c-2 · Run 비교 본문
+ *
+ * 선택된 2~3개의 run(history 객체)을 받아 공통 파라미터/지표를 열로 세워
+ * 비교 테이블을 그린다. 각 지표에서 "가장 좋은" 값을 강조.
+ *
+ * "좋은 값" 휴리스틱: 키 이름에 loss/error/mae/mse/rmse/mape/log_loss가
+ * 있으면 최소값을, 그 외 지표는 최대값을 best로 본다.
+ */
+function isLowerBetter(metricKey) {
+  const k = String(metricKey).toLowerCase();
+  return /loss|error|mae|mse|rmse|mape|perplexity/.test(k);
+}
+
+function RunCompareBody({ runs }) {
+  const paramKeys = useMemo(() => {
+    const ks = new Set();
+    runs.forEach((r) => {
+      ["task_type", "model_type", "dataset", "filename", "target_column"].forEach(
+        (k) => {
+          if (r?.[k] != null) ks.add(k);
+        }
+      );
+    });
+    return Array.from(ks);
+  }, [runs]);
+
+  const metricKeys = useMemo(() => {
+    const ks = new Set();
+    runs.forEach((r) => {
+      if (r?.metrics && typeof r.metrics === "object") {
+        Object.keys(r.metrics).forEach((k) => ks.add(k));
+      }
+    });
+    return Array.from(ks);
+  }, [runs]);
+
+  const bestIdxByMetric = useMemo(() => {
+    const map = {};
+    metricKeys.forEach((mk) => {
+      let bestIdx = -1;
+      let bestVal = null;
+      runs.forEach((r, i) => {
+        const v = r?.metrics?.[mk];
+        if (typeof v !== "number" || !Number.isFinite(v)) return;
+        if (bestIdx < 0) {
+          bestIdx = i;
+          bestVal = v;
+          return;
+        }
+        const wantLower = isLowerBetter(mk);
+        if ((wantLower && v < bestVal) || (!wantLower && v > bestVal)) {
+          bestIdx = i;
+          bestVal = v;
+        }
+      });
+      map[mk] = bestIdx;
+    });
+    return map;
+  }, [runs, metricKeys]);
+
+  return (
+    <div className="run-compare-wrap">
+      <div className="run-compare-scroll">
+        <table className="run-compare-table">
+          <thead>
+            <tr>
+              <th style={{ minWidth: 120 }}>항목</th>
+              {runs.map((r, i) => (
+                <th key={i}>
+                  <div className="run-compare-col-head">
+                    <span className="run-compare-col-tag">Run {i + 1}</span>
+                    <span className="run-compare-col-sub">
+                      {r?.created_at || "—"}
+                    </span>
+                  </div>
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            <tr className="run-compare-section">
+              <td colSpan={runs.length + 1}>파라미터</td>
+            </tr>
+            {paramKeys.map((pk) => (
+              <tr key={pk}>
+                <td className="run-compare-k">{pk}</td>
+                {runs.map((r, i) => (
+                  <td key={i} className="run-compare-v">
+                    {r?.[pk] != null ? String(r[pk]) : "—"}
+                  </td>
+                ))}
+              </tr>
+            ))}
+            <tr className="run-compare-section">
+              <td colSpan={runs.length + 1}>지표</td>
+            </tr>
+            {metricKeys.map((mk) => (
+              <tr key={mk}>
+                <td className="run-compare-k">
+                  {mk}
+                  <small className="run-compare-k-sub">
+                    {isLowerBetter(mk) ? "낮을수록 좋음" : "높을수록 좋음"}
+                  </small>
+                </td>
+                {runs.map((r, i) => {
+                  const v = r?.metrics?.[mk];
+                  const best = bestIdxByMetric[mk] === i;
+                  return (
+                    <td
+                      key={i}
+                      className={
+                        best
+                          ? "run-compare-v run-compare-v--best"
+                          : "run-compare-v"
+                      }
+                      title={
+                        best
+                          ? `${isLowerBetter(mk) ? "최소" : "최대"} · 최고값`
+                          : undefined
+                      }
+                    >
+                      {fmtMetricValue(v)}
+                      {best && (
+                        <span className="run-compare-best-badge" aria-hidden="true">
+                          ★
+                        </span>
+                      )}
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+            {!metricKeys.length && (
+              <tr>
+                <td
+                  colSpan={runs.length + 1}
+                  className="run-compare-empty"
+                >
+                  선택한 run에 비교 가능한 지표가 없습니다.
+                </td>
+              </tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
 
 function StepContextBanner({ activeWorkflowStep }) {
   const step = WORKFLOW_STEPS.find((s) => s.id === activeWorkflowStep);
@@ -52,8 +216,14 @@ export default function ExperimentResultsPanel({
   onToggleResultsCollapsed,
   fullscreen,
   onToggleFullscreen,
+  runPhase,
+  runFailed,
+  runElapsedSec,
 }) {
   const [tab, setTab] = useState("results");
+  /** Phase 2c-2 · History 탭에서 선택된 run 인덱스(최대 3개) */
+  const [selectedRunIdxs, setSelectedRunIdxs] = useState([]);
+  const [showCompare, setShowCompare] = useState(false);
 
   const latestHistory = useMemo(() => {
     if (!Array.isArray(history) || !history.length) return null;
@@ -248,10 +418,141 @@ export default function ExperimentResultsPanel({
     );
   };
 
+  const historyRuns = useMemo(() => {
+    if (!Array.isArray(history)) return [];
+    return history.slice().reverse();
+  }, [history]);
+
+  const selectedRuns = useMemo(() => {
+    return selectedRunIdxs
+      .map((i) => historyRuns[i])
+      .filter((r) => r != null);
+  }, [selectedRunIdxs, historyRuns]);
+
+  const toggleRunSelection = (idx) => {
+    setSelectedRunIdxs((prev) => {
+      if (prev.includes(idx)) return prev.filter((x) => x !== idx);
+      if (prev.length >= 3) return prev; // 최대 3개
+      return [...prev, idx];
+    });
+  };
+
+  const historyBody = () => {
+    if (!historyRuns.length) {
+      return (
+        <p className="experiment-results-placeholder muted">
+          아직 실행 이력이 없습니다. 학습·예측을 한 번 이상 실행하면 run이 여기에 쌓입니다.
+        </p>
+      );
+    }
+    const canCompare = selectedRunIdxs.length >= 2;
+    return (
+      <div className="experiment-history-pane">
+        <div className="experiment-history-toolbar">
+          <span className="experiment-history-toolbar-info">
+            {selectedRunIdxs.length} / 3 선택
+          </span>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            disabled={!canCompare}
+            onClick={() => setShowCompare((v) => !v)}
+            title="선택된 run(2~3개)을 비교"
+          >
+            {showCompare ? "비교 닫기" : "비교 보기"}
+          </button>
+          <button
+            type="button"
+            className="btn btn-secondary"
+            disabled={!selectedRunIdxs.length}
+            onClick={() => {
+              setSelectedRunIdxs([]);
+              setShowCompare(false);
+            }}
+          >
+            선택 해제
+          </button>
+        </div>
+        {showCompare && canCompare && (
+          <RunCompareBody runs={selectedRuns} />
+        )}
+        <div className="run-history-scroll">
+          <table className="run-history-table">
+            <thead>
+              <tr>
+                <th style={{ width: 36 }} aria-label="선택"></th>
+                <th>시간</th>
+                <th>과제</th>
+                <th>모델</th>
+                <th>데이터셋</th>
+                <th>주요 지표</th>
+              </tr>
+            </thead>
+            <tbody>
+              {historyRuns.slice(0, 30).map((r, i) => {
+                const checked = selectedRunIdxs.includes(i);
+                const disabled =
+                  !checked && selectedRunIdxs.length >= 3;
+                const topMetrics = r?.metrics
+                  ? Object.entries(r.metrics)
+                      .slice(0, 3)
+                      .map(
+                        ([k, v]) =>
+                          `${k}: ${fmtMetricValue(v)}`
+                      )
+                      .join(" · ")
+                  : "—";
+                return (
+                  <tr
+                    key={`${r.model_id || "run"}-${i}`}
+                    className={
+                      checked
+                        ? "run-history-row run-history-row--checked"
+                        : "run-history-row"
+                    }
+                    onClick={() => {
+                      if (disabled) return;
+                      toggleRunSelection(i);
+                    }}
+                  >
+                    <td>
+                      <input
+                        type="checkbox"
+                        checked={checked}
+                        disabled={disabled}
+                        onChange={() => toggleRunSelection(i)}
+                        onClick={(e) => e.stopPropagation()}
+                        aria-label={`Run ${i + 1} 선택`}
+                      />
+                    </td>
+                    <td className="run-history-cell-time">
+                      {r?.created_at || "—"}
+                    </td>
+                    <td>{r?.task_type || "—"}</td>
+                    <td>{r?.model_type || "—"}</td>
+                    <td
+                      className="run-history-cell-ds"
+                      title={r?.dataset || r?.filename || ""}
+                    >
+                      {r?.dataset || r?.filename || "—"}
+                    </td>
+                    <td className="run-history-cell-m">{topMetrics}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    );
+  };
+
   const panel = () => {
     switch (tab) {
       case "results":
         return resultsBody();
+      case "history":
+        return historyBody();
       case "logs":
         return logsBody();
       case "charts":
@@ -303,6 +604,18 @@ export default function ExperimentResultsPanel({
       {!resultsCollapsed && (
         <>
           <StepContextBanner activeWorkflowStep={activeWorkflowStep} />
+          {runPhase && (
+            <RunPhaseStepper
+              phase={runPhase}
+              failed={!!runFailed}
+              elapsedSec={runElapsedSec || 0}
+              lastRunAt={
+                Array.isArray(history) && history.length
+                  ? history[history.length - 1]?.created_at
+                  : null
+              }
+            />
+          )}
           <div className="experiment-results-tabs" role="tablist" aria-label="산출물 보기">
             {TABS.map((t) => (
               <button
