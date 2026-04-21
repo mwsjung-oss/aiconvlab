@@ -53,6 +53,7 @@ export default function ExperimentWorkbenchLayout({
   sidebarCollapsed,
   onSidebarCollapsedChange,
   resultsPanelProps,
+  collapsedRail,
   children,
 }) {
   const childArr = Children.toArray(children);
@@ -173,10 +174,10 @@ export default function ExperimentWorkbenchLayout({
     [resetSidebarWidth, resetResultsWidth]
   );
 
-  // 접힌 상태 폭은 기존 패널 내부 CSS와 일치시킴
-  // (.experiment-sidebar--collapsed: 52px, .experiment-results--collapsed: 48px)
+  // 접힌 상태 폭: Phase 2b 스펙에 따라 좌측 sidebar rail 72px, 산출물 48px.
+  // (.experiment-left-panel--collapsed 내부 CSS와 일치시킴)
   const gridStyle = {
-    "--exp-sidebar-w": `${sidebarActuallyCollapsed ? 52 : sidebarWidth}px`,
+    "--exp-sidebar-w": `${sidebarActuallyCollapsed ? 72 : sidebarWidth}px`,
     "--exp-results-w": `${resultsCollapsed ? 48 : resultsWidth}px`,
   };
 
@@ -235,6 +236,11 @@ export default function ExperimentWorkbenchLayout({
           </div>
           {!sidebarActuallyCollapsed && (
             <div className="experiment-left-panel-body">{leftPanel}</div>
+          )}
+          {sidebarActuallyCollapsed && collapsedRail && (
+            <div className="experiment-left-panel-rail" aria-label="빠른 단계 이동">
+              {collapsedRail}
+            </div>
           )}
         </div>
         <div

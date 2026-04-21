@@ -1207,6 +1207,51 @@ export default function App() {
           <ExperimentWorkbenchLayout
             sidebarCollapsed={experimentSidebarCollapsed}
             onSidebarCollapsedChange={setExperimentSidebarCollapsed}
+            collapsedRail={
+              <>
+                {WORKFLOW_STEPS.map((step, idx) => {
+                  const n = idx + 1;
+                  const isActive = activeWorkflowStep === step.id;
+                  return (
+                    <button
+                      key={step.id}
+                      type="button"
+                      className={
+                        isActive
+                          ? "experiment-left-panel-rail-btn experiment-left-panel-rail-btn--active"
+                          : "experiment-left-panel-rail-btn"
+                      }
+                      onClick={() => handleWorkbenchStepSelect(step.id)}
+                      title={`${n}. ${step.label} · ${step.labelEn} (Alt+${n})`}
+                      aria-label={`${n}. ${step.label}`}
+                      aria-current={isActive ? "step" : undefined}
+                    >
+                      <span className="experiment-left-panel-rail-num">
+                        {n}
+                      </span>
+                      <span className="experiment-left-panel-rail-label">
+                        {step.label}
+                      </span>
+                    </button>
+                  );
+                })}
+                <div className="experiment-left-panel-rail-divider" />
+                <button
+                  type="button"
+                  className="experiment-left-panel-rail-btn experiment-left-panel-rail-btn--icon"
+                  onClick={() =>
+                    setExperimentResultsCollapsed((v) => !v)
+                  }
+                  title="산출물 패널 토글 (Ctrl+])"
+                  aria-label="산출물 패널 토글"
+                >
+                  <span className="experiment-left-panel-rail-icon">
+                    {experimentResultsCollapsed ? "▶" : "◀"}
+                  </span>
+                  <span className="experiment-left-panel-rail-label">산출물</span>
+                </button>
+              </>
+            }
             resultsPanelProps={{
               activeWorkflowStep,
               currentProjectId,

@@ -5412,6 +5412,136 @@ th {
   to { opacity: 1; transform: translate(-50%, 0); }
 }
 
+/* ---------- 좌측 사이드바 접힘 시 아이콘 Rail (Phase 2b) ---------- */
+.app--experiment-shell .experiment-left-panel--collapsed {
+  width: 72px;
+  min-width: 72px;
+  max-width: 72px;
+  transition: width var(--t-base, 200ms ease);
+}
+
+.app--experiment-shell .experiment-left-panel--collapsed .experiment-left-panel-header {
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 6px 8px;
+}
+
+.app--experiment-shell .experiment-left-panel--collapsed .experiment-left-panel-title {
+  writing-mode: initial;
+  transform: none;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #94a3b8;
+  text-align: center;
+  line-height: 1.1;
+}
+
+.app--experiment-shell .experiment-left-panel--collapsed .experiment-left-panel-collapse-btn {
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  font-size: 14px;
+  line-height: 1;
+  border-radius: 999px;
+}
+
+.experiment-left-panel-rail {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 4px;
+  padding: 8px 6px 16px;
+  overflow-y: auto;
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.experiment-left-panel-rail-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  width: 60px;
+  min-height: 58px;
+  margin: 0 auto;
+  padding: 6px 4px;
+  background: rgba(30, 41, 59, 0.55);
+  border: 1px solid transparent;
+  border-radius: 10px;
+  color: #94a3b8;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all var(--t-base, 200ms ease);
+  position: relative;
+  overflow: hidden;
+}
+.experiment-left-panel-rail-btn:hover {
+  background: rgba(37, 99, 235, 0.18);
+  border-color: rgba(37, 99, 235, 0.55);
+  color: #dbeafe;
+  transform: translateY(-1px);
+}
+.experiment-left-panel-rail-btn:focus-visible {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.4);
+}
+.experiment-left-panel-rail-btn--active {
+  background: linear-gradient(135deg, #1d4ed8 0%, #2563eb 100%);
+  border-color: #3b82f6;
+  color: #ffffff;
+  box-shadow: 0 8px 20px -10px rgba(37, 99, 235, 0.75);
+}
+.experiment-left-panel-rail-btn--active::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 10%;
+  bottom: 10%;
+  width: 3px;
+  background: #60a5fa;
+  border-radius: 0 2px 2px 0;
+}
+
+.experiment-left-panel-rail-num {
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: -0.01em;
+}
+.experiment-left-panel-rail-icon {
+  font-size: 14px;
+  line-height: 1;
+}
+.experiment-left-panel-rail-label {
+  font-size: 9.5px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-align: center;
+  line-height: 1.1;
+  margin-top: 1px;
+  white-space: nowrap;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.experiment-left-panel-rail-divider {
+  height: 1px;
+  background: rgba(148, 163, 184, 0.18);
+  margin: 6px 8px 4px;
+}
+
+.experiment-left-panel-rail-btn--icon {
+  background: transparent;
+}
+.experiment-left-panel-rail-btn--icon:hover {
+  background: rgba(148, 163, 184, 0.12);
+  border-color: rgba(148, 163, 184, 0.3);
+}
+
 /* ---------- 태블릿·랩탑 drawer 폴리싱 (Phase 2a · I) ---------- */
 /* 태블릿 이하: 하단 floating action bar 스타일 */
 @media (max-width: 1099px) {
