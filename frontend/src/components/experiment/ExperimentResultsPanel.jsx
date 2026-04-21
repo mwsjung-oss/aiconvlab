@@ -1,14 +1,21 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { WORKFLOW_STEPS } from "../../workflowConfig.js";
 import RunPhaseStepper from "./RunPhaseStepper.jsx";
+import {
+  readNotebookSnapshot,
+  subscribeNotebookSnapshot,
+} from "./canvas/notebookBridge.js";
 
 const TABS = [
+  { id: "summary", label: "Summary" },
   { id: "results", label: "Results" },
   { id: "history", label: "History" },
   { id: "logs", label: "Logs" },
   { id: "charts", label: "Charts" },
   { id: "tables", label: "Tables" },
   { id: "files", label: "Files" },
+  { id: "parameters", label: "Parameters" },
+  { id: "ai", label: "AI Insight" },
   { id: "report", label: "Report Draft" },
 ];
 
@@ -547,8 +554,27 @@ export default function ExperimentResultsPanel({
     );
   };
 
+  const summaryBody = () => (
+    <InspectorSummary
+      trainResult={trainResult}
+      history={history}
+      reportFiles={reportFiles}
+      activeWorkflowStep={activeWorkflowStep}
+      runPhase={runPhase}
+      runElapsedSec={runElapsedSec}
+    />
+  );
+
+  const parametersBody = () => (
+    <InspectorParameters trainResult={trainResult} />
+  );
+
+  const aiBody = () => <InspectorAIInsight />;
+
   const panel = () => {
     switch (tab) {
+      case "summary":
+        return summaryBody();
       case "results":
         return resultsBody();
       case "history":
@@ -561,6 +587,10 @@ export default function ExperimentResultsPanel({
         return tablesBody();
       case "files":
         return filesBody();
+      case "parameters":
+        return parametersBody();
+      case "ai":
+        return aiBody();
       case "report":
         return reportBody();
       default:
@@ -644,5 +674,286 @@ export default function ExperimentResultsPanel({
         </>
       )}
     </aside>
+  );
+}
+
+/* ===========================================================
+ * Inspector sub-components (Summary / Parameters / AI Insight)
+ * -----------------------------------------------------------
+ * These panels consume both the classic heavy-backend state
+ * (`trainResult`, `history`, `reportFiles`) and the notebook
+ * canvas snapshot (via `notebookBridge`) so the Inspector stays
+ * useful in either mode.
+ * =========================================================== */
+
+function useNotebookSnapshot() {
+  const [snap, setSnap] = useState(() => readNotebookSnapshot());
+  useEffect(() => {
+    setSnap(readNotebookSnapshot());
+    return subscribeNotebookSnapshot((s) => setSnap(s));
+  }, []);
+  return snap;
+}
+
+function KVList({ rows }) {
+  const filtered = rows.filter((r) => r && r.v !== undefined && r.v !== null && r.v !== "");
+  if (filtered.length === 0) {
+    return (
+      <div className="inspector-empty">아직 표시할 내용이 없습니다.</div>
+    );
+  }
+  return (
+    <dl className="inspector-kv">
+      {filtered.map((r) => (
+        <div className="inspector-kv__row" key={r.k}>
+          <dt className="inspector-kv__key">{r.k}</dt>
+          <dd className="inspector-kv__val">
+            {typeof r.v === "number" ? r.v.toLocaleString() : String(r.v)}
+          </dd>
+        </div>
+      ))}
+    </dl>
+  );
+}
+
+function InspectorSection({ title, subtitle, children }) {
+  return (
+    <section className="inspector-section">
+      <header className="inspector-section__head">
+        <h4 className="inspector-section__title">{title}</h4>
+        {subtitle ? (
+          <span className="inspector-section__sub">{subtitle}</span>
+        ) : null}
+      </header>
+      <div className="inspector-section__body">{children}</div>
+    </section>
+  );
+}
+
+function InspectorSummary({
+  trainResult,
+  history,
+  reportFiles,
+  activeWorkflowStep,
+  runPhase,
+  runElapsedSec,
+}) {
+  const snap = useNotebookSnapshot();
+  const lastRun = Array.isArray(history) && history.length
+    ? history[history.length - 1]
+    : null;
+  const topMetric =
+    trainResult?.metrics &&
+    Object.entries(trainResult.metrics).find(([, v]) => typeof v === "number");
+  const bestNotebookRun = snap?.runs?.find?.((r) => r.isBest) || snap?.runs?.[0];
+
+  return (
+    <div className="inspector-stack">
+      <InspectorSection
+        title="현재 단계"
+        subtitle={
+          WORKFLOW_STEPS.find((s) => s.id === activeWorkflowStep)?.labelEn
+        }
+      >
+        <KVList
+          rows={[
+            {
+              k: "단계",
+              v:
+                WORKFLOW_STEPS.find((s) => s.id === activeWorkflowStep)?.label,
+            },
+            { k: "Run 단계", v: runPhase || "—" },
+            {
+              k: "경과 시간",
+              v: runElapsedSec ? `${runElapsedSec}s` : "—",
+            },
+          ]}
+        />
+      </InspectorSection>
+
+      <InspectorSection
+        title="최근 학습 결과"
+        subtitle={trainResult?.model_id ? trainResult.model_id : "—"}
+      >
+        <KVList
+          rows={[
+            { k: "모델", v: trainResult?.model_type },
+            { k: "Task", v: trainResult?.task_type },
+            { k: "Target", v: trainResult?.target_column },
+            topMetric ? { k: topMetric[0], v: topMetric[1] } : null,
+            {
+              k: "최근 history",
+              v: lastRun?.created_at,
+            },
+          ].filter(Boolean)}
+        />
+      </InspectorSection>
+
+      {snap ? (
+        <InspectorSection
+          title="Notebook 상태"
+          subtitle={`${snap?.runs?.length || 0} runs`}
+        >
+          <KVList
+            rows={[
+              { k: "프로젝트", v: snap?.problem?.title },
+              { k: "Objective", v: snap?.problem?.objective },
+              { k: "Baseline", v: snap?.model?.baselineModel },
+              { k: "Best run", v: bestNotebookRun?.name },
+              {
+                k: "Best 지표",
+                v: bestNotebookRun?.keyMetric
+                  ? `${bestNotebookRun.keyMetric.name}=${typeof bestNotebookRun.keyMetric.value === "number" ? bestNotebookRun.keyMetric.value.toFixed(3) : bestNotebookRun.keyMetric.value}`
+                  : null,
+              },
+            ]}
+          />
+        </InspectorSection>
+      ) : null}
+
+      {Array.isArray(reportFiles) && reportFiles.length ? (
+        <InspectorSection
+          title="리포트 파일"
+          subtitle={`${reportFiles.length}건`}
+        >
+          <ul className="inspector-list">
+            {reportFiles.slice(0, 6).map((f, i) => (
+              <li key={f?.filename || i}>{f?.filename || String(f)}</li>
+            ))}
+          </ul>
+        </InspectorSection>
+      ) : null}
+    </div>
+  );
+}
+
+function InspectorParameters({ trainResult }) {
+  const snap = useNotebookSnapshot();
+  const nbModel = snap?.model;
+  const nbProblem = snap?.problem;
+  const nbRun = snap?.run;
+
+  return (
+    <div className="inspector-stack">
+      <InspectorSection title="학습 파라미터 · Backend">
+        {trainResult?.params && typeof trainResult.params === "object" ? (
+          <pre className="inspector-pre">
+            {JSON.stringify(trainResult.params, null, 2)}
+          </pre>
+        ) : (
+          <div className="inspector-empty">
+            아직 백엔드 학습 결과가 없습니다.
+          </div>
+        )}
+      </InspectorSection>
+
+      <InspectorSection
+        title="Notebook 설계"
+        subtitle="현재 노트북 블록에서 설정한 값"
+      >
+        <KVList
+          rows={[
+            { k: "문제 유형", v: nbModel?.problemType },
+            { k: "Baseline 모델", v: nbModel?.baselineModel },
+            { k: "후보 모델", v: nbModel?.candidateModels },
+            { k: "Target", v: snap?.data?.targetColumn },
+            { k: "KPI", v: nbProblem?.kpi },
+            { k: "Run 이름", v: nbRun?.runName },
+          ]}
+        />
+        {nbModel?.parameters ? (
+          <pre className="inspector-pre">{nbModel.parameters}</pre>
+        ) : null}
+      </InspectorSection>
+    </div>
+  );
+}
+
+function InspectorAIInsight() {
+  const snap = useNotebookSnapshot();
+  if (!snap) {
+    return (
+      <div className="inspector-empty">
+        Notebook AI 어시스트를 실행하면 이 곳에 최근 인사이트가 누적됩니다.
+      </div>
+    );
+  }
+  const entries = [
+    { key: "문제 정의", src: snap.problem },
+    { key: "데이터 검토", src: snap.data },
+    { key: "모델 설계", src: snap.model },
+    { key: "Run 해석", src: snap.run },
+    { key: "비교 · 개선", src: snap.compare },
+    { key: "리포트", src: snap.report },
+  ].filter((e) => e.src?.agentOutput);
+
+  if (entries.length === 0) {
+    return (
+      <div className="inspector-empty">
+        아직 AI 어시스트 출력이 없습니다. 각 노트북 블록 하단의 "AI 어시스트"
+        액션을 실행해 보세요.
+      </div>
+    );
+  }
+
+  return (
+    <div className="inspector-stack">
+      {entries.map((e) => (
+        <InspectorSection
+          key={e.key}
+          title={e.key}
+          subtitle={
+            e.src?.agentMeta?.provider
+              ? `${e.src.agentMeta.provider}${e.src.agentMeta.usedRag ? " · RAG" : ""}`
+              : ""
+          }
+        >
+          <AISummaryCard output={e.src.agentOutput} />
+        </InspectorSection>
+      ))}
+    </div>
+  );
+}
+
+function AISummaryCard({ output }) {
+  if (!output) return null;
+  const pickText =
+    output.executive_summary ||
+    output.dataset_summary ||
+    (typeof output.orchestration_notes === "string"
+      ? output.orchestration_notes
+      : null);
+  const pickList =
+    (Array.isArray(output.key_findings) && output.key_findings) ||
+    (Array.isArray(output.recommendations) && output.recommendations) ||
+    (Array.isArray(output.recommended_preprocessing) &&
+      output.recommended_preprocessing) ||
+    null;
+  const pickModels =
+    Array.isArray(output.recommended_models) && output.recommended_models;
+  return (
+    <div className="inspector-ai">
+      {pickText ? <p className="inspector-ai__text">{pickText}</p> : null}
+      {pickList ? (
+        <ul className="inspector-list">
+          {pickList.slice(0, 5).map((it, i) => (
+            <li key={i}>{typeof it === "string" ? it : JSON.stringify(it)}</li>
+          ))}
+        </ul>
+      ) : null}
+      {pickModels ? (
+        <div className="inspector-ai__models">
+          {pickModels.slice(0, 3).map((m, i) => (
+            <div className="inspector-ai__model" key={i}>
+              <strong>{m?.name || `Model ${i + 1}`}</strong>
+              {m?.rationale ? <span> · {m.rationale}</span> : null}
+            </div>
+          ))}
+        </div>
+      ) : null}
+      {!pickText && !pickList && !pickModels ? (
+        <pre className="inspector-pre">{JSON.stringify(output, null, 2)}</pre>
+      ) : null}
+    </div>
   );
 }

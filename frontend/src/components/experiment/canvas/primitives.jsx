@@ -119,16 +119,31 @@ export function RunStatusChip({ status }) {
   );
 }
 
-/** Derived chip for the generic block status (idle/in_progress/done/warning). */
+/** Derived chip for the generic block status.
+ *
+ * Accepts both the canonical brief vocabulary
+ *   (not_started | ready | running | completed | warning | failed)
+ * and the legacy internal labels
+ *   (idle | in_progress | done | warning | error)
+ * so older call sites keep working during the rollout.
+ */
+const BLOCK_STATUS_MAP = {
+  // canonical names from product brief
+  not_started: { kind: "info", label: "시작 전", dot: "muted" },
+  ready: { kind: "info", label: "준비됨", dot: "info" },
+  running: { kind: "info", label: "진행 중", dot: "info", pulse: true },
+  completed: { kind: "ok", label: "완료", dot: "ok" },
+  warning: { kind: "warn", label: "검토 필요", dot: "warn" },
+  failed: { kind: "err", label: "실패", dot: "err" },
+  // legacy aliases — kept for backward compatibility
+  idle: { kind: "info", label: "시작 전", dot: "muted" },
+  in_progress: { kind: "info", label: "진행 중", dot: "info", pulse: true },
+  done: { kind: "ok", label: "완료", dot: "ok" },
+  error: { kind: "err", label: "실패", dot: "err" },
+};
+
 export function BlockStatusChip({ status }) {
-  const mapping = {
-    idle: { kind: "info", label: "준비", dot: "muted" },
-    in_progress: { kind: "info", label: "진행 중", dot: "info", pulse: true },
-    done: { kind: "ok", label: "완료", dot: "ok" },
-    warning: { kind: "warn", label: "검토 필요", dot: "warn" },
-    error: { kind: "err", label: "오류", dot: "err" },
-  };
-  const entry = mapping[status] || mapping.idle;
+  const entry = BLOCK_STATUS_MAP[status] || BLOCK_STATUS_MAP.not_started;
   return (
     <Chip kind={entry.kind} title={`상태: ${entry.label}`}>
       <Dot kind={entry.dot} pulse={!!entry.pulse} />

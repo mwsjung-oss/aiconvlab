@@ -201,7 +201,26 @@ export default function ExperimentWorkbenchLayout({
           aria-label="AI Agent 대화창"
         >
           <div className="experiment-left-panel-header">
-            <span className="experiment-left-panel-title">AI Agent</span>
+            <span
+              className="experiment-left-panel-title"
+              title="자유 질의용 글로벌 어시스턴트. 단계별 Contextual AI는 중앙 노트북 블록 안에 있습니다."
+            >
+              AI Agent
+              {!sidebarActuallyCollapsed && (
+                <span
+                  style={{
+                    marginLeft: 8,
+                    fontSize: 10.5,
+                    fontWeight: 500,
+                    color: "#94a3b8",
+                    letterSpacing: 0.4,
+                    textTransform: "uppercase",
+                  }}
+                >
+                  Global
+                </span>
+              )}
+            </span>
             {!sidebarActuallyCollapsed && (
               <label
                 className="experiment-left-panel-provider"

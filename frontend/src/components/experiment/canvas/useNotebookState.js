@@ -6,6 +6,7 @@
  * custom hooks gives us autosave + persistence without a new dependency.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { publishNotebookSnapshot } from "./notebookBridge.js";
 
 const STORAGE_KEY = "ailab_notebook_state_v1";
 const AUTOSAVE_DEBOUNCE_MS = 400;
@@ -143,6 +144,9 @@ export function useNotebookState() {
 
   useEffect(() => {
     persist(state);
+    // Broadcast a snapshot so read-only surfaces (Inspector panel) stay in
+    // sync without needing direct React context access.
+    publishNotebookSnapshot(state);
     return () => {
       if (saveTimer.current) clearTimeout(saveTimer.current);
     };
