@@ -642,6 +642,32 @@
   font-size: 0.78rem;
 }
 
+/* ---------- Experiment 3패널 텍스트 크기 통일 ----------
+   사용자 요청: AI Agent(좌), 프로젝트(중앙), 산출물(우) 패널 내부의 모든 글씨를
+   "전체 로드맵 / 데이터셋 목록 / 모델 목록 / 최근 이력"(.ai-chat-chip = 0.72rem)
+   과 동일한 크기로 통일.
+   - svg/img/experiment-step-tab-num 등 비텍스트 요소는 대상에서 제외.
+   - h1~h6, p, span, div, button, label, li, th, td, select, option, input,
+     textarea, a, strong, em, small, code, pre 등 텍스트 성격 요소만 강제. */
+.app--experiment-shell .experiment-left-panel,
+.app--experiment-shell .experiment-workbench-center,
+.app--experiment-shell .experiment-main-stage,
+.app--experiment-shell .experiment-results {
+  font-size: 0.72rem;
+}
+
+.app--experiment-shell .experiment-left-panel
+  :is(h1, h2, h3, h4, h5, h6, p, span, div, button, label, li, th, td, select, option, input, textarea, a, strong, em, small, code, pre, summary, figcaption, legend, dt, dd),
+.app--experiment-shell .experiment-workbench-center
+  :is(h1, h2, h3, h4, h5, h6, p, span, div, button, label, li, th, td, select, option, input, textarea, a, strong, em, small, code, pre, summary, figcaption, legend, dt, dd),
+.app--experiment-shell .experiment-main-stage
+  :is(h1, h2, h3, h4, h5, h6, p, span, div, button, label, li, th, td, select, option, input, textarea, a, strong, em, small, code, pre, summary, figcaption, legend, dt, dd),
+.app--experiment-shell .experiment-results
+  :is(h1, h2, h3, h4, h5, h6, p, span, div, button, label, li, th, td, select, option, input, textarea, a, strong, em, small, code, pre, summary, figcaption, legend, dt, dd) {
+  font-size: 0.72rem;
+  line-height: 1.45;
+}
+
 /* --- 6단계 워크플로 (primary) --- */
 .workflow-nav {
   margin-bottom: 0.35rem;
