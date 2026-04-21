@@ -570,27 +570,31 @@
 }
 
 .app--experiment-shell .experiment-top-strip-action-btn {
-  min-height: 1.7rem;
-  padding: 0.22rem 0.5rem;
-  font-size: 0.72rem;
+  min-height: 1.9rem;
+  padding: 0.28rem 0.6rem;
+  font-size: 0.9rem;
 }
 
 .app--experiment-shell .experiment-top-strip-session-btn {
-  min-height: 1.7rem;
-  padding: 0.2rem 0.48rem;
-  font-size: 0.7rem;
+  min-height: 1.9rem;
+  padding: 0.28rem 0.6rem;
+  font-size: 0.9rem;
 }
 
 .app--experiment-shell .workflow-project-new-btn {
-  min-height: 1.7rem !important;
-  padding: 0.22rem 0.55rem !important;
+  min-height: 1.9rem !important;
+  padding: 0.28rem 0.6rem !important;
+  font-size: 0.9rem !important;
 }
 
 .app--experiment-shell .experiment-top-strip-field-label,
 .app--experiment-shell .experiment-top-strip-status-label,
-.app--experiment-shell .workflow-current-project-label {
-  font-size: 0.62rem;
-  letter-spacing: 0.04em;
+.app--experiment-shell .experiment-top-strip-session-email,
+.app--experiment-shell .workflow-current-project-label,
+.app--experiment-shell .experiment-top-strip-status-value,
+.app--experiment-shell .workflow-current-project-name {
+  font-size: 0.9rem;
+  letter-spacing: 0;
 }
 
 .app--experiment-shell .top-nav-row--workflow-primary {
@@ -613,11 +617,11 @@
 }
 
 .app--experiment-shell .experiment-step-tab-ko {
-  font-size: 0.72rem;
+  font-size: 0.9rem;
 }
 
 .app--experiment-shell .experiment-step-tab-en {
-  font-size: 0.6rem;
+  font-size: 0.9rem;
 }
 
 .app--experiment-shell .top-nav-row--workflow-sub {
@@ -625,27 +629,27 @@
 }
 
 .app--experiment-shell .top-nav-row-label {
-  font-size: 0.62rem;
-  padding-top: 0.12rem;
+  font-size: 0.9rem;
+  padding-top: 0.14rem;
+  letter-spacing: 0;
 }
 
 .app--experiment-shell .top-nav-row--workflow-sub .nav-tab {
-  padding: 0.22rem 0.5rem;
-  font-size: 0.72rem;
+  padding: 0.28rem 0.6rem;
+  font-size: 0.9rem;
 }
 
-/* select/버튼 전반 높이도 살짝 축소 */
+/* select/input 폰트·높이 통일 */
 .app--experiment-shell .experiment-top-strip-row--primary select,
 .app--experiment-shell .experiment-top-strip-row--primary input {
-  min-height: 1.75rem;
-  padding: 0.22rem 0.42rem;
-  font-size: 0.78rem;
+  min-height: 1.95rem;
+  padding: 0.28rem 0.5rem;
+  font-size: 0.9rem;
 }
 
 /* ---------- Experiment 3패널 텍스트 크기 통일 ----------
    사용자 요청: AI Agent(좌), 프로젝트(중앙), 산출물(우) 패널 내부의 모든 글씨를
-   "전체 로드맵 / 데이터셋 목록 / 모델 목록 / 최근 이력"(.ai-chat-chip = 0.72rem)
-   과 동일한 크기로 통일.
+   "기존 프로젝트 이어서 진행" 버튼(.btn = 0.9rem)과 동일한 크기로 통일.
    - svg/img/experiment-step-tab-num 등 비텍스트 요소는 대상에서 제외.
    - h1~h6, p, span, div, button, label, li, th, td, select, option, input,
      textarea, a, strong, em, small, code, pre 등 텍스트 성격 요소만 강제. */
@@ -653,7 +657,7 @@
 .app--experiment-shell .experiment-workbench-center,
 .app--experiment-shell .experiment-main-stage,
 .app--experiment-shell .experiment-results {
-  font-size: 0.72rem;
+  font-size: 0.9rem;
 }
 
 .app--experiment-shell .experiment-left-panel
@@ -664,8 +668,8 @@
   :is(h1, h2, h3, h4, h5, h6, p, span, div, button, label, li, th, td, select, option, input, textarea, a, strong, em, small, code, pre, summary, figcaption, legend, dt, dd),
 .app--experiment-shell .experiment-results
   :is(h1, h2, h3, h4, h5, h6, p, span, div, button, label, li, th, td, select, option, input, textarea, a, strong, em, small, code, pre, summary, figcaption, legend, dt, dd) {
-  font-size: 0.72rem;
-  line-height: 1.45;
+  font-size: 0.9rem;
+  line-height: 1.5;
 }
 
 /* --- 6단계 워크플로 (primary) --- */
@@ -2917,7 +2921,8 @@ th {
 
 .experiment-top-strip-cluster--model {
   display: grid;
-  grid-template-columns: minmax(82px, 0.42fr) minmax(130px, 0.58fr);
+  /* 2번째 컬럼(학습 모델)은 40% 축소: minmax(130px, 0.58fr) → minmax(78px, 0.35fr) */
+  grid-template-columns: minmax(82px, 0.5fr) minmax(78px, 0.35fr);
   gap: 0.45rem;
 }
 
@@ -2977,7 +2982,9 @@ th {
 }
 
 .experiment-model-select--wide {
-  min-width: 8.4rem;
+  /* 사용자 요청: 학습 모델 select 버튼 폭 40% 축소 (8.4rem → 5.04rem) */
+  min-width: 5.04rem;
+  max-width: 7.5rem;
 }
 
 .experiment-top-strip-action-btn {
