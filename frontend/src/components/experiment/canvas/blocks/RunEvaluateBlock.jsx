@@ -4,6 +4,7 @@ import ContextualAIAssist from "../ContextualAIAssist.jsx";
 import InlineAgentOutput from "../InlineAgentOutput.jsx";
 import { Field, NButton, RunStatusChip } from "../primitives.jsx";
 import { formatElapsed } from "../useNotebookState.js";
+import { writeTimeline } from "../notebookBridge.js";
 
 /**
  * Canonical run state machine. The mock run below steps through each phase
@@ -128,6 +129,18 @@ export default function RunEvaluateBlock({
       metrics: null,
     });
     appendLog(`▶ ${runName} 시작 (model=${model.baselineModel || "auto"})`);
+    writeTimeline({
+      actor: "user",
+      eventType: "train",
+      summary: `Run 시작: ${runName}`,
+      detail: {
+        model: model.baselineModel || "auto",
+        dataset: state.data.datasetId || "—",
+        problemType: model.problemType,
+      },
+      status: "info",
+      ref: { blockKey: "run", runId },
+    });
 
     addRun({
       id: runId,
@@ -151,6 +164,21 @@ export default function RunEvaluateBlock({
         elapsedSec: Math.floor((Date.now() - start) / 1000),
       });
       appendLog(`· ${phase.label} (${phase.progress}%)`);
+      const phaseEventType =
+        phase.key === "loading_data"
+          ? "load"
+          : phase.key === "validating"
+            ? "preprocess"
+            : phase.key === "evaluating"
+              ? "evaluate"
+              : "train";
+      writeTimeline({
+        actor: "system",
+        eventType: phaseEventType,
+        summary: `${phase.label} (${phase.progress}%)`,
+        status: "info",
+        ref: { blockKey: "run", runId },
+      });
       await new Promise((r) => setTimeout(r, phase.duration));
     }
 
@@ -177,6 +205,14 @@ export default function RunEvaluateBlock({
       metrics,
     });
     appendLog(`✅ 완료 (${keyMetricName}=${metrics[keyMetricName]})`);
+    writeTimeline({
+      actor: "system",
+      eventType: "evaluate",
+      summary: `Run 완료 · ${keyMetricName}=${metrics[keyMetricName]}`,
+      detail: { runName, runId, metrics },
+      status: "ok",
+      ref: { blockKey: "run", runId },
+    });
     abortRef.current = null;
   }, [
     run.status,

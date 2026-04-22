@@ -22,7 +22,10 @@ import CompareImproveBlock from "./blocks/CompareImproveBlock.jsx";
 import ReportExportBlock from "./blocks/ReportExportBlock.jsx";
 import RunHistoryList from "./RunHistoryList.jsx";
 import KnowledgeDrawer from "./KnowledgeDrawer.jsx";
+import ActivityTimeline from "./ActivityTimeline.jsx";
+import DynamicCellList from "./DynamicCellList.jsx";
 import { gatewayHealth, safeCall } from "../../../api/notebookApi.js";
+import { setTimelineSink } from "./notebookBridge.js";
 
 export default function ExperimentCanvas({
   projectName = "",
@@ -39,6 +42,12 @@ export default function ExperimentCanvas({
     patchRun,
     markSaved,
     resetAll,
+    appendTimeline,
+    clearTimeline,
+    addCell,
+    patchCell,
+    removeCell,
+    moveCell,
   } = useNotebookState();
 
   const [activeBlock, setActiveBlock] = useState("problem");
@@ -57,11 +66,24 @@ export default function ExperimentCanvas({
     };
   }, []);
 
+  // Install the shared timeline sink so ContextualAIAssist (embedded in every
+  // block) can emit structured events without prop-drilling.
+  useEffect(() => {
+    setTimelineSink(appendTimeline);
+    return () => setTimelineSink(null);
+  }, [appendTimeline]);
+
   // Autosave → lastSavedAt is updated inside the store on every mutation via
   // `patchBlock`. We surface a Save button purely for user affordance; clicking
   // it just flushes the `dirty` flag.
   const save = () => {
     markSaved();
+    appendTimeline({
+      actor: "user",
+      eventType: "save",
+      summary: "노트북 변경 사항 저장",
+      status: "ok",
+    });
   };
 
   const exportNotebook = () => {
@@ -83,6 +105,12 @@ export default function ExperimentCanvas({
     a.click();
     a.remove();
     URL.revokeObjectURL(url);
+    appendTimeline({
+      actor: "user",
+      eventType: "export",
+      summary: `노트북 JSON 내보내기 (${state.runs.length} runs)`,
+      status: "ok",
+    });
   };
 
   const scrollToBlock = (id) => {
@@ -90,6 +118,33 @@ export default function ExperimentCanvas({
     if (el && scrollRef.current) {
       el.scrollIntoView({ behavior: "smooth", block: "start" });
     }
+  };
+
+  /**
+   * Quick action dispatcher — binds the top-of-canvas quick buttons to their
+   * corresponding step block + scroll target. Each invocation also records a
+   * structured timeline event for replay/audit.
+   */
+  const runQuickAction = (actionId) => {
+    const map = {
+      load_data: { block: "data", label: "데이터 로드/검토" },
+      suggest_preprocess: { block: "data", label: "전처리 제안" },
+      recommend_model: { block: "model", label: "모델 추천" },
+      explain_result: { block: "run", label: "결과 해설" },
+      draft_report: { block: "report", label: "리포트 초안" },
+    };
+    const entry = map[actionId];
+    if (!entry) return;
+    scrollToBlock(entry.block);
+    setActiveBlock(entry.block);
+    if (!state[entry.block]?.expanded) toggleBlock(entry.block);
+    appendTimeline({
+      actor: "user",
+      eventType: "request",
+      summary: `Quick action · ${entry.label}`,
+      status: "info",
+      ref: { blockKey: entry.block },
+    });
   };
 
   const gatewayChip = useMemo(() => {
@@ -134,6 +189,37 @@ export default function ExperimentCanvas({
           >
             <option value="openai">OpenAI</option>
             <option value="gemini">Gemini</option>
+          </select>
+        </label>
+
+        <label
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 6,
+            fontSize: 12,
+            color: "var(--nc-text-secondary)",
+          }}
+          title="Dynamic 셀 · Quick action에서 기본으로 사용할 에이전트"
+        >
+          <span>Agent</span>
+          <select
+            value={state.ui.activeAgent}
+            onChange={(e) => patchUi({ activeAgent: e.target.value })}
+            style={{
+              background: "var(--nc-elevated)",
+              border: "1px solid var(--nc-border)",
+              color: "var(--nc-text)",
+              borderRadius: 6,
+              padding: "3px 6px",
+              fontSize: 12,
+            }}
+          >
+            <option value="smart">Smart (RAG)</option>
+            <option value="data">Data Agent</option>
+            <option value="model">Model Agent</option>
+            <option value="report">Report Agent</option>
+            <option value="general">General Assistant</option>
           </select>
         </label>
 
@@ -255,6 +341,22 @@ export default function ExperimentCanvas({
         ))}
       </nav>
 
+      {/* Quick Actions — most common worker-centered shortcuts. */}
+      <div className="notebook-quickbar" aria-label="빠른 작업">
+        <span className="notebook-quickbar__label">빠른 작업</span>
+        {QUICK_ACTIONS.map((q) => (
+          <button
+            key={q.id}
+            type="button"
+            className="notebook-quickbar__btn"
+            title={q.hint}
+            onClick={() => runQuickAction(q.id)}
+          >
+            <span aria-hidden="true">{q.icon}</span> {q.label}
+          </button>
+        ))}
+      </div>
+
       <div
         className="notebook-canvas__scroll"
         ref={scrollRef}
@@ -338,6 +440,12 @@ export default function ExperimentCanvas({
                       )
                     ) {
                       resetAll();
+                      appendTimeline({
+                        actor: "user",
+                        eventType: "note",
+                        summary: "노트북 전체 초기화",
+                        status: "warn",
+                      });
                     }
                   }}
                   title="전체 초기화"
@@ -364,8 +472,54 @@ export default function ExperimentCanvas({
               />
             </div>
           </section>
+
+          {/* Dynamic Colab-style cells (prompt/markdown/code/sql) */}
+          <DynamicCellList
+            cells={state.cells}
+            provider={state.ui.provider}
+            activeAgent={state.ui.activeAgent}
+            useRag={state.ui.useRag}
+            onAddCell={(type) => {
+              const newId = addCell(type);
+              appendTimeline({
+                actor: "user",
+                eventType: "note",
+                summary: `${type} 셀 추가`,
+                status: "info",
+                ref: { cellId: newId },
+              });
+            }}
+            onPatchCell={patchCell}
+            onRemoveCell={(id) => {
+              removeCell(id);
+              appendTimeline({
+                actor: "user",
+                eventType: "note",
+                summary: "셀 삭제",
+                status: "warn",
+                ref: { cellId: id },
+              });
+            }}
+            onMoveCell={moveCell}
+            onTimeline={appendTimeline}
+          />
         </div>
       </div>
+
+      {/* Structured activity timeline (bottom drawer). */}
+      <ActivityTimeline
+        open={state.ui.timelineOpen}
+        timeline={state.timeline}
+        onToggle={() =>
+          patchUi({ timelineOpen: !state.ui.timelineOpen })
+        }
+        onClear={clearTimeline}
+        onJumpToBlock={(blockKey) => {
+          setActiveBlock(blockKey);
+          scrollToBlock(blockKey);
+        }}
+        onOpenFullChat={() => patchUi({ aiSidebarFlash: Date.now() })}
+      />
 
       <KnowledgeDrawer
         open={state.ui.knowledgeOpen}
@@ -375,6 +529,34 @@ export default function ExperimentCanvas({
     </div>
   );
 }
+
+const QUICK_ACTIONS = [
+  { id: "load_data", icon: "📂", label: "Load Data", hint: "데이터 블록으로 이동" },
+  {
+    id: "suggest_preprocess",
+    icon: "🧹",
+    label: "Suggest Preprocessing",
+    hint: "데이터 블록의 전처리 AI 액션 안내",
+  },
+  {
+    id: "recommend_model",
+    icon: "🧠",
+    label: "Recommend Model",
+    hint: "모델 설계 블록으로 이동",
+  },
+  {
+    id: "explain_result",
+    icon: "📊",
+    label: "Explain Result",
+    hint: "실행·평가 블록의 결과 해설 AI 액션",
+  },
+  {
+    id: "draft_report",
+    icon: "📝",
+    label: "Draft Report",
+    hint: "리포트 블록으로 이동",
+  },
+];
 
 const STAGES = [
   { key: "problem", label: "문제" },

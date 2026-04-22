@@ -12,6 +12,7 @@
  */
 import { useCallback, useState } from "react";
 import { runAgent } from "../../../api/notebookApi";
+import { writeTimeline } from "./notebookBridge.js";
 
 export default function ContextualAIAssist({
   blockKey,
@@ -20,6 +21,7 @@ export default function ContextualAIAssist({
   useRag = true,
   onResult,
   footerMeta = null,
+  onTimeline, // optional: structured timeline writer (see ActivityTimeline)
 }) {
   const [busyId, setBusyId] = useState(null);
   const [error, setError] = useState("");
@@ -36,6 +38,16 @@ export default function ContextualAIAssist({
           setError("실행에 필요한 task 텍스트가 비어 있습니다.");
           return;
         }
+        const requestEvent = {
+          actor: "user",
+          eventType: "request",
+          summary: `${action.label} · ${blockKey}`,
+          detail: task.slice(0, 500),
+          status: "info",
+          ref: { blockKey, agent: agent || "data", provider },
+        };
+        onTimeline?.(requestEvent);
+        writeTimeline(requestEvent);
         const body = {
           agent: useRag ? "smart" : agent || "data",
           task,
@@ -74,13 +86,38 @@ export default function ContextualAIAssist({
           agent: data?.agent,
           sources: output?._retrieved_sources || [],
         });
+        const okEvent = {
+          actor: "agent",
+          eventType: "suggestion",
+          summary: `${action.label} 결과 수신 · ${data?.agent || agent || "data"}`,
+          detail: output,
+          status: "ok",
+          ref: {
+            blockKey,
+            agent: data?.agent,
+            provider: data?.provider,
+          },
+        };
+        onTimeline?.(okEvent);
+        writeTimeline(okEvent);
       } catch (err) {
-        setError(String(err?.message || err) || "AI 호출 실패");
+        const msg = String(err?.message || err) || "AI 호출 실패";
+        setError(msg);
+        const errEvent = {
+          actor: "system",
+          eventType: "error",
+          summary: `${action.label} 실패`,
+          detail: msg,
+          status: "err",
+          ref: { blockKey },
+        };
+        onTimeline?.(errEvent);
+        writeTimeline(errEvent);
       } finally {
         setBusyId(null);
       }
     },
-    [onResult, provider, useRag]
+    [onResult, provider, useRag, onTimeline, blockKey]
   );
 
   if (!actions.length) return null;

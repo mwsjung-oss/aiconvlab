@@ -74,3 +74,28 @@ export function subscribeNotebookSnapshot(listener) {
   window.addEventListener(EVENT_NAME, handler);
   return () => window.removeEventListener(EVENT_NAME, handler);
 }
+
+/* ---------------------------------------------------------------
+ * Shared timeline sink.
+ *
+ * Blocks (6 fixed + dynamic cells) drop structured events here via
+ * `writeTimeline(event)`. ExperimentCanvas installs the actual writer
+ * (wired to useNotebookState.appendTimeline) with `setTimelineSink`.
+ *
+ * Having a module-level sink avoids threading an `onTimeline` prop
+ * through every block/cell call site and keeps backwards-compatibility
+ * with existing block signatures.
+ * --------------------------------------------------------------- */
+let _timelineSink = null;
+
+export function setTimelineSink(fn) {
+  _timelineSink = typeof fn === "function" ? fn : null;
+}
+
+export function writeTimeline(event) {
+  try {
+    if (_timelineSink) _timelineSink(event);
+  } catch {
+    /* never let telemetry break the UI */
+  }
+}
