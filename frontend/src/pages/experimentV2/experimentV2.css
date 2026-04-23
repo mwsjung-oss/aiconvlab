@@ -247,41 +247,96 @@
 }
 
 /* ============================================================
- * MAIN LAYOUT (3-column)
+ * MAIN LAYOUT (3-column, 사용자 드래그로 폭 조정)
+ * ------------------------------------------------------------
+ * grid-template-columns 는 React 인라인 style에서 주입한다:
+ *   ${leftWidth}px  ${leftGutter}  minmax(0, 1fr)  ${rightGutter}  ${rightWidth}px
+ *
+ * 접힌 사이드바는 44px 고정이고 그쪽 gutter는 0px 로 줄어 클릭 영역이 사라진다.
+ * 아래 class 기반 fallback 은 인라인 스타일이 주입되기 전 첫 프레임용.
  * ============================================================ */
 .expv2-main {
   display: grid;
-  grid-template-columns: 300px minmax(0, 1fr) 360px;
-  gap: 12px;
+  grid-template-columns: 300px 6px minmax(0, 1fr) 6px 360px;
+  column-gap: 0;
+  row-gap: 0;
   padding: 12px 14px;
   align-items: stretch;
   min-height: 0;
   overflow: hidden;
 }
 .expv2-main--left-collapsed {
-  grid-template-columns: 44px minmax(0, 1fr) 360px;
+  grid-template-columns: 44px 0px minmax(0, 1fr) 6px 360px;
 }
 .expv2-main--right-collapsed {
-  grid-template-columns: 300px minmax(0, 1fr) 44px;
+  grid-template-columns: 300px 6px minmax(0, 1fr) 0px 44px;
 }
 .expv2-main--both-collapsed {
-  grid-template-columns: 44px minmax(0, 1fr) 44px;
+  grid-template-columns: 44px 0px minmax(0, 1fr) 0px 44px;
+}
+/* Between-columns micro gap (패널이 gutter와 딱 붙지 않도록 좌/우 4px margin) */
+.expv2-main > .expv2-left,
+.expv2-main > .expv2-right {
+  min-height: 0;
+}
+.expv2-main > .expv2-center {
+  margin: 0 6px;
+  min-height: 0;
 }
 
-/* On narrower desktops, tighten sidebars (still 3-col). */
+/* ---- Gutter (리사이저) ------------------------------------ */
+.expv2-gutter {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  align-self: stretch;
+}
+.expv2-gutter--col {
+  cursor: col-resize;
+  touch-action: none;
+  user-select: none;
+}
+.expv2-gutter--col::before {
+  content: "";
+  position: absolute;
+  top: 10%;
+  bottom: 10%;
+  left: 1px;
+  right: 1px;
+  background: var(--border);
+  border-radius: 2px;
+  transition: background 140ms ease;
+}
+.expv2-gutter--col:hover::before {
+  background: var(--primary);
+}
+.expv2-gutter--disabled {
+  pointer-events: none;
+}
+body.expv2-resizing {
+  user-select: none;
+  cursor: col-resize;
+}
+
+/* On narrower desktops, tighten default widths via inline style fallback. */
 @media (max-width: 1280px) {
-  .expv2-main {
-    grid-template-columns: 280px minmax(0, 1fr) 320px;
+  .expv2-main:not(.expv2-main--resizable) {
+    grid-template-columns: 280px 6px minmax(0, 1fr) 6px 320px;
   }
 }
 /* Tablet → side panels become sheets launched from the top bar. */
 @media (max-width: 960px) {
-  .expv2-main {
-    grid-template-columns: 1fr;
+  .expv2-main,
+  .expv2-main--resizable {
+    grid-template-columns: 1fr !important;
     padding: 10px;
   }
+  .expv2-main > .expv2-center {
+    margin: 0;
+  }
   .expv2-left,
-  .expv2-right {
+  .expv2-right,
+  .expv2-gutter {
     display: none;
   }
 }
@@ -961,15 +1016,51 @@
 }
 
 /* ============================================================
- * BOTTOM TRACE PANEL
+ * BOTTOM TRACE PANEL (높이 조정 가능)
+ * ------------------------------------------------------------
+ * 기본 높이는 React 인라인 style에서 주입 (state.traceHeight).
+ * 접힌 상태에서는 auto 높이로 되돌려 헤더만 노출한다.
  * ============================================================ */
 .expv2-trace {
   background: var(--panel);
   border-top: 1px solid var(--border);
   display: flex;
   flex-direction: column;
-  max-height: 320px;
+  height: 160px;          /* 인라인 style이 오버라이드; 기본값 축소로 결과 셀까지 노출 */
+  min-height: 72px;
+  max-height: 60vh;
   overflow: hidden;
+}
+.expv2-trace--collapsed {
+  height: auto !important;
+  min-height: 0;
+  max-height: none;
+}
+.expv2-trace__resizer {
+  height: 6px;
+  flex: 0 0 auto;
+  cursor: row-resize;
+  background: transparent;
+  position: relative;
+  touch-action: none;
+  user-select: none;
+}
+.expv2-trace__resizer::before {
+  content: "";
+  position: absolute;
+  left: 20%;
+  right: 20%;
+  top: 2px;
+  bottom: 2px;
+  background: var(--border);
+  border-radius: 2px;
+  transition: background 140ms ease;
+}
+.expv2-trace__resizer:hover::before {
+  background: var(--primary);
+}
+body.expv2-resizing .expv2-trace__resizer::before {
+  background: var(--primary);
 }
 .expv2-trace__head {
   display: flex;

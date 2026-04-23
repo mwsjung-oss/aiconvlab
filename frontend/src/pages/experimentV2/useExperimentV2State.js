@@ -15,6 +15,35 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 const STORAGE_KEY = "ailab_experiment_v2_state_v1";
 const AUTOSAVE_DEBOUNCE_MS = 450;
 
+/** Resizer 기본값 / 경계값. 유저가 드래그로 조정한 값은 state에 영속화된다. */
+export const LAYOUT_LIMITS = Object.freeze({
+  leftMin: 220,
+  leftMax: 520,
+  leftDefault: 300,
+  rightMin: 260,
+  rightMax: 560,
+  rightDefault: 360,
+  traceMin: 72,
+  traceMax: 520,
+  traceDefault: 160,
+});
+
+export function clampLeftWidth(v) {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return LAYOUT_LIMITS.leftDefault;
+  return Math.min(LAYOUT_LIMITS.leftMax, Math.max(LAYOUT_LIMITS.leftMin, n));
+}
+export function clampRightWidth(v) {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return LAYOUT_LIMITS.rightDefault;
+  return Math.min(LAYOUT_LIMITS.rightMax, Math.max(LAYOUT_LIMITS.rightMin, n));
+}
+export function clampTraceHeight(v) {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return LAYOUT_LIMITS.traceDefault;
+  return Math.min(LAYOUT_LIMITS.traceMax, Math.max(LAYOUT_LIMITS.traceMin, n));
+}
+
 function id() {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
     return crypto.randomUUID();
@@ -109,6 +138,13 @@ export const INITIAL_STATE = Object.freeze({
   rightPanelTab: "summary", // summary | viz | interp | compare | export
   leftSidebarCollapsed: false,
   rightSidebarCollapsed: false,
+  /* Resizable column widths (사용자 드래그로 조정 가능) — 기본값은 Colab 톤에
+     맞춰 좁게 잡아 센터 노트북이 항상 지배적이도록 한다. */
+  leftWidth: LAYOUT_LIMITS.leftDefault,
+  rightWidth: LAYOUT_LIMITS.rightDefault,
+  /* 하단 Activity Timeline 높이. 기본 160px로 잡아 표준 해상도에서도
+     Result 셀까지 자연스럽게 보이도록 한다. */
+  traceHeight: LAYOUT_LIMITS.traceDefault,
   bottomPanelMode: "timeline", // hidden | timeline
   timelineEvents: [],
   recentChat: [], // compact (last 20) — shown in left sidebar
@@ -168,6 +204,11 @@ function hydrate(saved) {
   if (!merged.activeCellId && merged.cells[0]) {
     merged.activeCellId = merged.cells[0].id;
   }
+  /* 영속화된 레이아웃 치수는 경계값 내로 clamp — 저장본이 구버전이거나
+     손상됐을 때도 깨진 grid-template-columns를 만들지 않게 한다. */
+  merged.leftWidth = clampLeftWidth(merged.leftWidth);
+  merged.rightWidth = clampRightWidth(merged.rightWidth);
+  merged.traceHeight = clampTraceHeight(merged.traceHeight);
   return merged;
 }
 

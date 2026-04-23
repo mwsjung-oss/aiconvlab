@@ -20,14 +20,21 @@
  *   shell (`ExperimentWorkbenchLayout`, `ExperimentCanvas`, etc.).
  *   It only reuses pure API/logic modules (`notebookApi`, `notebookBridge`).
  */
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import "./experimentV2.css";
 
 import LeftAgentSidebar from "./LeftAgentSidebar.jsx";
 import CenterNotebookWorkspace from "./CenterNotebookWorkspace.jsx";
 import RightAnalysisSidebar from "./RightAnalysisSidebar.jsx";
 import BottomTracePanel from "./BottomTracePanel.jsx";
-import { useExperimentV2State, formatRelative } from "./useExperimentV2State.js";
+import {
+  useExperimentV2State,
+  formatRelative,
+  LAYOUT_LIMITS,
+  clampLeftWidth,
+  clampRightWidth,
+  clampTraceHeight,
+} from "./useExperimentV2State.js";
 import { gatewayHealth, safeCall } from "../../api/notebookApi.js";
 import { setTimelineSink } from "../../components/experiment/canvas/notebookBridge.js";
 
@@ -192,7 +199,7 @@ export default function ExperimentPageV2({ onLeaveExperiment } = {}) {
 
   /* --- Layout class hooks --- */
   const mainClass = useMemo(() => {
-    const base = "expv2-main";
+    const base = "expv2-main expv2-main--resizable";
     if (state.leftSidebarCollapsed && state.rightSidebarCollapsed)
       return `${base} expv2-main--both-collapsed`;
     if (state.leftSidebarCollapsed) return `${base} expv2-main--left-collapsed`;
@@ -200,6 +207,109 @@ export default function ExperimentPageV2({ onLeaveExperiment } = {}) {
       return `${base} expv2-main--right-collapsed`;
     return base;
   }, [state.leftSidebarCollapsed, state.rightSidebarCollapsed]);
+
+  /* Grid-template-columns 를 사용자 조정 폭으로 조립.
+     접힌 사이드바는 44px 고정(아이콘 전용), 펼쳐진 경우 state.leftWidth / rightWidth
+     를 반영한다. gutter(6px)는 좌/우 패널이 펼쳐진 경우에만 노출해 드래그 가능.
+     접힌 쪽의 gutter는 폭 0으로 줄여 클릭 영역을 없앤다. */
+  const mainStyle = useMemo(() => {
+    const leftCol = state.leftSidebarCollapsed ? "44px" : `${state.leftWidth}px`;
+    const rightCol = state.rightSidebarCollapsed
+      ? "44px"
+      : `${state.rightWidth}px`;
+    const leftGutter = state.leftSidebarCollapsed ? "0px" : "6px";
+    const rightGutter = state.rightSidebarCollapsed ? "0px" : "6px";
+    return {
+      gridTemplateColumns: `${leftCol} ${leftGutter} minmax(0, 1fr) ${rightGutter} ${rightCol}`,
+    };
+  }, [
+    state.leftSidebarCollapsed,
+    state.rightSidebarCollapsed,
+    state.leftWidth,
+    state.rightWidth,
+  ]);
+
+  /* Pointer-drag resizer: 좌/우 패널 폭, 하단 타임라인 높이에 공통 적용.
+     onChange는 raw px 를 받아 state를 업데이트한다(호출부에서 clamp). */
+  const resizingRef = useRef(null);
+  useEffect(() => {
+    function handleMove(e) {
+      const r = resizingRef.current;
+      if (!r) return;
+      const dx = e.clientX - r.startX;
+      const dy = e.clientY - r.startY;
+      r.onChange({ dx, dy, startValue: r.startValue, event: e });
+    }
+    function handleUp() {
+      if (!resizingRef.current) return;
+      resizingRef.current = null;
+      document.body.classList.remove("expv2-resizing");
+      document.body.style.removeProperty("cursor");
+    }
+    window.addEventListener("pointermove", handleMove);
+    window.addEventListener("pointerup", handleUp);
+    window.addEventListener("pointercancel", handleUp);
+    return () => {
+      window.removeEventListener("pointermove", handleMove);
+      window.removeEventListener("pointerup", handleUp);
+      window.removeEventListener("pointercancel", handleUp);
+    };
+  }, []);
+
+  const beginColumnDrag = useCallback(
+    (side) => (e) => {
+      if (e.button !== 0) return;
+      e.preventDefault();
+      const startValue = side === "left" ? state.leftWidth : state.rightWidth;
+      resizingRef.current = {
+        startX: e.clientX,
+        startY: e.clientY,
+        startValue,
+        onChange: ({ dx }) => {
+          if (side === "left") {
+            const next = clampLeftWidth(startValue + dx);
+            patch({ leftWidth: next });
+          } else {
+            /* 오른쪽 패널은 드래그 방향이 반대 — 오른쪽으로 끌면 좁아진다. */
+            const next = clampRightWidth(startValue - dx);
+            patch({ rightWidth: next });
+          }
+        },
+      };
+      document.body.classList.add("expv2-resizing");
+      document.body.style.cursor = "col-resize";
+    },
+    [state.leftWidth, state.rightWidth, patch]
+  );
+
+  const beginTraceDrag = useCallback(
+    (e) => {
+      if (e.button !== 0) return;
+      e.preventDefault();
+      const startValue = state.traceHeight;
+      resizingRef.current = {
+        startX: e.clientX,
+        startY: e.clientY,
+        startValue,
+        onChange: ({ dy }) => {
+          /* 위로 끌면 타임라인이 커진다. */
+          const next = clampTraceHeight(startValue - dy);
+          patch({ traceHeight: next });
+        },
+      };
+      document.body.classList.add("expv2-resizing");
+      document.body.style.cursor = "row-resize";
+    },
+    [state.traceHeight, patch]
+  );
+
+  const resetLayout = useCallback(() => {
+    patch({
+      leftWidth: LAYOUT_LIMITS.leftDefault,
+      rightWidth: LAYOUT_LIMITS.rightDefault,
+      traceHeight: LAYOUT_LIMITS.traceDefault,
+    });
+  }, [patch]);
 
   return (
     <div className="expv2" role="application" aria-label="Experiment V2 Notebook">
@@ -286,8 +396,8 @@ export default function ExperimentPageV2({ onLeaveExperiment } = {}) {
         </div>
       </header>
 
-      {/* MAIN 3-COLUMN */}
-      <div className={mainClass}>
+      {/* MAIN 3-COLUMN (폭 조정 가능) */}
+      <div className={mainClass} style={mainStyle}>
         <LeftAgentSidebar
           state={state}
           collapsed={state.leftSidebarCollapsed}
@@ -302,11 +412,39 @@ export default function ExperimentPageV2({ onLeaveExperiment } = {}) {
           gatewayStatus={gatewayStatus}
         />
 
+        {state.leftSidebarCollapsed ? (
+          <div className="expv2-gutter expv2-gutter--disabled" aria-hidden="true" />
+        ) : (
+          <div
+            className="expv2-gutter expv2-gutter--col"
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="AI Assist 창 폭 조정"
+            onPointerDown={beginColumnDrag("left")}
+            onDoubleClick={resetLayout}
+            title="드래그로 폭 조정 · 더블클릭으로 기본값 복원"
+          />
+        )}
+
         <CenterNotebookWorkspace
           state={state}
           controller={controller}
           onSave={handleSave}
         />
+
+        {state.rightSidebarCollapsed ? (
+          <div className="expv2-gutter expv2-gutter--disabled" aria-hidden="true" />
+        ) : (
+          <div
+            className="expv2-gutter expv2-gutter--col"
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="Inspector 창 폭 조정"
+            onPointerDown={beginColumnDrag("right")}
+            onDoubleClick={resetLayout}
+            title="드래그로 폭 조정 · 더블클릭으로 기본값 복원"
+          />
+        )}
 
         <RightAnalysisSidebar
           state={state}
@@ -319,7 +457,7 @@ export default function ExperimentPageV2({ onLeaveExperiment } = {}) {
         />
       </div>
 
-      {/* BOTTOM TRACE */}
+      {/* BOTTOM TRACE (높이 조정 가능) */}
       <BottomTracePanel
         state={state}
         collapsed={state.bottomPanelMode === "hidden"}
@@ -333,6 +471,8 @@ export default function ExperimentPageV2({ onLeaveExperiment } = {}) {
         onJumpToCell={jumpToCell}
         onOpenConversation={() => setShowFullChat(true)}
         onOpenPrompts={() => setShowPrompts(true)}
+        onBeginResize={beginTraceDrag}
+        onResetLayout={resetLayout}
       />
 
       {showFullChat ? (

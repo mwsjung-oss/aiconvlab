@@ -40,6 +40,8 @@ export default function BottomTracePanel({
   onJumpToCell,
   onOpenConversation,
   onOpenPrompts,
+  onBeginResize,
+  onResetLayout,
 }) {
   const [query, setQuery] = useState("");
   const [actorFilter, setActorFilter] = useState("all");
@@ -75,13 +77,31 @@ export default function BottomTracePanel({
       });
   }, [state.timelineEvents, actorFilter, typeFilter, query]);
 
+  /* 상태에 저장된 traceHeight를 인라인 스타일로 반영 — 접힌 상태에서는
+     스타일을 비워 헤더만 노출되는 auto 높이로 돌아가게 한다. */
+  const style = collapsed
+    ? undefined
+    : { height: `${state.traceHeight || 160}px` };
+
   return (
     <footer
       className={
         collapsed ? "expv2-trace expv2-trace--collapsed" : "expv2-trace"
       }
       aria-label="Activity Timeline"
+      style={style}
     >
+      {!collapsed && onBeginResize ? (
+        <div
+          className="expv2-trace__resizer"
+          role="separator"
+          aria-orientation="horizontal"
+          aria-label="타임라인 높이 조정"
+          title="드래그로 높이 조정 · 더블클릭으로 기본값 복원"
+          onPointerDown={onBeginResize}
+          onDoubleClick={onResetLayout}
+        />
+      ) : null}
       <div className="expv2-trace__head">
         <button
           type="button"
