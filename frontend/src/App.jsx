@@ -31,6 +31,11 @@ import ExperimentTopStrip from "./components/experiment/ExperimentTopStrip.jsx";
 import ExperimentWorkbenchLayout from "./components/experiment/ExperimentWorkbenchLayout.jsx";
 import ContextualAIAssist from "./components/experiment/ContextualAIAssist.jsx";
 import ExperimentCanvas from "./components/experiment/canvas/ExperimentCanvas.jsx";
+// V2 Colab/Jupyter-style Experiment page. Replaces the legacy Experiment shell
+// in routing. The legacy shell (`ExperimentWorkbenchLayout` + `ExperimentCanvas`)
+// remains imported only so Legacy marker (`ExperimentPageLegacy`) and any
+// refactor-time diffing still resolve. Do NOT render them in parallel.
+import ExperimentPageV2 from "./pages/experimentV2/ExperimentPageV2.jsx";
 import ExperimentDropOverlay from "./components/experiment/ExperimentDropOverlay.jsx";
 import StepProgressFooter from "./components/experiment/StepProgressFooter.jsx";
 import {
@@ -1072,6 +1077,7 @@ export default function App() {
       )}
 
       {isAuthenticated &&
+      !experimentShell /* V2 Experiment page renders its own top bar */ &&
       (experimentWorkflowOpen ||
         experimentEntryOpen ||
         isExperimentWorkflowPage(currentPage)) ? (
@@ -1231,7 +1237,35 @@ export default function App() {
         />
       )}
 
+      {/*
+       * ---- V2 (ACTIVE) ------------------------------------------------
+       * Colab/Jupyter-style notebook workspace replaces the legacy
+       * Experiment shell. Owns its own top bar, sidebars and bottom
+       * timeline. Everything between this block and the `}` before the
+       * next route below is the new Experiment page.
+       */}
       {experimentShell && (
+        <ExperimentPageV2
+          onLeaveExperiment={() => {
+            setExperimentWorkflowOpen(false);
+            setCurrentPage("dashboard");
+          }}
+        />
+      )}
+
+      {/*
+       * ---- LEGACY (DISABLED, kept for reference only) -----------------
+       * The following three blocks are the previous Experiment shell:
+       *   - ExperimentDropOverlay (drag-and-drop upload surface)
+       *   - kbToast banner
+       *   - ExperimentWorkbenchLayout + legacy center stage
+       *
+       * They are preserved so the Legacy marker module (ExperimentPageLegacy)
+       * and any existing tooling that references them keep compiling. The
+       * `false && …` guard makes them dead code at runtime. DO NOT EDIT.
+       * The live page is <ExperimentPageV2 /> above.
+       */}
+      {false && experimentShell && (
         <ExperimentDropOverlay
           enabled
           loading={uploadLoading}
@@ -1240,13 +1274,13 @@ export default function App() {
         />
       )}
 
-      {experimentShell && kbToast && (
+      {false && experimentShell && kbToast && (
         <div className="experiment-kb-toast" role="status" aria-live="polite">
           {kbToast.msg}
         </div>
       )}
 
-      {experimentShell && (
+      {false && experimentShell && (
         <div className="experiment-workspace-outer">
           <ExperimentWorkbenchLayout
             sidebarCollapsed={experimentSidebarCollapsed}
