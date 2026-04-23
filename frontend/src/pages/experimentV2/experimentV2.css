@@ -1,40 +1,44 @@
 /**
  * Experiment V2 — scoped styles.
  *
- * Every rule lives under `.expv2` so the page is visually independent from
- * the legacy dark Experiment shell. This is a deliberate "different product"
- * look: light theme, Colab/Jupyter influence.
+ * 색 체계는 index.css의 `--ml-*` (Home / Dashboard 공통 다크톤)에 맞춰
+ * 정렬되어 있음. Body의 lab-background.png + radial gradient가 그대로
+ * 비치도록 .expv2 자체 배경은 투명에 가깝게 유지하고, 패널·카드는
+ * #111827 / #1e293b 톤으로 띄워 가독성을 확보한다.
  *
- * Tokens follow the brief (light first):
- *   bg    #F8FAFC   panel #FFFFFF   border #E2E8F0   muted #F1F5F9
- *   text  #0F172A   subt #475569   dim  #94A3B8
- *   primary #2563EB   primary-soft #EFF6FF
- *   success #16A34A   warning #D97706   error #DC2626
+ *   bg      transparent (body 배경을 투과)
+ *   panel   #111827     보조 카드 #1e293b
+ *   border  #334155     border-strong #475569
+ *   text    #f8fafc   subt #cbd5e1   dim #94a3b8
+ *   primary #3b82f6 / soft rgba · strong #60a5fa
  */
 
 .expv2 {
-  --bg: #f8fafc;
-  --panel: #ffffff;
-  --border: #e2e8f0;
-  --border-strong: #cbd5e1;
-  --muted: #f1f5f9;
-  --text: #0f172a;
-  --subt: #475569;
+  --bg: rgba(15, 23, 42, 0.32);
+  --panel: #111827;
+  --panel-raised: #1a2435;
+  --border: #334155;
+  --border-strong: #475569;
+  --muted: #1e293b;
+  --text: #f8fafc;
+  --subt: #cbd5e1;
   --dim: #94a3b8;
-  --primary: #2563eb;
-  --primary-soft: #eff6ff;
-  --primary-strong: #1d4ed8;
-  --success: #16a34a;
-  --success-soft: #dcfce7;
-  --warning: #d97706;
-  --warning-soft: #fef3c7;
-  --error: #dc2626;
-  --error-soft: #fee2e2;
+  --primary: #3b82f6;
+  --primary-soft: rgba(59, 130, 246, 0.18);
+  --primary-strong: #60a5fa;
+  --success: #22c55e;
+  --success-soft: rgba(34, 197, 94, 0.18);
+  --warning: #f59e0b;
+  --warning-soft: rgba(245, 158, 11, 0.18);
+  --error: #ef4444;
+  --error-soft: rgba(239, 68, 68, 0.18);
+  --code-bg: #0b1220;
+  --md-bg: #1a1f2c;
   --r-sm: 6px;
   --r-md: 10px;
   --r-lg: 14px;
-  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.06);
-  --shadow-md: 0 6px 20px rgba(15, 23, 42, 0.08);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --shadow-md: 0 10px 30px rgba(0, 0, 0, 0.45);
   --mono: "JetBrains Mono", "SF Mono", "Fira Code", Consolas, monospace;
   --sans: Inter, Pretendard, "Noto Sans KR", system-ui, -apple-system,
     "Segoe UI", Roboto, sans-serif;
@@ -52,6 +56,9 @@
   letter-spacing: -0.005em;
   -webkit-font-smoothing: antialiased;
 }
+
+.expv2 ::placeholder { color: var(--dim); opacity: 0.9; }
+.expv2 ::selection   { background: rgba(59, 130, 246, 0.45); color: #fff; }
 
 .expv2 * {
   box-sizing: border-box;
@@ -140,7 +147,7 @@
 }
 .expv2-btn:hover:not(:disabled) {
   border-color: var(--primary);
-  color: var(--primary);
+  color: var(--primary-strong);
   background: var(--primary-soft);
 }
 .expv2-btn:active:not(:disabled) {
@@ -354,7 +361,7 @@
 }
 .expv2-left__chat-item--user {
   background: var(--primary-soft);
-  color: var(--primary-strong);
+  color: #dbeafe;
 }
 .expv2-left__chat-role {
   font-size: 10px;
@@ -373,7 +380,7 @@
   border: 1px solid var(--border);
   border-radius: var(--r-sm);
   padding: 8px;
-  background: var(--bg);
+  background: var(--muted);
   display: grid;
   grid-template-columns: max-content 1fr;
   gap: 3px 8px;
@@ -407,7 +414,7 @@
 .expv2-left__qa-btn:hover {
   border-color: var(--primary);
   background: var(--primary-soft);
-  color: var(--primary-strong);
+  color: #dbeafe;
 }
 
 /* Collapsed icon-only view. */
@@ -424,7 +431,7 @@
  * CENTER NOTEBOOK WORKSPACE
  * ============================================================ */
 .expv2-center {
-  background: var(--bg);
+  background: rgba(15, 23, 42, 0.35);
   border: 1px solid var(--border);
   border-radius: var(--r-md);
   display: flex;
@@ -592,27 +599,27 @@
 }
 .expv2-cell__type-chip--prompt {
   background: var(--primary-soft);
-  color: var(--primary-strong);
+  color: #93c5fd;
   border-color: transparent;
 }
 .expv2-cell__type-chip--code {
-  background: #f5f3ff;
-  color: #6d28d9;
+  background: rgba(139, 92, 246, 0.18);
+  color: #c4b5fd;
   border-color: transparent;
 }
 .expv2-cell__type-chip--sql {
-  background: #ecfdf5;
-  color: #047857;
+  background: rgba(16, 185, 129, 0.18);
+  color: #6ee7b7;
   border-color: transparent;
 }
 .expv2-cell__type-chip--markdown {
-  background: #fef3c7;
-  color: #92400e;
+  background: rgba(245, 158, 11, 0.18);
+  color: #fcd34d;
   border-color: transparent;
 }
 .expv2-cell__type-chip--result {
   background: var(--success-soft);
-  color: var(--success);
+  color: #86efac;
   border-color: transparent;
 }
 .expv2-cell__title {
@@ -708,17 +715,18 @@
 .expv2-cell__textarea--sql {
   font-family: var(--mono);
   font-size: 12.5px;
-  background: #fafbfc;
-  color: #0f172a;
+  background: var(--code-bg);
+  color: #e2e8f0;
 }
 .expv2-cell__textarea--markdown {
-  background: #fffdf7;
+  background: var(--md-bg);
+  color: var(--text);
 }
 
 .expv2-cell__output {
   border-top: 1px solid var(--border);
   padding: 10px 14px;
-  background: var(--bg);
+  background: var(--muted);
   font-size: 12.5px;
   line-height: 1.55;
   color: var(--text);
@@ -744,12 +752,12 @@
 .expv2-cell__output-pre {
   margin: 0;
   padding: 8px 10px;
-  background: var(--panel);
+  background: var(--code-bg);
   border: 1px solid var(--border);
   border-radius: var(--r-sm);
   font-family: var(--mono);
   font-size: 11.5px;
-  color: #334155;
+  color: #e2e8f0;
   line-height: 1.55;
   overflow: auto;
   max-height: 260px;
@@ -757,7 +765,7 @@
   word-break: break-word;
 }
 .expv2-cell__output--md {
-  background: #fffdf7;
+  background: var(--md-bg);
   border-top: 1px solid var(--border);
 }
 .expv2-cell__output--md pre {
@@ -768,7 +776,7 @@
   margin: 0;
 }
 .expv2-cell__output--stub {
-  color: var(--warning);
+  color: #fcd34d;
   font-style: italic;
   background: var(--warning-soft);
 }
@@ -841,7 +849,7 @@
   gap: 2px;
   padding: 6px;
   border-bottom: 1px solid var(--border);
-  background: var(--bg);
+  background: var(--muted);
 }
 .expv2-right__tab {
   flex: 1;
@@ -893,7 +901,7 @@
   font-size: 11.5px;
   font-weight: 600;
   color: var(--subt);
-  background: var(--bg);
+  background: var(--muted);
   border-bottom: 1px solid var(--border);
   text-transform: uppercase;
   letter-spacing: 0.06em;
@@ -970,7 +978,7 @@
   gap: 8px;
   padding: 6px 14px;
   border-bottom: 1px solid var(--border);
-  background: var(--bg);
+  background: var(--muted);
 }
 .expv2-trace__handle {
   background: none;
@@ -1053,7 +1061,7 @@
   cursor: pointer;
 }
 .expv2-trace__row-main:hover {
-  background: var(--bg);
+  background: var(--muted);
 }
 .expv2-trace__icon {
   text-align: center;
@@ -1081,14 +1089,14 @@
 }
 .expv2-trace__detail {
   padding: 6px 16px 12px 56px;
-  background: var(--bg);
+  background: rgba(15, 23, 42, 0.5);
   border-top: 1px dashed var(--border);
   font-size: 12px;
 }
 .expv2-trace__detail-pre {
   margin: 0;
   padding: 8px 10px;
-  background: var(--panel);
+  background: var(--code-bg);
   border: 1px solid var(--border);
   border-radius: var(--r-sm);
   font-family: var(--mono);
@@ -1097,7 +1105,7 @@
   overflow: auto;
   white-space: pre-wrap;
   word-break: break-word;
-  color: #334155;
+  color: #e2e8f0;
 }
 
 @media (max-width: 960px) {
@@ -1116,7 +1124,8 @@
 .expv2-modal {
   position: fixed;
   inset: 0;
-  background: rgba(15, 23, 42, 0.35);
+  background: rgba(2, 6, 18, 0.72);
+  backdrop-filter: blur(6px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1162,10 +1171,12 @@
 }
 .expv2-msg--user {
   background: var(--primary-soft);
+  color: #dbeafe;
   border-color: transparent;
 }
 .expv2-msg--agent {
   background: var(--success-soft);
+  color: #dcfce7;
   border-color: transparent;
 }
 .expv2-msg__head {
