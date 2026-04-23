@@ -561,13 +561,68 @@ body.expv2-resizing {
   color: var(--dim);
 }
 
+/* 셀 목록 + 좌측 스크롤 레일을 함께 담는 래퍼.
+   relative 로 설정해 absolute 로 띄운 스크롤 레일의 기준이 된다. */
+.expv2-cells-wrap {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
 .expv2-cells {
-  padding: 8px 14px 12px;
+  padding: 8px 14px 12px 40px;  /* 좌측에 28px 레일 자리 확보 */
   overflow: auto;
   flex: 1;
   display: flex;
   flex-direction: column;
   gap: 8px;
+}
+
+/* 좌측 스크롤 레일 — overflow 시에만 렌더된다. */
+.expv2-scrollrail {
+  position: absolute;
+  top: 8px;
+  bottom: 8px;
+  left: 4px;
+  width: 28px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  pointer-events: none;   /* 버튼만 클릭 가능 */
+  z-index: 2;
+}
+.expv2-scrollrail__btn {
+  pointer-events: auto;
+  width: 26px;
+  height: 30px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--panel) 86%, transparent);
+  color: var(--text);
+  font-size: 12px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+  transition: background 120ms ease, transform 100ms ease,
+    border-color 120ms ease, opacity 120ms ease;
+  backdrop-filter: blur(4px);
+}
+.expv2-scrollrail__btn:hover:not(:disabled) {
+  background: var(--primary-soft, var(--panel));
+  border-color: var(--primary);
+  color: var(--primary);
+}
+.expv2-scrollrail__btn:active:not(:disabled) {
+  transform: translateY(1px) scale(0.96);
+}
+.expv2-scrollrail__btn:disabled {
+  opacity: 0.35;
+  cursor: default;
 }
 
 .expv2-cell-insert {
@@ -762,8 +817,8 @@ body.expv2-resizing {
 }
 .expv2-cell__textarea {
   width: 100%;
-  min-height: 38px;
-  padding: 6px 12px;
+  min-height: 58px;        /* 프롬프트 입력 내용(2~3줄)이 기본 상태에서 보이도록 */
+  padding: 8px 12px;
   border: none;
   background: var(--panel);
   color: var(--text);

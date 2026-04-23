@@ -6,7 +6,7 @@
  *   - InstructionComposer (prominent NL instruction bar)
  *   - NotebookCellList
  */
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import NotebookCell from "./NotebookCell.jsx";
 import { runAgent, safeCall } from "../../api/notebookApi.js";
 import { formatRelative } from "./useExperimentV2State.js";
@@ -31,6 +31,81 @@ export default function CenterNotebookWorkspace({
   } = state;
 
   const abortRef = useRef({});
+
+  /* ------------------------------------------------------------
+     Left-side scroll rail
+     ------------------------------------------------------------
+     노트북 셀 목록이 세로로 넘칠 때, 실험 창 좌측에 "위/아래" 버튼을
+     띄워 한 손으로도 빠르게 이동할 수 있게 한다. overflow 상태는
+     ResizeObserver + scroll 이벤트로 실시간 추적한다. */
+  const cellsRef = useRef(null);
+  const [scrollState, setScrollState] = useState({
+    overflow: false,
+    atTop: true,
+    atBottom: true,
+  });
+
+  const updateScrollState = useCallback(() => {
+    const el = cellsRef.current;
+    if (!el) return;
+    const overflow = el.scrollHeight - el.clientHeight > 4;
+    const atTop = el.scrollTop <= 2;
+    const atBottom =
+      el.scrollTop + el.clientHeight >= el.scrollHeight - 2;
+    setScrollState((prev) =>
+      prev.overflow === overflow &&
+      prev.atTop === atTop &&
+      prev.atBottom === atBottom
+        ? prev
+        : { overflow, atTop, atBottom }
+    );
+  }, []);
+
+  useEffect(() => {
+    const el = cellsRef.current;
+    if (!el) return;
+    updateScrollState();
+    el.addEventListener("scroll", updateScrollState, { passive: true });
+    let ro;
+    if (typeof ResizeObserver !== "undefined") {
+      ro = new ResizeObserver(() => updateScrollState());
+      ro.observe(el);
+      for (const child of Array.from(el.children)) ro.observe(child);
+    }
+    return () => {
+      el.removeEventListener("scroll", updateScrollState);
+      if (ro) ro.disconnect();
+    };
+  }, [updateScrollState, cells.length]);
+
+  const scrollBy = useCallback((direction) => {
+    const el = cellsRef.current;
+    if (!el) return;
+    const step = Math.max(120, Math.floor(el.clientHeight * 0.6));
+    el.scrollBy({ top: direction === "up" ? -step : step, behavior: "smooth" });
+  }, []);
+
+  /* 버튼을 누르고 있는 동안 연속 스크롤. */
+  const holdTimerRef = useRef(null);
+  const startHoldScroll = useCallback(
+    (direction) => {
+      scrollBy(direction);
+      if (holdTimerRef.current) clearInterval(holdTimerRef.current);
+      holdTimerRef.current = setInterval(() => scrollBy(direction), 260);
+    },
+    [scrollBy]
+  );
+  const stopHoldScroll = useCallback(() => {
+    if (holdTimerRef.current) {
+      clearInterval(holdTimerRef.current);
+      holdTimerRef.current = null;
+    }
+  }, []);
+  useEffect(() => {
+    return () => {
+      if (holdTimerRef.current) clearInterval(holdTimerRef.current);
+    };
+  }, []);
 
   /* -------- per-cell run -------- */
   const runCell = useCallback(
@@ -312,8 +387,56 @@ export default function CenterNotebookWorkspace({
         disabled={isRunning}
       />
 
-      {/* Cell list */}
-      <div className="expv2-cells">
+      {/* Cell list + 좌측 스크롤 레일
+         overflow 시에만 위/아래 버튼이 노출된다. 버튼을 누르면 0.6 화면
+         높이만큼 부드럽게 스크롤, 길게 누르면 260ms 주기로 연속 스크롤. */}
+      <div className="expv2-cells-wrap">
+        {scrollState.overflow ? (
+          <div
+            className="expv2-scrollrail"
+            role="toolbar"
+            aria-label="노트북 셀 스크롤"
+          >
+            <button
+              type="button"
+              className="expv2-scrollrail__btn"
+              onClick={() => scrollBy("up")}
+              onPointerDown={() => startHoldScroll("up")}
+              onPointerUp={stopHoldScroll}
+              onPointerLeave={stopHoldScroll}
+              onPointerCancel={stopHoldScroll}
+              disabled={scrollState.atTop}
+              aria-label="위로 스크롤"
+              title="위로 (더블클릭: 맨 위)"
+              onDoubleClick={() =>
+                cellsRef.current?.scrollTo({ top: 0, behavior: "smooth" })
+              }
+            >
+              ▲
+            </button>
+            <button
+              type="button"
+              className="expv2-scrollrail__btn"
+              onClick={() => scrollBy("down")}
+              onPointerDown={() => startHoldScroll("down")}
+              onPointerUp={stopHoldScroll}
+              onPointerLeave={stopHoldScroll}
+              onPointerCancel={stopHoldScroll}
+              disabled={scrollState.atBottom}
+              aria-label="아래로 스크롤"
+              title="아래로 (더블클릭: 맨 아래)"
+              onDoubleClick={() =>
+                cellsRef.current?.scrollTo({
+                  top: cellsRef.current.scrollHeight,
+                  behavior: "smooth",
+                })
+              }
+            >
+              ▼
+            </button>
+          </div>
+        ) : null}
+      <div className="expv2-cells" ref={cellsRef}>
         {cells.length === 0 ? (
           <div className="expv2-empty">셀이 없습니다. 상단에서 셀을 추가하세요.</div>
         ) : null}
@@ -376,6 +499,7 @@ export default function CenterNotebookWorkspace({
             </button>
           </div>
         </div>
+      </div>
       </div>
     </main>
   );

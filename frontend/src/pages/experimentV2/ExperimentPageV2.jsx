@@ -26,14 +26,14 @@ import "./experimentV2.css";
 import LeftAgentSidebar from "./LeftAgentSidebar.jsx";
 import CenterNotebookWorkspace from "./CenterNotebookWorkspace.jsx";
 import RightAnalysisSidebar from "./RightAnalysisSidebar.jsx";
-import BottomTracePanel from "./BottomTracePanel.jsx";
+/* BottomTracePanel 은 제거되었지만 state.timelineEvents / appendTimeline 은 계속
+   유지되어 브리지 콜백과 대화·프롬프트 모달이 정상 동작한다. */
 import {
   useExperimentV2State,
   formatRelative,
   LAYOUT_LIMITS,
   clampLeftWidth,
   clampRightWidth,
-  clampTraceHeight,
 } from "./useExperimentV2State.js";
 import { gatewayHealth, safeCall } from "../../api/notebookApi.js";
 import { setTimelineSink } from "../../components/experiment/canvas/notebookBridge.js";
@@ -120,21 +120,8 @@ export default function ExperimentPageV2({ onLeaveExperiment } = {}) {
     [controller, patch]
   );
 
-  /* Jump to a cell from timeline / bridge. */
-  const jumpToCell = useCallback(
-    (cellId) => {
-      controller.setActiveCell(cellId);
-      setTimeout(() => {
-        const el = document.querySelector(
-          `[data-expv2-cell-id="${cellId}"]`
-        );
-        if (el && "scrollIntoView" in el) {
-          el.scrollIntoView({ behavior: "smooth", block: "center" });
-        }
-      }, 50);
-    },
-    [controller]
-  );
+  /* (legacy) BottomTracePanel 의 "해당 셀로 이동" 기능을 위해 유지했던
+     jumpToCell 콜백은 타임라인이 제거되어 더 이상 필요하지 않아 삭제한다. */
 
   const handleExport = useCallback(
     (kind) => {
@@ -282,32 +269,12 @@ export default function ExperimentPageV2({ onLeaveExperiment } = {}) {
     [state.leftWidth, state.rightWidth, patch]
   );
 
-  const beginTraceDrag = useCallback(
-    (e) => {
-      if (e.button !== 0) return;
-      e.preventDefault();
-      const startValue = state.traceHeight;
-      resizingRef.current = {
-        startX: e.clientX,
-        startY: e.clientY,
-        startValue,
-        onChange: ({ dy }) => {
-          /* 위로 끌면 타임라인이 커진다. */
-          const next = clampTraceHeight(startValue - dy);
-          patch({ traceHeight: next });
-        },
-      };
-      document.body.classList.add("expv2-resizing");
-      document.body.style.cursor = "row-resize";
-    },
-    [state.traceHeight, patch]
-  );
+  /* 하단 트레이스가 제거되어 row-resize drag 는 필요 없음. */
 
   const resetLayout = useCallback(() => {
     patch({
       leftWidth: LAYOUT_LIMITS.leftDefault,
       rightWidth: LAYOUT_LIMITS.rightDefault,
-      traceHeight: LAYOUT_LIMITS.traceDefault,
     });
   }, [patch]);
 
@@ -376,15 +343,18 @@ export default function ExperimentPageV2({ onLeaveExperiment } = {}) {
           <button
             type="button"
             className="expv2-btn"
-            onClick={() =>
-              patch({
-                bottomPanelMode:
-                  state.bottomPanelMode === "hidden" ? "timeline" : "hidden",
-              })
-            }
-            title="타임라인 토글"
+            onClick={() => setShowPrompts(true)}
+            title="프롬프트 기록"
           >
-            {state.bottomPanelMode === "hidden" ? "Timeline ▴" : "Timeline ▾"}
+            프롬프트
+          </button>
+          <button
+            type="button"
+            className="expv2-btn"
+            onClick={() => setShowFullChat(true)}
+            title="전체 대화 기록"
+          >
+            대화
           </button>
           <button
             type="button"
@@ -457,23 +427,9 @@ export default function ExperimentPageV2({ onLeaveExperiment } = {}) {
         />
       </div>
 
-      {/* BOTTOM TRACE (높이 조정 가능) */}
-      <BottomTracePanel
-        state={state}
-        collapsed={state.bottomPanelMode === "hidden"}
-        onToggleCollapse={() =>
-          patch({
-            bottomPanelMode:
-              state.bottomPanelMode === "hidden" ? "timeline" : "hidden",
-          })
-        }
-        onClear={() => controller.clearTimeline()}
-        onJumpToCell={jumpToCell}
-        onOpenConversation={() => setShowFullChat(true)}
-        onOpenPrompts={() => setShowPrompts(true)}
-        onBeginResize={beginTraceDrag}
-        onResetLayout={resetLayout}
-      />
+      {/* Activity Timeline 은 UI 에서 제거되었지만,
+         state.timelineEvents / appendTimeline 은 내부 기록 및 향후 확장
+         용으로 계속 수집된다(프롬프트/대화 모달로 열람 가능). */}
 
       {showFullChat ? (
         <HistoryModal
