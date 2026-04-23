@@ -415,6 +415,35 @@ app.include_router(ai_chat_router.router)
 app.include_router(portal_router.router)
 app.include_router(notebook_router.router)  # 노트북: NOTEBOOK_ENABLED=.env
 app.include_router(platform_router.router)
+
+# ---- LLM gateway + Agent + RAG routers --------------------------------------
+# backend/src/api/{chat,rag,agent}.py 는 services.llm_gateway / services.agents /
+# services.rag 에 의존한다. chromadb / sentence-transformers / openai /
+# google-generativeai 는 requirements.txt 에 포함되어 있으나, 의존성 로딩 또는
+# 런타임 환경 문제(OPENAI_API_KEY 미설정 등)로 import 가 실패할 수 있다. 그럴
+# 경우에도 기존 ML 서비스 자체는 계속 구동되어야 하므로 라우터별로 try/except
+# 하여 실패 시 warning 로그만 남기고 skip 한다. UI(/api/chat/health) 가 404 일
+# 때는 "게이트웨이 미연결" 로 자연스럽게 표시된다.
+_llm_log = logging.getLogger("llm_routers")
+try:
+    from api.chat import router as chat_api_router  # backend/src/api/chat.py
+    app.include_router(chat_api_router)
+    _llm_log.info("chat router mounted (/api/chat/*)")
+except Exception as _chat_exc:  # pragma: no cover - 선택적 의존성/환경
+    _llm_log.warning("chat router skipped: %s", _chat_exc)
+try:
+    from api.agent import router as agent_api_router  # backend/src/api/agent.py
+    app.include_router(agent_api_router)
+    _llm_log.info("agent router mounted (/api/agent/*)")
+except Exception as _agent_exc:  # pragma: no cover
+    _llm_log.warning("agent router skipped: %s", _agent_exc)
+try:
+    from api.rag import router as rag_api_router  # backend/src/api/rag.py
+    app.include_router(rag_api_router)
+    _llm_log.info("rag router mounted (/api/rag/*)")
+except Exception as _rag_exc:  # pragma: no cover
+    _llm_log.warning("rag router skipped: %s", _rag_exc)
+
 app.add_middleware(CORSMiddleware, **cors_middleware_params())
 
 
