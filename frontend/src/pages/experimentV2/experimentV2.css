@@ -373,8 +373,13 @@ body.expv2-resizing {
   flex-direction: column;
   gap: 12px;
   padding: 12px;
-  overflow: auto;
+  overflow-y: auto;
+  overflow-x: hidden;
   flex: 1;
+  /* flex column 에서 overflow 가 정상적으로 scroll 로 전환되도록 */
+  min-height: 0;
+  /* 사이드바는 수직 이동만 허용, 수평 스와이프는 차단. */
+  overscroll-behavior: contain;
 }
 .expv2-left__section-title {
   font-size: 11px;
@@ -572,8 +577,10 @@ body.expv2-resizing {
 }
 .expv2-cells {
   padding: 8px 14px 12px 40px;  /* 좌측에 28px 레일 자리 확보 */
-  overflow: auto;
+  overflow-y: auto;
+  overflow-x: hidden;
   flex: 1;
+  min-height: 0;
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -582,6 +589,8 @@ body.expv2-resizing {
   cursor: grab;
   /* 드래그 중에도 세로 스크롤만 허용 — 수평 스와이프는 차단해 혼동 방지. */
   touch-action: pan-y;
+  /* 셀 목록 끝에 도달해도 바깥 컨테이너로 스크롤이 체이닝되지 않도록. */
+  overscroll-behavior: contain;
 }
 .expv2-cells textarea,
 .expv2-cells input[type="text"],
@@ -1015,10 +1024,14 @@ body.expv2-dragging * {
 .expv2-right__body {
   padding: 12px;
   flex: 1;
-  overflow: auto;
+  overflow-y: auto;
+  overflow-x: hidden;
   display: flex;
   flex-direction: column;
   gap: 12px;
+  /* flex column 에서 자식이 넘칠 때 body 가 스크롤 컨테이너가 되도록. */
+  min-height: 0;
+  overscroll-behavior: contain;
 }
 .expv2-right--collapsed .expv2-right__tabs,
 .expv2-right--collapsed .expv2-right__body,

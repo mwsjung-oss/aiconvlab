@@ -175,6 +175,41 @@ export default function CenterNotebookWorkspace({
     }
   }, []);
 
+  /* ------------------------------------------------------------
+     Wheel redirector
+     ------------------------------------------------------------
+     헤더·Composer·말미 삽입 바처럼 `.expv2-cells` 바깥 영역에서 마우스
+     휠을 돌려도 셀 목록이 스크롤되도록 delta 를 리디렉션한다.
+     이미 `.expv2-cells` 내부에서 발생한 이벤트거나, textarea·select 같이
+     자체 휠 스크롤이 의미 있는 요소에서는 브라우저 기본 동작에 맡긴다.
+     React 의 onWheel 은 일부 환경에서 passive 로 등록되어 preventDefault
+     가 무시될 수 있으므로 native addEventListener({passive:false}) 를
+     사용한다. */
+  const mainRef = useRef(null);
+  useEffect(() => {
+    const el = mainRef.current;
+    if (!el) return;
+    const handler = (e) => {
+      const cellsEl = cellsRef.current;
+      if (!cellsEl) return;
+      const t = e.target;
+      if (
+        t &&
+        t.closest &&
+        t.closest(".expv2-cells, textarea, select, .expv2-compose__textarea")
+      ) {
+        return;
+      }
+      const canScroll = cellsEl.scrollHeight - cellsEl.clientHeight > 2;
+      if (!canScroll) return;
+      if (e.deltaY === 0) return;
+      cellsEl.scrollTop += e.deltaY;
+      e.preventDefault();
+    };
+    el.addEventListener("wheel", handler, { passive: false });
+    return () => el.removeEventListener("wheel", handler);
+  }, []);
+
   /* -------- per-cell run -------- */
   const runCell = useCallback(
     async (cellId) => {
@@ -366,7 +401,11 @@ export default function CenterNotebookWorkspace({
   }, [onRunAll, cells, runCell, controller]);
 
   return (
-    <main className="expv2-center" aria-label="노트북 작업 공간">
+    <main
+      className="expv2-center"
+      aria-label="노트북 작업 공간"
+      ref={mainRef}
+    >
       {/* Notebook header */}
       <header className="expv2-center__head">
         <div className="expv2-center__head-left">
