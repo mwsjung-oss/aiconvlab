@@ -597,6 +597,18 @@ body.expv2-resizing {
   /* 셀 목록 끝에 도달해도 바깥 컨테이너로 스크롤이 체이닝되지 않도록. */
   overscroll-behavior: contain;
 }
+/* [CRITICAL]
+   flex-direction: column 에서 자식의 기본 flex-shrink 는 1 이라,
+   컨테이너 높이가 자식 총합보다 작을 때 자식들이 자연 높이보다 "눌려서"
+   렌더링된다. 이 경우 scrollHeight === clientHeight 가 되어 overflow:auto
+   가 작동하지 않고 휠 스크롤 대상이 생성되지 않는다(= 증상: 텍스트에리어
+   내용이 한 줄로 잘려 보이고 하단 셀이 겹쳐 보이는 현상).
+   직계 자식의 shrink 를 완전히 차단해, 각 셀이 자연 높이를 유지하고
+   초과분은 부모(.expv2-cells)의 세로 스크롤로 해결되도록 강제한다. */
+.expv2-cells > * {
+  flex: 0 0 auto;
+  min-height: 0;
+}
 .expv2-cells textarea,
 .expv2-cells input[type="text"],
 .expv2-cells input[type="search"],
