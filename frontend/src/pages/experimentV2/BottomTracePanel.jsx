@@ -47,6 +47,10 @@ export default function BottomTracePanel({
   const [actorFilter, setActorFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
   const [expandedId, setExpandedId] = useState(null);
+  /* 필터 드롭다운은 기본 숨김 — 헤더를 1행으로 유지해 타임라인 본문 공간을 최대화한다. */
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const filtersActive =
+    actorFilter !== "all" || typeFilter !== "all";
 
   const types = useMemo(() => {
     const s = new Set();
@@ -127,30 +131,51 @@ export default function BottomTracePanel({
               className="expv2-trace__search"
               aria-label="Timeline 검색"
             />
-            <select
-              className="expv2-trace__select"
-              value={actorFilter}
-              onChange={(e) => setActorFilter(e.target.value)}
-              aria-label="Actor 필터"
+            <button
+              type="button"
+              className={
+                filtersOpen || filtersActive
+                  ? "expv2-btn expv2-btn--sm"
+                  : "expv2-btn expv2-btn--ghost expv2-btn--sm"
+              }
+              onClick={() => setFiltersOpen((v) => !v)}
+              title="필터"
+              aria-expanded={filtersOpen}
             >
-              <option value="all">모든 액터</option>
-              <option value="user">사용자</option>
-              <option value="agent">에이전트</option>
-              <option value="system">시스템</option>
-            </select>
-            <select
-              className="expv2-trace__select"
-              value={typeFilter}
-              onChange={(e) => setTypeFilter(e.target.value)}
-              aria-label="Type 필터"
+              {filtersActive ? "⚙ 필터•" : "⚙ 필터"}
+            </button>
+            <div
+              className={
+                filtersOpen
+                  ? "expv2-trace__filters"
+                  : "expv2-trace__filters expv2-trace__filters--hidden"
+              }
             >
-              <option value="all">모든 유형</option>
-              {types.map((t) => (
-                <option key={t} value={t}>
-                  {t}
-                </option>
-              ))}
-            </select>
+              <select
+                className="expv2-trace__select"
+                value={actorFilter}
+                onChange={(e) => setActorFilter(e.target.value)}
+                aria-label="Actor 필터"
+              >
+                <option value="all">모든 액터</option>
+                <option value="user">사용자</option>
+                <option value="agent">에이전트</option>
+                <option value="system">시스템</option>
+              </select>
+              <select
+                className="expv2-trace__select"
+                value={typeFilter}
+                onChange={(e) => setTypeFilter(e.target.value)}
+                aria-label="Type 필터"
+              >
+                <option value="all">모든 유형</option>
+                {types.map((t) => (
+                  <option key={t} value={t}>
+                    {t}
+                  </option>
+                ))}
+              </select>
+            </div>
             <button
               type="button"
               className="expv2-btn expv2-btn--ghost expv2-btn--sm"

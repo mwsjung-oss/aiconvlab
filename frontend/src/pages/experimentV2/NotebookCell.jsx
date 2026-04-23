@@ -191,7 +191,7 @@ export default function NotebookCell({
             onChange={(e) => onPatch({ content: e.target.value })}
             className={`expv2-cell__textarea expv2-cell__textarea--${cell.type}`}
             rows={Math.max(
-              3,
+              2,
               Math.min(20, (cell.content || "").split("\n").length)
             )}
             placeholder={placeholderFor(cell.type)}

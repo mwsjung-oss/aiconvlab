@@ -336,12 +336,12 @@ export default function CenterNotebookWorkspace({
         ))}
 
         {/* Always-visible trailing add-cell bar */}
-        <div style={{ display: "flex", justifyContent: "center", paddingTop: 12 }}>
+        <div style={{ display: "flex", justifyContent: "center", paddingTop: 4 }}>
           <div
             style={{
               display: "inline-flex",
               gap: 6,
-              padding: 4,
+              padding: 3,
               border: "1px dashed var(--border)",
               borderRadius: 999,
             }}
@@ -400,9 +400,9 @@ function InstructionComposer({ value, onChange, onSubmit, disabled }) {
           }
         }}
         placeholder={
-          "자연어로 실험 지시를 입력하세요. (Cmd/Ctrl+Enter로 실행)\n예) '현재 데이터로 이진 분류 파이프라인 초안을 만들어 주세요'"
+          "자연어로 실험 지시를 입력하세요. (Cmd/Ctrl+Enter로 실행) · 예: '이진 분류 파이프라인 초안'"
         }
-        rows={2}
+        rows={1}
       />
       <button
         type="button"

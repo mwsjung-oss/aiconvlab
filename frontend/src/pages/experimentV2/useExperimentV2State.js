@@ -23,9 +23,9 @@ export const LAYOUT_LIMITS = Object.freeze({
   rightMin: 260,
   rightMax: 560,
   rightDefault: 360,
-  traceMin: 72,
+  traceMin: 56,
   traceMax: 520,
-  traceDefault: 160,
+  traceDefault: 128,
 });
 
 export function clampLeftWidth(v) {
@@ -208,7 +208,18 @@ function hydrate(saved) {
      손상됐을 때도 깨진 grid-template-columns를 만들지 않게 한다. */
   merged.leftWidth = clampLeftWidth(merged.leftWidth);
   merged.rightWidth = clampRightWidth(merged.rightWidth);
-  merged.traceHeight = clampTraceHeight(merged.traceHeight);
+  /* 구버전 기본값(160/180)을 새 기본값(128)으로 마이그레이션 — 사용자가
+     직접 조정했다고 보기 어려운 근사치는 컴팩트 기본값으로 대체해 화면 공간을
+     확보한다. */
+  const legacyTraceDefaults = [160, 180, 170];
+  if (
+    typeof saved?.traceHeight === "number" &&
+    legacyTraceDefaults.includes(saved.traceHeight)
+  ) {
+    merged.traceHeight = LAYOUT_LIMITS.traceDefault;
+  } else {
+    merged.traceHeight = clampTraceHeight(merged.traceHeight);
+  }
   return merged;
 }
 
