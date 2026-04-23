@@ -176,12 +176,24 @@ export default function CenterNotebookWorkspace({
   }, []);
 
   /* ------------------------------------------------------------
-     Wheel redirector
+     Wheel redirector (강제 리디렉션 모드)
      ------------------------------------------------------------
-     헤더·Composer·말미 삽입 바처럼 `.expv2-cells` 바깥 영역에서 마우스
-     휠을 돌려도 셀 목록이 스크롤되도록 delta 를 리디렉션한다.
-     이미 `.expv2-cells` 내부에서 발생한 이벤트거나, textarea·select 같이
-     자체 휠 스크롤이 의미 있는 요소에서는 브라우저 기본 동작에 맡긴다.
+     중앙 main 영역 어디에서 휠을 돌리더라도 — 헤더, Composer, 셀 내부
+     textarea 위, 셀과 셀 사이 여백, 말미 삽입 바 등 — 반드시 셀 목록
+     컨테이너(.expv2-cells)가 스크롤되도록 보장한다.
+
+     왜 "강제 리디렉션"인가:
+       - 기본 브라우저 동작은 가장 가까운 overflow 조상으로 wheel 이벤트
+         를 체이닝하지만, 작은 <textarea>/<input> 이 자체 overflow 없이도
+         wheel 을 먹어버려 상위로 전달되지 않는 경우가 있다.
+       - 또한 pointer capture·touch-action·드래그-스크롤 구현과의 상호
+         작용으로 wheel 체이닝이 깨질 수 있다.
+     예외:
+       - <textarea>/<input>/<select> 가 *자체적으로* overflow 된 경우
+         (긴 내용), 그 내부 스크롤을 존중해 기본 동작에 맡긴다.
+       - 셀 목록에 스크롤 여지가 없으면 (canScroll === false) preventDefault
+         없이 조용히 넘겨 상위 페이지 스크롤을 방해하지 않는다.
+
      React 의 onWheel 은 일부 환경에서 passive 로 등록되어 preventDefault
      가 무시될 수 있으므로 native addEventListener({passive:false}) 를
      사용한다. */
@@ -192,17 +204,15 @@ export default function CenterNotebookWorkspace({
     const handler = (e) => {
       const cellsEl = cellsRef.current;
       if (!cellsEl) return;
+      /* textarea / input / select 가 자체 overflow 중이면 양보. */
       const t = e.target;
-      if (
-        t &&
-        t.closest &&
-        t.closest(".expv2-cells, textarea, select, .expv2-compose__textarea")
-      ) {
-        return;
+      if (t && (t.tagName === "TEXTAREA" || t.tagName === "SELECT" || t.tagName === "INPUT")) {
+        const selfOverflow = t.scrollHeight - t.clientHeight > 1;
+        if (selfOverflow) return;
       }
+      if (e.deltaY === 0) return;
       const canScroll = cellsEl.scrollHeight - cellsEl.clientHeight > 2;
       if (!canScroll) return;
-      if (e.deltaY === 0) return;
       cellsEl.scrollTop += e.deltaY;
       e.preventDefault();
     };
