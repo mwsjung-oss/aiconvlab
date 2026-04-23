@@ -107,6 +107,74 @@ export default function CenterNotebookWorkspace({
     };
   }, []);
 
+  /* ------------------------------------------------------------
+     Drag-to-scroll (grab & pan)
+     ------------------------------------------------------------
+     셀 목록 영역의 빈 공간을 눌러 끌면 세로 스크롤이 이동한다.
+     textarea / input / button / select 등 인터랙티브 요소에서 시작한
+     pointerdown 은 무시하여 텍스트 편집·버튼 클릭을 방해하지 않는다.
+     터치 입력(pointerType === "touch") 은 브라우저 기본 스와이프에
+     위임한다. 4px 미만의 이동은 "클릭"으로 간주해 drag 모드에 진입하지
+     않는다 → 우발적 선택·포커스 손실을 방지. */
+  const dragRef = useRef(null);
+  const INTERACTIVE_SELECTOR =
+    'textarea, input, select, button, a, [contenteditable="true"], ' +
+    ".expv2-scrollrail, .expv2-cell-insert";
+
+  const onCellsPointerDown = useCallback((e) => {
+    if (e.button !== 0) return;
+    if (e.pointerType === "touch") return;
+    const target = e.target;
+    if (target && target.closest && target.closest(INTERACTIVE_SELECTOR))
+      return;
+    const el = cellsRef.current;
+    if (!el) return;
+    dragRef.current = {
+      startY: e.clientY,
+      startScrollTop: el.scrollTop,
+      pointerId: e.pointerId,
+      active: false,
+    };
+  }, []);
+
+  const onCellsPointerMove = useCallback((e) => {
+    const d = dragRef.current;
+    if (!d) return;
+    const dy = e.clientY - d.startY;
+    if (!d.active) {
+      if (Math.abs(dy) < 4) return;
+      d.active = true;
+      try {
+        cellsRef.current?.setPointerCapture?.(d.pointerId);
+      } catch (_err) {
+        /* noop — 일부 브라우저에서 pointerCapture 실패해도 동작 계속 */
+      }
+      document.body.classList.add("expv2-dragging");
+    }
+    e.preventDefault();
+    if (cellsRef.current) {
+      cellsRef.current.scrollTop = d.startScrollTop - dy;
+    }
+  }, []);
+
+  const endCellsDrag = useCallback((e) => {
+    const d = dragRef.current;
+    if (!d) return;
+    if (d.active) {
+      try {
+        cellsRef.current?.releasePointerCapture?.(d.pointerId);
+      } catch (_err) {
+        /* noop */
+      }
+      document.body.classList.remove("expv2-dragging");
+    }
+    dragRef.current = null;
+    if (e) {
+      /* 드래그가 실제로 발생했다면 click 이벤트를 한 번 삼켜 텍스트가
+         선택되거나 하위 버튼이 트리거되는 것을 방지한다. */
+    }
+  }, []);
+
   /* -------- per-cell run -------- */
   const runCell = useCallback(
     async (cellId) => {
@@ -436,7 +504,14 @@ export default function CenterNotebookWorkspace({
             </button>
           </div>
         ) : null}
-      <div className="expv2-cells" ref={cellsRef}>
+      <div
+        className="expv2-cells"
+        ref={cellsRef}
+        onPointerDown={onCellsPointerDown}
+        onPointerMove={onCellsPointerMove}
+        onPointerUp={endCellsDrag}
+        onPointerCancel={endCellsDrag}
+      >
         {cells.length === 0 ? (
           <div className="expv2-empty">셀이 없습니다. 상단에서 셀을 추가하세요.</div>
         ) : null}

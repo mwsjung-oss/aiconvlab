@@ -577,6 +577,28 @@ body.expv2-resizing {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  /* 빈 공간에서 마우스로 끌어 상하 스크롤할 수 있음을 시각적으로 암시.
+     하위 인터랙티브 요소는 각자의 cursor 로 override 된다(아래). */
+  cursor: grab;
+  /* 드래그 중에도 세로 스크롤만 허용 — 수평 스와이프는 차단해 혼동 방지. */
+  touch-action: pan-y;
+}
+.expv2-cells textarea,
+.expv2-cells input[type="text"],
+.expv2-cells input[type="search"],
+.expv2-cells input:not([type]) {
+  cursor: text;
+}
+.expv2-cells button,
+.expv2-cells select,
+.expv2-cells [role="button"] {
+  cursor: pointer;
+}
+/* 드래그 진행 중에는 커서·텍스트 선택을 잠가 자연스러운 panning UX. */
+body.expv2-dragging,
+body.expv2-dragging * {
+  cursor: grabbing !important;
+  user-select: none !important;
 }
 
 /* 좌측 스크롤 레일 — overflow 시에만 렌더된다. */
