@@ -444,6 +444,22 @@ try:
 except Exception as _rag_exc:  # pragma: no cover
     _llm_log.warning("rag router skipped: %s", _rag_exc)
 
+# ---- Experiment V3: kernel + tracing -----------------------------------------
+# kernel 은 jupyter_client/ipykernel 이 필요하고, tracing 은 SQLite 만 필요하다.
+# 하나가 실패해도 다른 하나는 마운트 되도록 try/except 를 분리한다.
+try:
+    from api.kernel import router as kernel_api_router  # backend/src/api/kernel.py
+    app.include_router(kernel_api_router)
+    _llm_log.info("kernel router mounted (/api/kernel/*)")
+except Exception as _kernel_exc:  # pragma: no cover
+    _llm_log.warning("kernel router skipped: %s", _kernel_exc)
+try:
+    from api.tracing import router as tracing_api_router  # backend/src/api/tracing.py
+    app.include_router(tracing_api_router)
+    _llm_log.info("tracing router mounted (/api/tracing/*)")
+except Exception as _tracing_exc:  # pragma: no cover
+    _llm_log.warning("tracing router skipped: %s", _tracing_exc)
+
 app.add_middleware(CORSMiddleware, **cors_middleware_params())
 
 

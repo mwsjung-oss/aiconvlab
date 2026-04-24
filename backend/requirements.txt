@@ -40,3 +40,10 @@ chromadb>=0.5.0,<0.6
 
 # Colab 유사 노트북 (선택): NOTEBOOK_ENABLED=1 일 때 사용
 jupyterlab>=4.0.0,<5
+
+# Experiment V3 · 세션 보존 Python 커널(ipykernel) 의존성.
+# jupyterlab 을 통해 전이 설치되어 있지만, V3 의 KernelManager 가
+# 직접 의존하므로 버전 범위를 명시해 CI/배포 재현성을 확보한다.
+ipykernel>=6.29,<7
+jupyter_client>=8.6,<9
+pyzmq>=25,<27

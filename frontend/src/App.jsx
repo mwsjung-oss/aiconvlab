@@ -36,6 +36,7 @@ import ExperimentCanvas from "./components/experiment/canvas/ExperimentCanvas.js
 // remains imported only so Legacy marker (`ExperimentPageLegacy`) and any
 // refactor-time diffing still resolve. Do NOT render them in parallel.
 import ExperimentPageV2 from "./pages/experimentV2/ExperimentPageV2.jsx";
+import ExperimentPageV3 from "./pages/experimentV3/ExperimentPageV3.jsx";
 import ExperimentDropOverlay from "./components/experiment/ExperimentDropOverlay.jsx";
 import StepProgressFooter from "./components/experiment/StepProgressFooter.jsx";
 import {
@@ -1238,20 +1239,25 @@ export default function App() {
       )}
 
       {/*
-       * ---- V2 (ACTIVE) ------------------------------------------------
-       * Colab/Jupyter-style notebook workspace replaces the legacy
-       * Experiment shell. Owns its own top bar, sidebars and bottom
-       * timeline. Everything between this block and the `}` before the
-       * next route below is the new Experiment page.
+       * ---- V3 (ACTIVE) ------------------------------------------------
+       * 2줄 헤더(프로젝트/홈/사용자/로그아웃 + 5단계 탭) + 20/80 본문의
+       * Activity 기반 워크스페이스. 세션 보존 Python 커널 · 파일 업로드 ·
+       * 전 과정 Tracing 을 내장한다. 기존 V2 는 `experimentV2/` 폴더에
+       * 그대로 두어 참조·회귀 용도로만 남긴다.
        */}
       {experimentShell && (
-        <ExperimentPageV2
-          onLeaveExperiment={() => {
+        <ExperimentPageV3
+          user={user}
+          onLogout={logout}
+          onGoHome={() => {
             setExperimentWorkflowOpen(false);
             setCurrentPage("dashboard");
           }}
         />
       )}
+      {/* (legacy reference only — V2 를 다시 활성화할 일이 있다면 아래를 바꾼다.)
+         <ExperimentPageV2 onLeaveExperiment={...} />   */}
+      {false && <ExperimentPageV2 />}
 
       {/*
        * ---- LEGACY (DISABLED, kept for reference only) -----------------
