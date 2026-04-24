@@ -591,6 +591,18 @@
   border-color: var(--primary);
   background: var(--panel-raised);
 }
+/* 프롬프트·SQL 셀: LLM 에는 본문만 전달되므로 제목란은 읽기 전용(입력 혼란 방지) */
+.expv3-cell__title--static {
+  display: block;
+  border: 1px solid transparent;
+  cursor: default;
+  user-select: none;
+  color: var(--subt);
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .expv3-cell__tools {
   display: inline-flex;
   gap: 4px;

@@ -70,6 +70,11 @@ export default function WorkCell({
   const badgeClass = `expv3-cell__badge expv3-cell__badge--${cell.type}`;
   const taClass = `expv3-cell__textarea expv3-cell__textarea--${cell.type}`;
 
+  const titleReadOnly = cell.type === "prompt" || cell.type === "sql";
+  const staticTitle =
+    (cell.title && String(cell.title).trim()) ||
+    (cell.type === "sql" ? "SQL" : "프롬프트");
+
   const onKeyDown = useCallback(
     (e) => {
       if ((e.metaKey || e.ctrlKey) && e.key === "Enter") {
@@ -91,13 +96,23 @@ export default function WorkCell({
         <span className="expv3-cell__run-count" title="실행 횟수">
           [{cell.executionCount ?? " "}]
         </span>
-        <input
-          className="expv3-cell__title"
-          value={cell.title}
-          onChange={(e) => onPatch({ title: e.target.value })}
-          placeholder="셀 제목"
-          aria-label="셀 제목"
-        />
+        {titleReadOnly ? (
+          <span
+            className="expv3-cell__title expv3-cell__title--static"
+            title="질문·지시는 아래 본문에만 입력하세요. 이 줄은 셀 구분용 이름입니다 (템플릿/활동에서 자동 지정될 수 있음)."
+            aria-label="셀 이름(읽기 전용)"
+          >
+            {staticTitle}
+          </span>
+        ) : (
+          <input
+            className="expv3-cell__title"
+            value={cell.title}
+            onChange={(e) => onPatch({ title: e.target.value })}
+            placeholder="셀 제목"
+            aria-label="셀 제목"
+          />
+        )}
         <div className="expv3-cell__tools">
           <button
             type="button"
