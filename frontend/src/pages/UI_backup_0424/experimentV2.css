@@ -1,0 +1,1412 @@
+/**
+ * Experiment V2 — scoped styles.
+ *
+ * 색 체계는 index.css의 `--ml-*` (Home / Dashboard 공통 다크톤)에 맞춰
+ * 정렬되어 있음. Body의 lab-background.png + radial gradient가 그대로
+ * 비치도록 .expv2 자체 배경은 투명에 가깝게 유지하고, 패널·카드는
+ * #111827 / #1e293b 톤으로 띄워 가독성을 확보한다.
+ *
+ *   bg      transparent (body 배경을 투과)
+ *   panel   #111827     보조 카드 #1e293b
+ *   border  #334155     border-strong #475569
+ *   text    #f8fafc   subt #cbd5e1   dim #94a3b8
+ *   primary #3b82f6 / soft rgba · strong #60a5fa
+ */
+
+.expv2 {
+  --bg: rgba(15, 23, 42, 0.32);
+  --panel: #111827;
+  --panel-raised: #1a2435;
+  --border: #334155;
+  --border-strong: #475569;
+  --muted: #1e293b;
+  --text: #f8fafc;
+  --subt: #cbd5e1;
+  --dim: #94a3b8;
+  --primary: #3b82f6;
+  --primary-soft: rgba(59, 130, 246, 0.18);
+  --primary-strong: #60a5fa;
+  --success: #22c55e;
+  --success-soft: rgba(34, 197, 94, 0.18);
+  --warning: #f59e0b;
+  --warning-soft: rgba(245, 158, 11, 0.18);
+  --error: #ef4444;
+  --error-soft: rgba(239, 68, 68, 0.18);
+  --code-bg: #0b1220;
+  --md-bg: #1a1f2c;
+  --r-sm: 6px;
+  --r-md: 10px;
+  --r-lg: 14px;
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
+  --shadow-md: 0 10px 30px rgba(0, 0, 0, 0.45);
+  --mono: "JetBrains Mono", "SF Mono", "Fira Code", Consolas, monospace;
+  --sans: Inter, Pretendard, "Noto Sans KR", system-ui, -apple-system,
+    "Segoe UI", Roboto, sans-serif;
+
+  /* Layout
+     ------------------------------------------------------------
+     뷰포트 높이를 강제로 차지해, 내부 grid `1fr` 행이 항상 유한한
+     높이로 계산되도록 한다. (부모가 height:auto 라면 100% 가 0 이
+     되어 `.expv2-main` 의 1fr 도 0, 결과적으로 `.expv2-cells` 의
+     overflow:auto 가 동작하지 못해 휠 스크롤이 안 되는 버그 발생.) */
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  height: 100dvh;
+  min-height: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  font-size: 13.5px;
+  line-height: 1.5;
+  letter-spacing: -0.005em;
+  -webkit-font-smoothing: antialiased;
+}
+
+.expv2 ::placeholder { color: var(--dim); opacity: 0.9; }
+.expv2 ::selection   { background: rgba(59, 130, 246, 0.45); color: #fff; }
+
+.expv2 * {
+  box-sizing: border-box;
+}
+
+.expv2 button {
+  font-family: inherit;
+}
+
+/* ============================================================
+ * TOP BAR
+ * ============================================================ */
+.expv2-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+}
+.expv2-top__title {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+}
+.expv2-top__title-icon {
+  font-size: 18px;
+}
+.expv2-top__title-input {
+  flex: 0 1 auto;
+  min-width: 140px;
+  max-width: 420px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text);
+  font-size: 16px;
+  font-weight: 600;
+  padding: 4px 8px;
+  border-radius: var(--r-sm);
+  transition: all 150ms ease;
+}
+.expv2-top__title-input:hover {
+  background: var(--muted);
+}
+.expv2-top__title-input:focus {
+  outline: none;
+  background: var(--panel);
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.18);
+}
+.expv2-top__meta {
+  font-size: 11.5px;
+  color: var(--dim);
+  display: inline-flex;
+  gap: 10px;
+  align-items: center;
+}
+.expv2-top__spacer {
+  flex: 1;
+}
+.expv2-top__actions {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+/* ============================================================
+ * BUTTONS / CHIPS
+ * ============================================================ */
+.expv2-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  padding: 5px 10px;
+  font-size: 12.5px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 150ms ease;
+  white-space: nowrap;
+}
+.expv2-btn:hover:not(:disabled) {
+  border-color: var(--primary);
+  color: var(--primary-strong);
+  background: var(--primary-soft);
+}
+.expv2-btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+.expv2-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.expv2-btn--primary {
+  background: var(--primary);
+  color: #fff;
+  border-color: var(--primary);
+}
+.expv2-btn--primary:hover:not(:disabled) {
+  background: var(--primary-strong);
+  color: #fff;
+  border-color: var(--primary-strong);
+}
+.expv2-btn--ghost {
+  background: transparent;
+  border-color: transparent;
+  color: var(--subt);
+}
+.expv2-btn--ghost:hover:not(:disabled) {
+  background: var(--muted);
+  color: var(--text);
+  border-color: transparent;
+}
+.expv2-btn--danger:hover:not(:disabled) {
+  background: var(--error-soft);
+  color: var(--error);
+  border-color: var(--error);
+}
+.expv2-btn--sm {
+  padding: 3px 7px;
+  font-size: 11.5px;
+}
+.expv2-btn--icon {
+  padding: 4px 6px;
+}
+
+.expv2-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 500;
+  border: 1px solid var(--border);
+  background: var(--muted);
+  color: var(--subt);
+}
+.expv2-chip--ok {
+  color: var(--success);
+  background: var(--success-soft);
+  border-color: transparent;
+}
+.expv2-chip--warn {
+  color: var(--warning);
+  background: var(--warning-soft);
+  border-color: transparent;
+}
+.expv2-chip--err {
+  color: var(--error);
+  background: var(--error-soft);
+  border-color: transparent;
+}
+.expv2-chip--info {
+  color: var(--primary);
+  background: var(--primary-soft);
+  border-color: transparent;
+}
+
+.expv2-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--dim);
+}
+.expv2-dot--ok {
+  background: var(--success);
+}
+.expv2-dot--running {
+  background: var(--primary);
+  animation: expv2-pulse 1.3s ease-in-out infinite;
+}
+.expv2-dot--err {
+  background: var(--error);
+}
+@keyframes expv2-pulse {
+  0%,
+  100% { opacity: 0.4; }
+  50%   { opacity: 1; }
+}
+
+/* ============================================================
+ * MAIN LAYOUT (3-column, 사용자 드래그로 폭 조정)
+ * ------------------------------------------------------------
+ * grid-template-columns 는 React 인라인 style에서 주입한다:
+ *   ${leftWidth}px  ${leftGutter}  minmax(0, 1fr)  ${rightGutter}  ${rightWidth}px
+ *
+ * 접힌 사이드바는 44px 고정이고 그쪽 gutter는 0px 로 줄어 클릭 영역이 사라진다.
+ * 아래 class 기반 fallback 은 인라인 스타일이 주입되기 전 첫 프레임용.
+ * ============================================================ */
+.expv2-main {
+  display: grid;
+  grid-template-columns: 300px 6px minmax(0, 1fr) 6px 360px;
+  column-gap: 0;
+  row-gap: 0;
+  padding: 12px 14px;
+  align-items: stretch;
+  min-height: 0;
+  overflow: hidden;
+}
+.expv2-main--left-collapsed {
+  grid-template-columns: 44px 0px minmax(0, 1fr) 6px 360px;
+}
+.expv2-main--right-collapsed {
+  grid-template-columns: 300px 6px minmax(0, 1fr) 0px 44px;
+}
+.expv2-main--both-collapsed {
+  grid-template-columns: 44px 0px minmax(0, 1fr) 0px 44px;
+}
+/* Between-columns micro gap (패널이 gutter와 딱 붙지 않도록 좌/우 4px margin) */
+.expv2-main > .expv2-left,
+.expv2-main > .expv2-right {
+  min-height: 0;
+}
+.expv2-main > .expv2-center {
+  margin: 0 6px;
+  min-height: 0;
+}
+
+/* ---- Gutter (리사이저) ------------------------------------ */
+.expv2-gutter {
+  width: 100%;
+  height: 100%;
+  position: relative;
+  align-self: stretch;
+}
+.expv2-gutter--col {
+  cursor: col-resize;
+  touch-action: none;
+  user-select: none;
+}
+.expv2-gutter--col::before {
+  content: "";
+  position: absolute;
+  top: 10%;
+  bottom: 10%;
+  left: 1px;
+  right: 1px;
+  background: var(--border);
+  border-radius: 2px;
+  transition: background 140ms ease;
+}
+.expv2-gutter--col:hover::before {
+  background: var(--primary);
+}
+.expv2-gutter--disabled {
+  pointer-events: none;
+}
+body.expv2-resizing {
+  user-select: none;
+  cursor: col-resize;
+}
+
+/* On narrower desktops, tighten default widths via inline style fallback. */
+@media (max-width: 1280px) {
+  .expv2-main:not(.expv2-main--resizable) {
+    grid-template-columns: 280px 6px minmax(0, 1fr) 6px 320px;
+  }
+}
+/* Tablet → side panels become sheets launched from the top bar. */
+@media (max-width: 960px) {
+  .expv2-main,
+  .expv2-main--resizable {
+    grid-template-columns: 1fr !important;
+    padding: 10px;
+  }
+  .expv2-main > .expv2-center {
+    margin: 0;
+  }
+  .expv2-left,
+  .expv2-right,
+  .expv2-gutter {
+    display: none;
+  }
+}
+
+/* ============================================================
+ * LEFT SIDEBAR (minimal)
+ * ============================================================ */
+.expv2-left {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+}
+.expv2-left__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px 8px 12px;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel);
+}
+.expv2-left__head-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--subt);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.expv2-left__body {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  flex: 1;
+  /* flex column 에서 overflow 가 정상적으로 scroll 로 전환되도록 */
+  min-height: 0;
+  /* 사이드바는 수직 이동만 허용, 수평 스와이프는 차단. */
+  overscroll-behavior: contain;
+}
+.expv2-left__section-title {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--dim);
+}
+.expv2-left__select {
+  width: 100%;
+  padding: 6px 8px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  font-size: 12.5px;
+  color: var(--text);
+  font-family: inherit;
+}
+.expv2-left__select:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.18);
+}
+.expv2-left__chat {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 220px;
+  overflow: auto;
+}
+.expv2-left__chat-item {
+  font-size: 12px;
+  line-height: 1.45;
+  padding: 6px 8px;
+  background: var(--muted);
+  border-radius: var(--r-sm);
+  color: var(--text);
+  border: 1px solid transparent;
+}
+.expv2-left__chat-item--user {
+  background: var(--primary-soft);
+  color: #dbeafe;
+}
+.expv2-left__chat-role {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--dim);
+  margin-right: 4px;
+}
+.expv2-left__chat-empty {
+  color: var(--dim);
+  font-size: 12px;
+  font-style: italic;
+  padding: 4px 0;
+}
+.expv2-left__ctx {
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  padding: 8px;
+  background: var(--muted);
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 3px 8px;
+  font-size: 12px;
+}
+.expv2-left__ctx dt {
+  color: var(--dim);
+  font-weight: 500;
+}
+.expv2-left__ctx dd {
+  margin: 0;
+  color: var(--text);
+  overflow-wrap: anywhere;
+}
+.expv2-left__qa {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.expv2-left__qa-btn {
+  text-align: left;
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--border);
+  padding: 6px 8px;
+  border-radius: var(--r-sm);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 140ms ease;
+}
+.expv2-left__qa-btn:hover {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+  color: #dbeafe;
+}
+
+/* Collapsed icon-only view. */
+.expv2-left--collapsed .expv2-left__body,
+.expv2-left--collapsed .expv2-left__head-title {
+  display: none;
+}
+.expv2-left--collapsed .expv2-left__head {
+  border-bottom: none;
+  justify-content: center;
+}
+
+/* ============================================================
+ * CENTER NOTEBOOK WORKSPACE
+ * ============================================================ */
+.expv2-center {
+  background: rgba(15, 23, 42, 0.35);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+}
+.expv2-center__head {
+  padding: 6px 14px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  align-items: center;
+}
+.expv2-center__head-left {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.expv2-center__head-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+}
+.expv2-center__head-sub {
+  font-size: 12px;
+  color: var(--dim);
+}
+.expv2-center__head-spacer {
+  flex: 1;
+}
+
+.expv2-compose {
+  padding: 8px 14px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+.expv2-compose__textarea {
+  flex: 1;
+  resize: none;
+  min-height: 34px;
+  max-height: 140px;
+  padding: 7px 11px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--panel);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 13px;
+  line-height: 1.45;
+  transition: all 140ms ease;
+}
+.expv2-compose__textarea:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.16);
+}
+.expv2-compose__send {
+  align-self: stretch;
+  padding: 0 16px;
+  font-weight: 600;
+}
+.expv2-compose__hint {
+  flex-basis: 100%;
+  margin-top: 4px;
+  font-size: 11.5px;
+  color: var(--dim);
+}
+
+/* 셀 목록 + 좌측 스크롤 레일을 함께 담는 래퍼.
+   relative 로 설정해 absolute 로 띄운 스크롤 레일의 기준이 된다. */
+.expv2-cells-wrap {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.expv2-cells {
+  padding: 8px 14px 12px 40px;  /* 좌측에 28px 레일 자리 확보 */
+  overflow-y: auto;
+  overflow-x: hidden;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  /* 빈 공간에서 마우스로 끌어 상하 스크롤할 수 있음을 시각적으로 암시.
+     하위 인터랙티브 요소는 각자의 cursor 로 override 된다(아래). */
+  cursor: grab;
+  /* 드래그 중에도 세로 스크롤만 허용 — 수평 스와이프는 차단해 혼동 방지. */
+  touch-action: pan-y;
+  /* 셀 목록 끝에 도달해도 바깥 컨테이너로 스크롤이 체이닝되지 않도록. */
+  overscroll-behavior: contain;
+}
+/* [CRITICAL]
+   flex-direction: column 에서 자식의 기본 flex-shrink 는 1 이라,
+   컨테이너 높이가 자식 총합보다 작을 때 자식들이 자연 높이보다 "눌려서"
+   렌더링된다. 이 경우 scrollHeight === clientHeight 가 되어 overflow:auto
+   가 작동하지 않고 휠 스크롤 대상이 생성되지 않는다(= 증상: 텍스트에리어
+   내용이 한 줄로 잘려 보이고 하단 셀이 겹쳐 보이는 현상).
+   직계 자식의 shrink 를 완전히 차단해, 각 셀이 자연 높이를 유지하고
+   초과분은 부모(.expv2-cells)의 세로 스크롤로 해결되도록 강제한다. */
+.expv2-cells > * {
+  flex: 0 0 auto;
+  min-height: 0;
+}
+.expv2-cells textarea,
+.expv2-cells input[type="text"],
+.expv2-cells input[type="search"],
+.expv2-cells input:not([type]) {
+  cursor: text;
+}
+.expv2-cells button,
+.expv2-cells select,
+.expv2-cells [role="button"] {
+  cursor: pointer;
+}
+/* 드래그 진행 중에는 커서·텍스트 선택을 잠가 자연스러운 panning UX. */
+body.expv2-dragging,
+body.expv2-dragging * {
+  cursor: grabbing !important;
+  user-select: none !important;
+}
+
+/* 좌측 스크롤 레일 — overflow 시에만 렌더된다. */
+.expv2-scrollrail {
+  position: absolute;
+  top: 8px;
+  bottom: 8px;
+  left: 4px;
+  width: 28px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  pointer-events: none;   /* 버튼만 클릭 가능 */
+  z-index: 2;
+}
+.expv2-scrollrail__btn {
+  pointer-events: auto;
+  width: 26px;
+  height: 30px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: color-mix(in srgb, var(--panel) 86%, transparent);
+  color: var(--text);
+  font-size: 12px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+  transition: background 120ms ease, transform 100ms ease,
+    border-color 120ms ease, opacity 120ms ease;
+  backdrop-filter: blur(4px);
+}
+.expv2-scrollrail__btn:hover:not(:disabled) {
+  background: var(--primary-soft, var(--panel));
+  border-color: var(--primary);
+  color: var(--primary);
+}
+.expv2-scrollrail__btn:active:not(:disabled) {
+  transform: translateY(1px) scale(0.96);
+}
+.expv2-scrollrail__btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.expv2-cell-insert {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 0;
+  height: 0;
+  opacity: 0;
+  overflow: visible;
+  transition: opacity 150ms ease, height 150ms ease, padding 150ms ease;
+}
+/* 셀 내부에 호버 시에만 삽입 바가 펼쳐지도록 해 기본 상태에서의 수직
+   공간 소비를 0으로 만든다 → 5개 셀이 화면에 모두 수납된다. */
+.expv2-cell:hover .expv2-cell-insert,
+.expv2-cell-insert:hover,
+.expv2-cell-insert:focus-within {
+  opacity: 1;
+  height: auto;
+  padding: 2px 0 4px;
+}
+.expv2-cell-insert__line {
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+.expv2-cell-insert__btns {
+  display: inline-flex;
+  gap: 4px;
+  padding: 2px 4px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+}
+
+/* --- single cell --- */
+.expv2-cell {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  overflow: hidden;
+  transition: border-color 140ms ease, box-shadow 140ms ease;
+  display: flex;
+  flex-direction: column;
+}
+.expv2-cell:hover {
+  border-color: var(--border-strong);
+}
+.expv2-cell--active {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+.expv2-cell--running {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.18);
+}
+.expv2-cell--error {
+  border-color: var(--error);
+}
+
+.expv2-cell__head {
+  display: grid;
+  grid-template-columns: 26px auto 1fr auto;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel);
+}
+.expv2-cell__exec-marker {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--dim);
+  text-align: center;
+  user-select: none;
+}
+.expv2-cell__type-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  background: var(--muted);
+  color: var(--subt);
+  border: 1px solid var(--border);
+}
+.expv2-cell__type-chip--prompt {
+  background: var(--primary-soft);
+  color: #93c5fd;
+  border-color: transparent;
+}
+.expv2-cell__type-chip--code {
+  background: rgba(139, 92, 246, 0.18);
+  color: #c4b5fd;
+  border-color: transparent;
+}
+.expv2-cell__type-chip--sql {
+  background: rgba(16, 185, 129, 0.18);
+  color: #6ee7b7;
+  border-color: transparent;
+}
+.expv2-cell__type-chip--markdown {
+  background: rgba(245, 158, 11, 0.18);
+  color: #fcd34d;
+  border-color: transparent;
+}
+.expv2-cell__type-chip--result {
+  background: var(--success-soft);
+  color: #86efac;
+  border-color: transparent;
+}
+.expv2-cell__title {
+  flex: 1;
+  background: transparent;
+  border: 1px solid transparent;
+  padding: 2px 6px;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--text);
+  border-radius: var(--r-sm);
+  font-family: inherit;
+  min-width: 0;
+  width: 100%;
+}
+.expv2-cell__title:hover {
+  background: var(--muted);
+}
+.expv2-cell__title:focus {
+  outline: none;
+  background: var(--panel);
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.14);
+}
+.expv2-cell__tools {
+  display: inline-flex;
+  gap: 2px;
+  align-items: center;
+}
+.expv2-cell__status {
+  font-size: 11.5px;
+  color: var(--subt);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding-right: 4px;
+}
+
+.expv2-cell__body {
+  display: flex;
+  gap: 0;
+}
+.expv2-cell__runner {
+  width: 36px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 6px;
+  background: var(--muted);
+  border-right: 1px solid var(--border);
+}
+.expv2-cell__run-btn {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: var(--panel);
+  color: var(--primary);
+  font-size: 11px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 120ms ease;
+}
+.expv2-cell__run-btn:hover {
+  border-color: var(--primary);
+  background: var(--primary-soft);
+}
+.expv2-cell__run-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.expv2-cell__editor {
+  flex: 1;
+  min-width: 0;
+}
+.expv2-cell__textarea {
+  width: 100%;
+  min-height: 58px;        /* 프롬프트 입력 내용(2~3줄)이 기본 상태에서 보이도록 */
+  padding: 8px 12px;
+  border: none;
+  background: var(--panel);
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.5;
+  font-family: inherit;
+  resize: vertical;
+  outline: none;
+}
+.expv2-cell__textarea--code,
+.expv2-cell__textarea--sql {
+  font-family: var(--mono);
+  font-size: 12.5px;
+  background: var(--code-bg);
+  color: #e2e8f0;
+}
+.expv2-cell__textarea--markdown {
+  background: var(--md-bg);
+  color: var(--text);
+}
+
+.expv2-cell__output {
+  border-top: 1px solid var(--border);
+  padding: 10px 14px;
+  background: var(--muted);
+  font-size: 12.5px;
+  line-height: 1.55;
+  color: var(--text);
+}
+.expv2-cell__output-head {
+  display: inline-flex;
+  gap: 10px;
+  align-items: baseline;
+  font-size: 11px;
+  color: var(--dim);
+  margin-bottom: 6px;
+}
+.expv2-cell__output-text {
+  margin: 0 0 6px;
+}
+.expv2-cell__output-list {
+  margin: 0;
+  padding-left: 18px;
+}
+.expv2-cell__output-list li::marker {
+  color: var(--primary);
+}
+.expv2-cell__output-pre {
+  margin: 0;
+  padding: 8px 10px;
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  font-family: var(--mono);
+  font-size: 11.5px;
+  color: #e2e8f0;
+  line-height: 1.55;
+  overflow: auto;
+  max-height: 260px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.expv2-cell__output--md {
+  background: var(--md-bg);
+  border-top: 1px solid var(--border);
+}
+.expv2-cell__output--md pre {
+  font-family: inherit;
+  font-size: 13.5px;
+  color: var(--text);
+  white-space: pre-wrap;
+  margin: 0;
+}
+.expv2-cell__output--stub {
+  color: #fcd34d;
+  font-style: italic;
+  background: var(--warning-soft);
+}
+
+.expv2-cell__logs {
+  border-top: 1px solid var(--border);
+  background: #0b1220;
+  color: #cbd5e1;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  padding: 6px 12px;
+  line-height: 1.5;
+  max-height: 160px;
+  overflow: auto;
+}
+.expv2-cell__log-row {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.expv2-cell__log-time {
+  color: #64748b;
+  margin-right: 6px;
+  font-variant-numeric: tabular-nums;
+}
+
+.expv2-cell__error-banner {
+  padding: 6px 14px;
+  font-size: 12px;
+  color: var(--error);
+  background: var(--error-soft);
+  border-top: 1px solid var(--error);
+}
+
+/* Collapsed cell: hide body + tools, keep header compact */
+.expv2-cell--collapsed .expv2-cell__body,
+.expv2-cell--collapsed .expv2-cell__output,
+.expv2-cell--collapsed .expv2-cell__logs,
+.expv2-cell--collapsed .expv2-cell__error-banner {
+  display: none;
+}
+
+/* ============================================================
+ * RIGHT ANALYSIS SIDEBAR
+ * ============================================================ */
+.expv2-right {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+}
+.expv2-right__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px 8px 12px;
+  border-bottom: 1px solid var(--border);
+}
+.expv2-right__title {
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--subt);
+}
+.expv2-right__tabs {
+  display: flex;
+  gap: 2px;
+  padding: 6px;
+  border-bottom: 1px solid var(--border);
+  background: var(--muted);
+}
+.expv2-right__tab {
+  flex: 1;
+  padding: 5px 6px;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--subt);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  transition: all 140ms ease;
+}
+.expv2-right__tab:hover {
+  background: var(--muted);
+  color: var(--text);
+}
+.expv2-right__tab--active {
+  background: var(--panel);
+  color: var(--primary);
+  border-color: var(--primary);
+  font-weight: 600;
+}
+.expv2-right__body {
+  padding: 12px;
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  /* flex column 에서 자식이 넘칠 때 body 가 스크롤 컨테이너가 되도록. */
+  min-height: 0;
+  overscroll-behavior: contain;
+}
+.expv2-right--collapsed .expv2-right__tabs,
+.expv2-right--collapsed .expv2-right__body,
+.expv2-right--collapsed .expv2-right__title {
+  display: none;
+}
+.expv2-right--collapsed .expv2-right__head {
+  justify-content: center;
+  border-bottom: none;
+}
+
+.expv2-section {
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  overflow: hidden;
+}
+.expv2-section__head {
+  padding: 6px 12px;
+  font-size: 11.5px;
+  font-weight: 600;
+  color: var(--subt);
+  background: var(--muted);
+  border-bottom: 1px solid var(--border);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.expv2-section__body {
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.expv2-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+.expv2-metric {
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  padding: 8px 10px;
+  background: var(--panel);
+}
+.expv2-metric__label {
+  font-size: 10.5px;
+  color: var(--dim);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+.expv2-metric__value {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--text);
+  margin-top: 2px;
+  font-variant-numeric: tabular-nums;
+}
+.expv2-kv {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 3px 12px;
+  font-size: 12px;
+  margin: 0;
+}
+.expv2-kv dt {
+  color: var(--dim);
+  font-weight: 500;
+}
+.expv2-kv dd {
+  margin: 0;
+  color: var(--text);
+  word-break: break-word;
+}
+.expv2-empty {
+  color: var(--dim);
+  font-size: 12px;
+  font-style: italic;
+  padding: 8px 0;
+  text-align: center;
+}
+
+/* ============================================================
+ * BOTTOM TRACE PANEL (높이 조정 가능)
+ * ------------------------------------------------------------
+ * 기본 높이는 React 인라인 style에서 주입 (state.traceHeight).
+ * 접힌 상태에서는 auto 높이로 되돌려 헤더만 노출한다.
+ * ============================================================ */
+.expv2-trace {
+  background: var(--panel);
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  height: 128px;          /* 인라인 style이 오버라이드; 기본값 축소로 결과 셀까지 노출 */
+  min-height: 56px;
+  max-height: 60vh;
+  overflow: hidden;
+}
+.expv2-trace--collapsed {
+  height: auto !important;
+  min-height: 0;
+  max-height: none;
+}
+.expv2-trace__resizer {
+  height: 6px;
+  flex: 0 0 auto;
+  cursor: row-resize;
+  background: transparent;
+  position: relative;
+  touch-action: none;
+  user-select: none;
+}
+.expv2-trace__resizer::before {
+  content: "";
+  position: absolute;
+  left: 20%;
+  right: 20%;
+  top: 2px;
+  bottom: 2px;
+  background: var(--border);
+  border-radius: 2px;
+  transition: background 140ms ease;
+}
+.expv2-trace__resizer:hover::before {
+  background: var(--primary);
+}
+body.expv2-resizing .expv2-trace__resizer::before {
+  background: var(--primary);
+}
+.expv2-trace__head {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-bottom: 1px solid var(--border);
+  background: var(--muted);
+  min-height: 34px;
+}
+.expv2-trace__handle {
+  background: none;
+  border: none;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--text);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.expv2-trace__handle:hover {
+  color: var(--primary);
+}
+.expv2-trace__ctrls {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  max-width: 100%;
+}
+.expv2-trace__search,
+.expv2-trace__select {
+  padding: 3px 7px;
+  font-size: 11.5px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  background: var(--panel);
+  color: var(--text);
+  font-family: inherit;
+  min-width: 0;
+  flex: 0 0 auto;
+}
+.expv2-trace__search {
+  width: 140px;
+}
+.expv2-trace__select {
+  width: 96px;
+}
+/* 필터 패널 — 기본 숨김, 토글 시 개별 행으로 전개 */
+.expv2-trace__filters {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.expv2-trace__filters--hidden {
+  display: none;
+}
+.expv2-trace__search:focus,
+.expv2-trace__select:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.16);
+}
+.expv2-trace__body {
+  flex: 1;
+  overflow: auto;
+}
+.expv2-trace--collapsed .expv2-trace__body,
+.expv2-trace--collapsed .expv2-trace__ctrls {
+  display: none;
+}
+.expv2-trace--collapsed .expv2-trace__head {
+  border-bottom: none;
+}
+.expv2-trace__empty {
+  padding: 16px;
+  text-align: center;
+  color: var(--dim);
+  font-size: 12px;
+}
+.expv2-trace__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.expv2-trace__row {
+  border-bottom: 1px solid var(--border);
+}
+.expv2-trace__row:last-child {
+  border-bottom: none;
+}
+.expv2-trace__row-main {
+  display: grid;
+  grid-template-columns: 20px 80px auto auto 1fr auto 16px;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  background: none;
+  border: none;
+  color: var(--text);
+  padding: 6px 14px;
+  text-align: left;
+  font-size: 12px;
+  cursor: pointer;
+}
+.expv2-trace__row-main:hover {
+  background: var(--muted);
+}
+.expv2-trace__icon {
+  text-align: center;
+}
+.expv2-trace__time {
+  color: var(--dim);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.expv2-trace__summary {
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.expv2-trace__ref {
+  font-size: 11px;
+  color: var(--dim);
+  font-family: var(--mono);
+}
+.expv2-trace__expand {
+  color: var(--dim);
+  font-size: 11px;
+  justify-self: end;
+}
+.expv2-trace__detail {
+  padding: 6px 16px 12px 56px;
+  background: rgba(15, 23, 42, 0.5);
+  border-top: 1px dashed var(--border);
+  font-size: 12px;
+}
+.expv2-trace__detail-pre {
+  margin: 0;
+  padding: 8px 10px;
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  font-family: var(--mono);
+  font-size: 11.5px;
+  max-height: 180px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: #e2e8f0;
+}
+
+@media (max-width: 960px) {
+  .expv2-trace__row-main {
+    grid-template-columns: 20px 60px auto 1fr auto;
+  }
+  .expv2-trace__row-main > :nth-child(3),
+  .expv2-trace__row-main > :nth-child(6) {
+    display: none;
+  }
+}
+
+/* ============================================================
+ * MODAL (conversation / prompt history)
+ * ============================================================ */
+.expv2-modal {
+  position: fixed;
+  inset: 0;
+  background: rgba(2, 6, 18, 0.72);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 900;
+}
+.expv2-modal__panel {
+  background: var(--panel);
+  border-radius: var(--r-lg);
+  width: min(640px, 92vw);
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: var(--shadow-md);
+}
+.expv2-modal__head {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.expv2-modal__title {
+  font-size: 14px;
+  font-weight: 600;
+}
+.expv2-modal__body {
+  padding: 14px;
+  overflow: auto;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.expv2-msg {
+  padding: 8px 10px;
+  border-radius: var(--r-md);
+  border: 1px solid var(--border);
+  background: var(--panel);
+  font-size: 12.5px;
+  line-height: 1.55;
+}
+.expv2-msg--user {
+  background: var(--primary-soft);
+  color: #dbeafe;
+  border-color: transparent;
+}
+.expv2-msg--agent {
+  background: var(--success-soft);
+  color: #dcfce7;
+  border-color: transparent;
+}
+.expv2-msg__head {
+  font-size: 10.5px;
+  color: var(--dim);
+  margin-bottom: 2px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
