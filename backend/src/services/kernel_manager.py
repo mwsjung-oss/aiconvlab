@@ -20,6 +20,7 @@ Experiment V3 · 세션 보존 Python 커널 매니저
 from __future__ import annotations
 
 import logging
+import os
 import queue
 import threading
 import time
@@ -28,9 +29,25 @@ from typing import Any, Dict, List, Optional
 
 _LOG = logging.getLogger("kernel_manager")
 
-DEFAULT_TIMEOUT = 60  # seconds (하드 타임아웃)
-IDLE_TIMEOUT_SEC = 30 * 60  # 유휴 30분 이후 자동 종료
-MAX_CONCURRENT_KERNELS = 8  # 서버 보호 — 이보다 많으면 429
+
+def _env_int(name: str, default: int, *, lo: int = 1, hi: int = 10_000) -> int:
+    """환경변수에서 int 를 안전하게 읽는다. 값이 없거나 파싱 실패 시 default."""
+    try:
+        v = int(os.environ.get(name, "").strip() or default)
+    except (TypeError, ValueError):
+        return default
+    return max(lo, min(hi, v))
+
+
+# 운영 플랜 별 권장값 (환경변수로 오버라이드 가능):
+#   Free / Starter  → MAX_CONCURRENT_KERNELS=4~8  (RAM 512MB~1GB)
+#   Pro (현재 플랜) → MAX_CONCURRENT_KERNELS=20   (RAM 4GB, 2 vCPU)
+#   Pro Plus        → MAX_CONCURRENT_KERNELS=40   (RAM 8GB, 4 vCPU)
+DEFAULT_TIMEOUT = _env_int("KERNEL_EXEC_TIMEOUT_SEC", 60, lo=5, hi=600)
+IDLE_TIMEOUT_SEC = _env_int("KERNEL_IDLE_TIMEOUT_SEC", 30 * 60, lo=60, hi=6 * 3600)
+MAX_CONCURRENT_KERNELS = _env_int(
+    "KERNEL_MAX_CONCURRENT", 20, lo=1, hi=200
+)  # Render Pro 기본 — 초과 시 429
 STARTUP_CODE = (
     "import pandas as pd\n"
     "import numpy as np\n"

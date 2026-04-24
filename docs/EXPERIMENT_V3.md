@@ -55,15 +55,24 @@ V3 의 특징:
 
 ## 4. 세션 커널 정책
 
-| 항목 | 값 |
-|---|---|
-| 구현 | `backend/src/services/kernel_manager.py` — `KernelRegistry` 싱글턴 |
-| 사용자당 커널 | 1개 |
-| 초기 import | `pandas`, `numpy`, `matplotlib.pyplot` (Agg 백엔드) |
-| 실행 타임아웃 | 기본 60s (최대 120s 요청 가능) |
-| 유휴 정리 | 30분 이상 미사용 시 자동 shutdown |
-| 동시 한도 | 프로세스당 최대 8명 (초과 시 429 KernelQuotaError) |
-| 출력 형식 | `stream` / `text` / `image_png` (base64) / `html` / `error` |
+| 항목 | 값 (기본) | 환경변수 오버라이드 |
+|---|---|---|
+| 구현 | `backend/src/services/kernel_manager.py` — `KernelRegistry` 싱글턴 | — |
+| 사용자당 커널 | 1개 | — |
+| 초기 import | `pandas`, `numpy`, `matplotlib.pyplot` (Agg 백엔드) | — |
+| 실행 타임아웃 | 60s (요청에서 1~120s 지정 가능) | `KERNEL_EXEC_TIMEOUT_SEC` |
+| 유휴 정리 | 30분 이상 미사용 시 자동 shutdown | `KERNEL_IDLE_TIMEOUT_SEC` |
+| 동시 한도 | 프로세스당 **20명** (Render Pro 기준 · 초과 시 429 KernelQuotaError) | `KERNEL_MAX_CONCURRENT` |
+| 출력 형식 | `stream` / `text` / `image_png` (base64) / `html` / `error` | — |
+
+### 플랜별 권장 `KERNEL_MAX_CONCURRENT`
+
+| Render 플랜 | RAM | vCPU | 권장 값 |
+|---|---|---|---|
+| Free | 512MB | shared | 2 |
+| Starter | 1GB | shared | 4~6 |
+| **Pro (현재)** | **4GB** | **2** | **20** (기본) |
+| Pro Plus | 8GB | 4 | 40 |
 
 ## 5. Tracing 저장소
 
@@ -111,10 +120,11 @@ V3 의 특징:
 
 ## 7. 운영 고려사항
 
-- **Render 무료 플랜**: 512MB 메모리, 커널 1~2명 동시 사용 가능.
-  OOM 위험 증가 시 Starter($7/월) 로 승격 권장. 커널 로드 실패 시 UI
-  상단에 "커널 오류" 칩이 뜨고 `kernel.status.lastError` 에 메시지가
-  담긴다.
+- **Render 플랜 — 현재 Pro**: RAM 4GB, 2 vCPU. pandas+numpy+matplotlib
+  로드된 커널이 약 200MB/명이므로 여유를 두고 **동시 20명**까지
+  기본으로 허용한다(`KERNEL_MAX_CONCURRENT`). 트래픽이 늘면 Pro Plus 로
+  승격하고 값을 40 이상으로 올린다. 커널 로드 실패 시 UI 상단에
+  "커널 오류" 칩이 뜨고 `kernel.status.lastError` 에 메시지가 담긴다.
 - **코드 실행 보안**: 현재는 경로 화이트리스트 (업로드 디렉터리)와 실행
   타임아웃으로만 보호된다. 공개 서비스로 확장할 경우 RLIMIT/seccomp
   기반 샌드박스 또는 원격 커널 분리를 검토해야 한다.
@@ -152,10 +162,20 @@ npm run dev
 - [ ] 이력 드로어에서 prompt/code/result 카드 확인
 - [ ] 로그아웃 → 재로그인 → 마지막 상태 복구 (localStorage)
 
-## 10. 플랜 B 승격 권고
+## 10. 용량·승격 가이드
 
-Render 무료 플랜에서 커널 1개가 pandas+numpy 로드만으로 약 200MB 를
-사용한다. 두 명 이상의 사용자가 동시에 커널을 띄우면 OOM 위험이
-있으므로 **동시 1명 초과 예상 시 Starter($7/월, 512MB → 1GB) 로
-승격**을 권한다. 더 큰 트래픽은 프로세스별 `MAX_CONCURRENT_KERNELS` 를
-조정하고 워커 수를 늘리는 방식으로 확장한다.
+- 현재 Render **Pro** (4GB / 2 vCPU) 기준 20명 동시 커널을 허용한다.
+  실측 시 커널당 약 180~220MB 를 사용하므로 여유 한도를 확보한 값이다.
+- **Pro Plus(8GB / 4 vCPU)** 로 승격할 때:
+  ```
+  KERNEL_MAX_CONCURRENT=40
+  ```
+  를 Render 환경변수에 추가하면 즉시 반영된다(재배포 필요).
+- **고부하 실험(딥러닝 미니 학습 등)** 을 허용하려면 실행 타임아웃도
+  같이 올린다:
+  ```
+  KERNEL_EXEC_TIMEOUT_SEC=180
+  ```
+- 장기적으로 워커를 여러 개 띄워 수평 확장할 경우, `KernelRegistry` 는
+  프로세스 단위 싱글턴이므로 **sticky session** (X-User-Id 기반)으로
+  동일 사용자가 항상 같은 프로세스로 라우팅되도록 구성해야 한다.
