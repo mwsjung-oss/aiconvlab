@@ -17,6 +17,9 @@ export default function TopBar({
   onGoHome,
   stage,
   onChangeStage,
+  aiProvider,
+  onChangeAiProvider,
+  aiHealth,
 }) {
   const initial = useMemo(() => {
     const src = user?.full_name || user?.email || "";
@@ -56,6 +59,14 @@ export default function TopBar({
             {savedLabel}
           </span>
         </div>
+
+        {aiProvider && onChangeAiProvider ? (
+          <AiSwitch
+            value={aiProvider}
+            onChange={onChangeAiProvider}
+            health={aiHealth}
+          />
+        ) : null}
 
         {onGoHome ? (
           <button
@@ -107,5 +118,70 @@ export default function TopBar({
         ))}
       </nav>
     </>
+  );
+}
+
+/**
+ * AiSwitch — OpenAI ↔ Gemini 세그먼트 선택기
+ *
+ * - 2개 버튼을 좁은 pill 에 담아 헤더 우측(홈 버튼 왼쪽)에 배치한다.
+ * - `health.{openai,gemini}` 가 false 면 해당 버튼 옆에 노란 점을 표시해
+ *   "서버에 API 키 미등록" 을 알려 준다(기능 자체는 허용 — 관리자가 키를
+ *   Render 에 넣는 즉시 동작하므로).
+ */
+function AiSwitch({ value, onChange, health }) {
+  const items = [
+    { id: "openai", label: "OpenAI" },
+    { id: "gemini", label: "Gemini" },
+  ];
+  const tooltip = (id) => {
+    if (health?.loading) return `${id} — 상태 확인 중`;
+    if (health?.error) return `${id} — health 오류: ${health.error}`;
+    const ok =
+      (id === "openai" && health?.openai) ||
+      (id === "gemini" && health?.gemini);
+    return ok
+      ? `${id} API 키가 서버에 등록되어 있습니다.`
+      : `${id} API 키가 서버에 등록되어 있지 않습니다 (Render 환경변수 확인 필요).`;
+  };
+  return (
+    <div
+      className="expv3-ai-switch"
+      role="radiogroup"
+      aria-label="AI Provider 선택"
+      title="프롬프트 실행에 사용할 AI 공급자"
+    >
+      <span className="expv3-ai-switch__label">AI</span>
+      {items.map((it) => {
+        const active = value === it.id;
+        const ok =
+          (it.id === "openai" && health?.openai) ||
+          (it.id === "gemini" && health?.gemini);
+        const dotClass =
+          "expv3-ai-switch__dot " +
+          (health?.loading
+            ? "expv3-ai-switch__dot--pending"
+            : ok
+            ? "expv3-ai-switch__dot--ok"
+            : "expv3-ai-switch__dot--off");
+        return (
+          <button
+            key={it.id}
+            type="button"
+            role="radio"
+            aria-checked={active}
+            className={
+              "expv3-ai-switch__btn" +
+              (active ? " expv3-ai-switch__btn--active" : "")
+            }
+            onClick={() => onChange(it.id)}
+            title={tooltip(it.id)}
+          >
+            <span className={dotClass} aria-hidden="true" />
+            {it.label}
+          </button>
+        );
+      })}
+    </div>
   );
 }

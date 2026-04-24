@@ -24,6 +24,9 @@ export default function ActivityWorkspace({
   kernel,
   tracing,
   user,
+  aiProvider = "openai",
+  aiConfigured = false,
+  onRefreshAiHealth,
 }) {
   const [runningCellId, setRunningCellId] = useState(null);
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -129,6 +132,7 @@ export default function ActivityWorkspace({
           kind: "prompt",
           content: cell.content,
           cell_id: cell.id,
+          metadata: { provider: aiProvider },
         });
         try {
           /* LLM 게이트웨이 호출. prompt 는 바로 ask, SQL 은 sql 요약 질문으로 래핑. */
@@ -138,7 +142,7 @@ export default function ActivityWorkspace({
               : cell.content;
           const resp = await apiJson("/api/chat/test", {
             method: "POST",
-            body: { provider: "openai", message: msg },
+            body: { provider: aiProvider, message: msg },
           });
           const text =
             typeof resp?.response === "string"
@@ -147,7 +151,13 @@ export default function ActivityWorkspace({
           const duration = Date.now() - startedAt;
           onPatchCell(activity.id, cell.id, {
             status: "done",
-            outputs: [{ type: "stream", data: text }],
+            outputs: [
+              {
+                type: "stream",
+                data: text,
+                meta: { provider: aiProvider, elapsed_ms: duration },
+              },
+            ],
             durationMs: duration,
           });
           await recordTrace({
@@ -155,26 +165,41 @@ export default function ActivityWorkspace({
             content: text.slice(0, 4000),
             duration_ms: duration,
             cell_id: cell.id,
+            metadata: { provider: aiProvider },
           });
         } catch (e) {
           const duration = Date.now() - startedAt;
+          const raw = e?.message || String(e);
+          /* 서버가 OPENAI_API_KEY/GEMINI_API_KEY 를 못 찾아 400 으로
+             돌려보내는 경우가 가장 흔한 실패 경로 — UI 에서 "무엇을
+             해야 하는지" 바로 보이도록 힌트를 붙여 준다. */
+          const looksLikeMissingKey = /OPENAI_API_KEY|GEMINI_API_KEY/i.test(raw);
+          const hint = looksLikeMissingKey
+            ? `\n\n[관리자 안내] Render 백엔드 환경변수에 ${
+                aiProvider === "openai" ? "OPENAI_API_KEY" : "GEMINI_API_KEY"
+              } 가 설정되어 있어야 합니다. 저장 후 재배포하면 즉시 동작합니다.`
+            : "";
           onPatchCell(activity.id, cell.id, {
             status: "error",
-            outputs: [{ type: "error", data: e.message || String(e) }],
+            outputs: [{ type: "error", data: raw + hint }],
             durationMs: duration,
           });
           await recordTrace({
             kind: "error",
-            content: e.message || String(e),
+            content: raw,
             duration_ms: duration,
             cell_id: cell.id,
+            metadata: { provider: aiProvider },
           });
+          if (looksLikeMissingKey && typeof onRefreshAiHealth === "function") {
+            onRefreshAiHealth();
+          }
         }
       }
 
       setRunningCellId(null);
     },
-    [activity, kernel, onPatchCell, recordTrace]
+    [activity, kernel, onPatchCell, recordTrace, aiProvider, onRefreshAiHealth]
   );
 
   const kernelChip = (() => {
@@ -224,6 +249,19 @@ export default function ActivityWorkspace({
         <div className="expv3-work__head-title">{activity.title}</div>
         <div className="expv3-work__head-sub">{activity.overview}</div>
         <span className="expv3-work__head-spacer" />
+        <span
+          className={
+            "expv3-chip " +
+            (aiConfigured ? "expv3-chip--ok" : "expv3-chip--warn")
+          }
+          title={
+            aiConfigured
+              ? `현재 프롬프트는 ${aiProvider} 로 실행됩니다.`
+              : `${aiProvider} API 키가 서버에 등록되어 있지 않습니다.`
+          }
+        >
+          <span className="expv3-dot" /> AI: {aiProvider}
+        </span>
         {kernelChip}
         <button
           type="button"

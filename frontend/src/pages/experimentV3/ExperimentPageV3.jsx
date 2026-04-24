@@ -19,6 +19,7 @@ import ActivityWorkspace from "./ActivityWorkspace.jsx";
 import { useExperimentV3State, hasLegacyV2Data } from "./hooks/useExperimentV3State.js";
 import { useKernel } from "./hooks/useKernel.js";
 import { useTracing } from "./hooks/useTracing.js";
+import { useAiProvider } from "./hooks/useAiProvider.js";
 import { getActivity, ACTIVITIES } from "./config/activities.config.js";
 import "./experimentV3.css";
 
@@ -37,6 +38,7 @@ export default function ExperimentPageV3({ user, onLogout, onGoHome }) {
 
   const kernel = useKernel({ autoStart: true });
   const tracing = useTracing();
+  const ai = useAiProvider();
 
   const [activeCellId, setActiveCellIdState] = useState(null);
   const [showLegacyBanner, setShowLegacyBanner] = useState(false);
@@ -97,6 +99,9 @@ export default function ExperimentPageV3({ user, onLogout, onGoHome }) {
         onGoHome={onGoHome}
         stage={state.stage}
         onChangeStage={setStage}
+        aiProvider={ai.provider}
+        onChangeAiProvider={ai.setProvider}
+        aiHealth={ai.health}
       />
 
       {showLegacyBanner ? (
@@ -136,6 +141,9 @@ export default function ExperimentPageV3({ user, onLogout, onGoHome }) {
           kernel={kernel}
           tracing={tracing}
           user={user}
+          aiProvider={ai.provider}
+          aiConfigured={ai.isConfigured}
+          onRefreshAiHealth={ai.refreshHealth}
         />
       </div>
     </div>
