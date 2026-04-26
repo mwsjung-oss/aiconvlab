@@ -24,10 +24,10 @@ pip install -r requirements.txt
 python -m uvicorn main:app --reload --host 127.0.0.1 --port 8000
 ```
 
-PostgreSQL 사용 시 `.env`에 `DATABASE_URL`을 설정하세요.
+PostgreSQL 사용 시 `.env`에 `DATABASE_URL`을 설정하세요. Render에서는 대시보드의 **External** Database URL을 그대로 쓰면 됩니다(`postgresql://…`도 자동 정규화).
 
 ```env
-DATABASE_URL=postgresql+psycopg://user:password@host:5432/ailab
+DATABASE_URL=postgresql://user:password@dpg-xxxxx.region.postgres.render.com:5432/dbname
 ```
 
 기존 SQLite(`data/app.db`)를 PostgreSQL로 완전 이관:

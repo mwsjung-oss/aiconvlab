@@ -1,6 +1,6 @@
 # Render 대시보드에서 생성한 Deploy Hook URL로 백엔드 재배포를 트리거합니다.
 # Render가 이미 GitHub 연동 + Auto-Deploy를 쓰는 경우 이 워크플로는 설정하지 않아도 됩니다(중복 배포 방지).
-# 배포 후 검증: Actions → "Backend deployed smoke (manual)" workflow_dispatch (wait_seconds 조절 가능).
+# 배포 후 검증: main 푸시 시 "Backend Lint Test Check" 가 Render 대기(~75s) 후 스모크(헬스·DB·로그인) 실행.
 
 name: Trigger backend deploy (Render hook)
 

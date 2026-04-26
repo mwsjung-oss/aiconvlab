@@ -10,6 +10,7 @@ services:
     envVars:
       - key: JWT_SECRET
         generateValue: true
+      # PostgreSQL: **External Database URL** (Internal URL은 웹 서비스에서 사용 불가)
       - key: DATABASE_URL
         sync: false
       - key: MASTER_EMAIL

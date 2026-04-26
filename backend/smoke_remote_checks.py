@@ -19,17 +19,23 @@ def requirements_pins_ok(requirements_path: Path) -> list[str]:
         for ln in text.splitlines()
         if ln.strip() and not ln.strip().startswith("#")
     ]
-    if "bcrypt==4.0.1" not in lines:
-        errors.append("requirements.txt must pin exactly: bcrypt==4.0.1")
-    if "passlib[bcrypt]==1.7.4" not in lines:
-        errors.append("requirements.txt must pin exactly: passlib[bcrypt]==1.7.4")
+    req_bcrypt = "bcrypt==4.0.1"
+    req_passlib = "passlib[bcrypt]==1.7.4"
+    if lines.count(req_bcrypt) != 1:
+        errors.append(
+            f"requirements.txt must contain exactly one line: {req_bcrypt} (found {lines.count(req_bcrypt)})"
+        )
+    if lines.count(req_passlib) != 1:
+        errors.append(
+            f"requirements.txt must contain exactly one line: {req_passlib} (found {lines.count(req_passlib)})"
+        )
     # Disallow looser bcrypt/passlib lines (e.g. bcrypt>=...)
     for ln in lines:
-        if re.match(r"^bcrypt[<>=!]", ln) and ln != "bcrypt==4.0.1":
-            errors.append(f"Unexpected bcrypt requirement line (use only bcrypt==4.0.1): {ln}")
-        if ln.startswith("passlib") and ln != "passlib[bcrypt]==1.7.4":
+        if re.match(r"^bcrypt[<>=!]", ln) and ln != req_bcrypt:
+            errors.append(f"Unexpected bcrypt requirement line (use only {req_bcrypt}): {ln}")
+        if ln.startswith("passlib") and ln != req_passlib:
             errors.append(
-                f"Unexpected passlib requirement line (use only passlib[bcrypt]==1.7.4): {ln}"
+                f"Unexpected passlib requirement line (use only {req_passlib}): {ln}"
             )
     return errors
 
@@ -66,6 +72,12 @@ def check_health(base_url: str) -> None:
     assert isinstance(body, dict) and body.get("status") == "ok", body
 
 
+def check_health_db(base_url: str) -> None:
+    code, body = _request_json("GET", f"{base_url}/api/health/db")
+    assert code == 200, f"/api/health/db expected 200, got status={code}, body={body!r}"
+    assert isinstance(body, dict) and body.get("status") == "ok", body
+
+
 def check_login_invalid_returns_401(base_url: str) -> None:
     # EmailStr rejects reserved/special TLDs (e.g. .invalid); use a valid-format address.
     code, body = _request_json(
@@ -80,28 +92,34 @@ def check_login_invalid_returns_401(base_url: str) -> None:
     assert code == 401, f"login invalid expected 401, got {code}, body={body}"
 
 
-def check_login_success_if_env(base_url: str) -> None:
+def check_login_success_required(base_url: str) -> None:
+    """CI 필수: AILAB_SMOKE_EMAIL / AILAB_SMOKE_PASSWORD 환경변수와 유효한 로그인."""
     import os
 
     email = (os.environ.get("AILAB_SMOKE_EMAIL") or "").strip()
     password = (os.environ.get("AILAB_SMOKE_PASSWORD") or "").strip()
     if not email or not password:
-        return
+        raise AssertionError(
+            "AILAB_SMOKE_EMAIL and AILAB_SMOKE_PASSWORD must be set (e.g. GitHub Actions secrets)."
+        )
     code, body = _request_json(
         "POST",
         f"{base_url}/api/auth/login",
         {"email": email, "password": password},
     )
-    assert code == 200, f"smoke login expected 200, got {code}, body={body}"
-    assert isinstance(body, dict), body
-    assert body.get("access_token"), f"missing access_token in {body}"
+    if code != 200 or not isinstance(body, dict) or not body.get("access_token"):
+        raise AssertionError(
+            f"smoke login success expected 200 and access_token; "
+            f"status={code}, body={body!r}"
+        )
 
 
 def run_smoke_http(base_url: str) -> None:
     base_url = base_url.rstrip("/")
     check_health(base_url)
+    check_health_db(base_url)
     check_login_invalid_returns_401(base_url)
-    check_login_success_if_env(base_url)
+    check_login_success_required(base_url)
 
 
 def main(argv: list[str]) -> int:

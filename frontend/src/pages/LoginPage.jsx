@@ -4,6 +4,22 @@ import BackendModeToggle from "../components/BackendModeToggle";
 import { useAuth } from "../AuthContext";
 import { mapAuthRequestError } from "../utils/mapAuthRequestError";
 
+/** 로그인 API: POST /api/auth/login, Content-Type application/json, { email, password } */
+function formatLoginFailureMessage(ex) {
+  const status = ex?.status;
+  const body = ex?.responseBody;
+  if (status !== undefined && status !== null) {
+    const bodyText =
+      body === undefined || body === null
+        ? "(본문 없음)"
+        : typeof body === "string"
+          ? body
+          : JSON.stringify(body, null, 2);
+    return `HTTP ${status}\n${bodyText}`;
+  }
+  return mapAuthRequestError(ex);
+}
+
 export default function LoginPage({ onSwitchRegister }) {
   const { setToken } = useAuth();
   const [email, setEmail] = useState("");
@@ -19,11 +35,27 @@ export default function LoginPage({ onSwitchRegister }) {
     try {
       const data = await apiJson("/api/auth/login", {
         method: "POST",
-        body: JSON.stringify({ email: email.trim(), password }),
+        headers: { "Content-Type": "application/json" },
+        body: { email: email.trim(), password },
       });
       setToken(data.access_token);
     } catch (ex) {
-      setErr(mapAuthRequestError(ex));
+      const status = ex?.status;
+      const responseBody =
+        ex?.responseBody !== undefined ? ex.responseBody : null;
+      if (status !== undefined && status !== null) {
+        console.error("[LOGIN 실패]", {
+          statusCode: status,
+          responseBody,
+        });
+      } else {
+        console.error("[LOGIN 실패]", {
+          statusCode: "(응답 없음)",
+          responseBody: null,
+          message: ex?.message || String(ex),
+        });
+      }
+      setErr(formatLoginFailureMessage(ex));
     } finally {
       setSubmitting(false);
     }
@@ -57,7 +89,11 @@ export default function LoginPage({ onSwitchRegister }) {
               required
             />
           </label>
-          {err && <div className="auth-error">{err}</div>}
+          {err && (
+            <div className="auth-error" style={{ whiteSpace: "pre-wrap" }}>
+              {err}
+            </div>
+          )}
           <button
             type="submit"
             className="auth-submit"

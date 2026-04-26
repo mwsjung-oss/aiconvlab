@@ -57,21 +57,39 @@ export async function apiAdminPanelJson(path, options = {}) {
 
 export async function apiDownload(path, filenameHint = "download.bin") {
   const token = getToken();
-  const res = await fetch(buildApiUrl(path), {
-    method: "GET",
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-  });
+  const requestUrl = buildApiUrl(path);
+  let res;
+  try {
+    res = await fetch(requestUrl, {
+      method: "GET",
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    });
+  } catch (e) {
+    const message = e instanceof Error ? e.message : String(e);
+    console.error("[API 요청 실패]", {
+      url: requestUrl,
+      status: "(응답 없음)",
+      message,
+    });
+    throw e;
+  }
   if (!res.ok) {
     const text = await res.text();
-    throw new Error(text || res.statusText);
+    const message = text || res.statusText;
+    console.error("[API 요청 실패]", {
+      url: requestUrl,
+      status: res.status,
+      message,
+    });
+    throw new Error(message);
   }
   const blob = await res.blob();
-  const url = URL.createObjectURL(blob);
+  const objectUrl = URL.createObjectURL(blob);
   const a = document.createElement("a");
-  a.href = url;
+  a.href = objectUrl;
   a.download = filenameHint;
   document.body.appendChild(a);
   a.click();
   a.remove();
-  URL.revokeObjectURL(url);
+  URL.revokeObjectURL(objectUrl);
 }

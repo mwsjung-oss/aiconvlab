@@ -49,7 +49,7 @@ import psutil
 import models  # noqa: F401 — Alembic/메타데이터 등록
 from activity_service import log_activity
 from auth_utils import hash_password
-from database import SessionLocal, engine, get_db
+from database import SessionLocal, engine, get_db, test_database_connection
 from dependencies import get_current_approved_member
 from models import DatasetCatalog, Experiment, ExperimentRecord, ExperimentRun, Project, ProjectMember, User
 from admin_panel_store import ensure_admin_password_file
@@ -363,6 +363,7 @@ def _tables() -> set[str]:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    test_database_connection()
     warn_production_cors()
 
     from database import Base
@@ -495,6 +496,11 @@ def _health_payload() -> dict[str, str]:
     return {"status": "ok"}
 
 
+@app.get("/", tags=["health"], summary="서비스 루트 (배포·브라우저 확인용)")
+def root() -> dict[str, str]:
+    return {"message": "AI Lab Backend Running"}
+
+
 @app.api_route("/api/health", methods=["GET", "HEAD"], tags=["health"], summary="헬스 체크 (권장)")
 def health() -> dict[str, str]:
     """HEAD 는 wait-on·로드밸런서 프로브 호환용."""
@@ -505,6 +511,22 @@ def health() -> dict[str, str]:
 def health_root() -> dict[str, str]:
     """일부 리버스 프록시·구 프로브는 /api 없이 /health 만 호출합니다."""
     return _health_payload()
+
+
+@app.get("/api/health/db", tags=["health"], summary="DB 연결 프로브 (SELECT 1)")
+def db_health() -> dict[str, str]:
+    """앱 프로세스에서 DB까지 도달 가능한지 확인합니다."""
+    log = logging.getLogger(__name__)
+    try:
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        return {"status": "ok"}
+    except Exception:
+        log.exception("DB health check failed")
+        raise HTTPException(
+            status_code=503,
+            detail="DB not reachable",
+        ) from None
 
 
 def _upsert_dataset_catalog_from_upload(

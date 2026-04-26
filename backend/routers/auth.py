@@ -1,6 +1,7 @@
 """회원가입, 로그인, 이메일 인증."""
 from __future__ import annotations
 
+import json
 import logging
 import os
 import secrets
@@ -172,10 +173,30 @@ def login(req: UserLogin, request: Request, db: Session = Depends(get_db)) -> To
         log_activity(db, user.id, "login", {"email": user.email}, request)
         return TokenResponse(access_token=token)
 
-    except HTTPException:
+    except HTTPException as exc:
+        d = exc.detail
+        detail_str = (
+            json.dumps(d, ensure_ascii=False)
+            if isinstance(d, (list, dict))
+            else str(d)
+        )
+        logger.warning(
+            "login_failure email=%s status_code=%s error_type=%s detail=%s",
+            email,
+            exc.status_code,
+            exc.status_code,
+            detail_str,
+        )
         raise
     except Exception:
         logger.exception("login: 처리되지 않은 예외 (email=%s)", email)
+        logger.warning(
+            "login_failure email=%s status_code=%s error_type=%s detail=%s",
+            email,
+            500,
+            500,
+            "unhandled_exception",
+        )
         raise HTTPException(
             status_code=500,
             detail="서버 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.",
