@@ -5,6 +5,27 @@
 
 const trim = (u: string) => (u || "").replace(/\/+$/, "").trim();
 
+/** Blueprint·저장소 기준 Cloud(Render) — Pages 환경변수에 옛/삭제 서비스 URL이 박힌 경우 런타임 보정 */
+const CANONICAL_RENDER_API_ORIGIN = "https://ailab-backend.onrender.com";
+const ABANDONED_RENDER_API_HOSTNAMES = new Set([
+  "ai-lab-be.onrender.com",
+  "labapi-backend-k62f.onrender.com",
+]);
+
+function normalizeViteRenderApiBaseUrl(raw: string): string {
+  const t = trim(raw);
+  if (!t) return t;
+  try {
+    const h = new URL(t).hostname.toLowerCase();
+    if (ABANDONED_RENDER_API_HOSTNAMES.has(h)) {
+      return CANONICAL_RENDER_API_ORIGIN;
+    }
+  } catch {
+    /* keep raw */
+  }
+  return t;
+}
+
 export type AppPublicEnv = "development" | "production" | "test" | string;
 
 export function getViteMode(): string {
@@ -19,9 +40,10 @@ export function getAppPublicEnv(): AppPublicEnv {
 
 /**
  * Absolute API base for static hosting. Empty => same-origin `/api` (Vite proxy in dev/preview).
+ * `VITE_API_BASE_URL`에 배포·Pages에서 잘못 남은 삭제/404 Render 호스트가 있으면 정식 API로 맞춥니다.
  */
 export function getPublicApiBaseUrl(): string {
-  return trim(import.meta.env.VITE_API_BASE_URL || "");
+  return normalizeViteRenderApiBaseUrl(import.meta.env.VITE_API_BASE_URL || "");
 }
 
 /** Dev proxy target: local FastAPI (not used by the browser when using relative `/api`). */

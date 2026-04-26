@@ -7,14 +7,32 @@ import { ailabDevApiPlugin } from "./vite-plugin-ailab-local-api.mjs";
 //   local: VITE_LOCAL_API_URL, render: VITE_API_BASE_URL, aws: VITE_AWS_API_URL.
 // Non-empty VITE_API_BASE_URL => browser calls that origin directly (backend must allow CORS).
 
+function normalizeRenderApiBaseForVite(u) {
+  const t = (u || "").replace(/\/+$/, "").trim();
+  if (!t) return t;
+  try {
+    const h = new URL(t).hostname.toLowerCase();
+    if (
+      h === "ai-lab-be.onrender.com" ||
+      h === "labapi-backend-k62f.onrender.com"
+    ) {
+      return "https://ailab-backend.onrender.com";
+    }
+  } catch {
+    /* ignore */
+  }
+  return t;
+}
+
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
   const devPort = Number(env.VITE_DEV_PORT || "5174");
-  const hasApiBase = !!(env.VITE_API_BASE_URL || "").trim();
+  const renderFromEnv = normalizeRenderApiBaseForVite(env.VITE_API_BASE_URL || "");
+  const hasApiBase = !!renderFromEnv;
   const localApi = env.VITE_LOCAL_API_URL || "http://127.0.0.1:8000";
   const awsApi = (env.VITE_AWS_API_URL || "").trim();
-  // remote-health?kind=render (개발)에서 Node→Render 를 확인할 때 씁니다(값 없으면 Vite 쪽에 안내만).
-  const renderApi = (env.VITE_API_BASE_URL || "").trim();
+  // remote-health·프록시: publicEnv.ts 의 폐기 호스트 보정과 동일
+  const renderApi = renderFromEnv;
 
   return {
     plugins: [

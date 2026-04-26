@@ -56,6 +56,10 @@ jobs:
             echo "::error::옛 호스트 ai-lab-be 는 사용하지마세요. ailab-backend 를 쓰세요."
             exit 1
           fi
+          if grep -qF "labapi-backend-k62f.onrender.com" "$f"; then
+            echo "::error::폐기된 Render 서비스 labapi-backend-k62f 는 404 입니다. VITE_API_BASE_URL 을 https://ailab-backend.onrender.com 으로 두세요."
+            exit 1
+          fi
 
       - name: Install and build frontend
         if: steps.meta.outputs.do_deploy == 'true'
