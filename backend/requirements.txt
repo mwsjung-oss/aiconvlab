@@ -4,13 +4,9 @@ uvicorn[standard]>=0.32.0,<1
 python-multipart>=0.0.9
 sqlalchemy>=2.0.0,<3
 psycopg[binary]>=3.2.0,<4
-passlib[bcrypt]>=1.7.4,<2
-# passlib 1.7.x + bcrypt 4/5 는 버전 감지에서 "WARNING: (trapped) error
-# reading bcrypt version" 경고가 뜨지만 해시·검증 기능은 정상 작동한다.
-# chromadb 0.5.x 가 전이 의존성으로 bcrypt>=4.0.1 을 요구하므로 상한을
-# 6 으로 열어 pip resolver 충돌을 해소한다 (이전 상한 <4 을 고수하면
-# `ResolutionImpossible` 로 CI Install dependencies 가 실패).
-bcrypt>=4.0.1,<6
+# Pin passlib+bcrypt to avoid passlib/bcrypt version mismatch (login 500).
+passlib[bcrypt]==1.7.4
+bcrypt==4.0.1
 python-jose[cryptography]>=3.3.0,<4
 email-validator>=2.0.0,<3
 python-dotenv>=1.0.0,<2
