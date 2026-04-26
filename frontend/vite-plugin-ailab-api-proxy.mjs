@@ -1,6 +1,7 @@
 /**
  * /api, /history → 백엔드 (http-proxy-middleware, 스트리밍·multipart 안정적)
  * dev 서버 + vite preview 둘 다 동일 프록시 (LAN에서 preview 시 Failed to fetch 방지)
+ * 쿠키 `ailab_backend_mode`: local | render | aws (연구실 lab 모드 제거)
  */
 import { createProxyMiddleware } from "http-proxy-middleware";
 
@@ -9,26 +10,26 @@ function trim(u) {
 }
 
 function cookieMode(cookieHeader) {
-  const m = /(?:^|;\s*)ailab_backend_mode=(local|lab|aws)(?:;|$)/.exec(
+  const m = /(?:^|;\s*)ailab_backend_mode=(local|render|aws)(?:;|$)/.exec(
     cookieHeader || ""
   );
   return m ? m[1] : "local";
 }
 
-function labModeMissingUrlGuard(opts) {
-  const labTarget = trim(opts.labApiUrl || "");
+function renderModeMissingUrlGuard(opts) {
+  const renderTarget = trim(opts.renderApiUrl || "");
   return (req, res, next) => {
     const pathOnly = (req.url || "").split("?")[0];
     if (!pathOnly.startsWith("/api") && !pathOnly.startsWith("/history")) {
       return next();
     }
-    if (cookieMode(req.headers.cookie || "") === "lab" && !labTarget) {
+    if (cookieMode(req.headers.cookie || "") === "render" && !renderTarget) {
       res.statusCode = 503;
       res.setHeader("Content-Type", "application/json; charset=utf-8");
       res.end(
         JSON.stringify({
           detail:
-            "Lab mode requires VITE_LAB_API_URL or VITE_DEV_PROXY_TARGET in frontend/.env.",
+            "Render 모드인데 VITE_API_BASE_URL 이 비어 있습니다. frontend/.env 를 확인하세요.",
         })
       );
       return;
@@ -61,7 +62,7 @@ function awsModeMissingUrlGuard(opts) {
 
 function buildProxy(opts) {
   const localTarget = trim(opts.localApiUrl || "http://127.0.0.1:8000");
-  const labTarget = trim(opts.labApiUrl || "");
+  const renderTarget = trim(opts.renderApiUrl || "");
   const awsTarget = trim(opts.awsApiUrl || "");
 
   return createProxyMiddleware({
@@ -72,7 +73,7 @@ function buildProxy(opts) {
       pathname.startsWith("/api") || pathname.startsWith("/history"),
     router: (req) => {
       const mode = cookieMode(req.headers.cookie || "");
-      if (mode === "lab") return labTarget;
+      if (mode === "render") return renderTarget || localTarget;
       if (mode === "aws") return awsTarget || localTarget;
       return localTarget;
     },
@@ -96,12 +97,12 @@ export function ailabApiProxyPlugin(opts = {}) {
   return {
     name: "ailab-api-proxy",
     configureServer(server) {
-      server.middlewares.use(labModeMissingUrlGuard(opts));
+      server.middlewares.use(renderModeMissingUrlGuard(opts));
       server.middlewares.use(awsModeMissingUrlGuard(opts));
       server.middlewares.use(buildProxy(opts));
     },
     configurePreviewServer(server) {
-      server.middlewares.use(labModeMissingUrlGuard(opts));
+      server.middlewares.use(renderModeMissingUrlGuard(opts));
       server.middlewares.use(awsModeMissingUrlGuard(opts));
       server.middlewares.use(buildProxy(opts));
     },

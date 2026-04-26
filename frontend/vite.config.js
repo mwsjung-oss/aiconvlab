@@ -4,8 +4,7 @@ import { ailabApiProxyPlugin } from "./vite-plugin-ailab-api-proxy.mjs";
 import { ailabDevApiPlugin } from "./vite-plugin-ailab-local-api.mjs";
 
 // Empty VITE_API_BASE_URL => browser uses same-origin `/api`; Vite proxies to:
-//   local: VITE_LOCAL_API_URL, lab: VITE_LAB_API_URL or VITE_DEV_PROXY_TARGET, aws: VITE_AWS_API_URL.
-// Lab: set URLs in `.env.lab`, then `npm run dev:lab`.
+//   local: VITE_LOCAL_API_URL, render: VITE_API_BASE_URL, aws: VITE_AWS_API_URL.
 // Non-empty VITE_API_BASE_URL => browser calls that origin directly (backend must allow CORS).
 
 export default defineConfig(({ mode }) => {
@@ -13,11 +12,6 @@ export default defineConfig(({ mode }) => {
   const devPort = Number(env.VITE_DEV_PORT || "5174");
   const hasApiBase = !!(env.VITE_API_BASE_URL || "").trim();
   const localApi = env.VITE_LOCAL_API_URL || "http://127.0.0.1:8000";
-  const labApi = (
-    env.VITE_LAB_API_URL ||
-    env.VITE_DEV_PROXY_TARGET ||
-    ""
-  ).trim();
   const awsApi = (env.VITE_AWS_API_URL || "").trim();
   // remote-health?kind=render (개발)에서 Node→Render 를 확인할 때 씁니다(값 없으면 Vite 쪽에 안내만).
   const renderApi = (env.VITE_API_BASE_URL || "").trim();
@@ -29,12 +23,11 @@ export default defineConfig(({ mode }) => {
         : [
             ailabApiProxyPlugin({
               localApiUrl: localApi,
-              labApiUrl: labApi,
+              renderApiUrl: renderApi,
               awsApiUrl: awsApi,
             }),
             ailabDevApiPlugin({
               localApiUrl: localApi,
-              labApiUrl: labApi,
               awsApiUrl: awsApi,
               renderApiUrl: renderApi,
             }),

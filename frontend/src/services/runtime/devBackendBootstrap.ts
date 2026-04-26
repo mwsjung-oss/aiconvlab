@@ -1,10 +1,6 @@
-/** 개발 시 로컬 uvicorn 자동 기동(Vite 플러그인) + 연구실 헬스 확인 */
+/** 개발 시 로컬 uvicorn 자동 기동(Vite 플러그인) + Render/AWS 원격 헬스 확인 */
 
-import {
-  getAwsApiBaseWithOverride,
-  getLabApiBaseWithOverride,
-  getPublicApiBaseUrl,
-} from "../config/publicEnv";
+import { getAwsApiBaseWithOverride, getPublicApiBaseUrl } from "../config/publicEnv";
 
 const trim = (u: string) => u.replace(/\/+$/, "");
 
@@ -19,10 +15,6 @@ function joinApiLikePath(base: string, path: string): string {
     return `${b}${path.slice(8)}`;
   }
   return `${b}${path}`;
-}
-
-function labBase() {
-  return trim(getLabApiBaseWithOverride());
 }
 
 function isViteLocalhostClient(): boolean {
@@ -168,7 +160,7 @@ export async function ensureLocalBackendReady(
 }
 
 export async function ensureRemoteBackendReachable(
-  kind: "lab" | "render" | "aws",
+  kind: "render" | "aws",
   signal?: AbortSignal
 ): Promise<{ ok: boolean; message: string }> {
   if (kind === "render" && !renderBase()) {
@@ -184,18 +176,8 @@ export async function ensureRemoteBackendReachable(
     };
   }
 
-
-  if (kind === "lab" && !labBase()) {
-    return {
-      ok: false,
-      message:
-        "연구실 API 주소가 비어 있습니다. 아래 입력란에 저장하거나 `.env`의 VITE_LAB_API_URL 을 설정하세요.",
-    };
-  }
-
-  const base = kind === "lab" ? labBase() : kind === "render" ? renderBase() : awsBase();
-  const remoteName =
-    kind === "lab" ? "연구실" : kind === "render" ? "Cloud (Render)" : "Cloud (AWS)";
+  const base = kind === "render" ? renderBase() : awsBase();
+  const remoteName = kind === "render" ? "Cloud (Render)" : "Cloud (AWS)";
 
   if (import.meta.env.DEV && isViteLocalhostClient()) {
     try {
@@ -223,16 +205,12 @@ export async function ensureRemoteBackendReachable(
         message:
           j.message ||
           (j.ok
-            ? kind === "lab"
-              ? "연구실 서버 API에 연결되었습니다."
-              : kind === "render"
-                ? "Cloud (Render) API에 연결되었습니다."
-                : "Cloud (AWS) API에 연결되었습니다."
-            : kind === "lab"
-              ? "연구실 서버 확인 실패"
-              : kind === "render"
-                ? "Cloud (Render) 확인 실패"
-                : "Cloud (AWS) 확인 실패"),
+            ? kind === "render"
+              ? "Cloud (Render) API에 연결되었습니다."
+              : "Cloud (AWS) API에 연결되었습니다."
+            : kind === "render"
+              ? "Cloud (Render) 확인 실패"
+              : "Cloud (AWS) 확인 실패"),
       };
     } catch (e) {
       return {

@@ -2,8 +2,7 @@
  * 개발 모드 전용:
  * - 쿠키 ailab_backend_mode=local|lab|aws 에 따라 /api, /history 를 로컬·연구실·Cloud 로 프록시 (브라우저 CORS 회피)
  * - POST /__ailab/dev/start-local-backend → 로컬 uvicorn 자동 기동
- * - GET /__ailab/dev/remote-health?kind=lab|render|aws → Node 에서 원격 /api/health 확인
- * - GET /__ailab/dev/lab-health → remote-health?kind=lab 호환
+ * - GET /__ailab/dev/remote-health?kind=render|aws → Node 에서 원격 /api/health 확인
  */
 import net from "node:net";
 import path from "node:path";
@@ -52,14 +51,9 @@ function isAllowedDevRemoteClient(req) {
 }
 
 /** /api/health 가 없거나 404/5xx 일 때 FastAPI 표준 /openapi.json 으로 연결 여부 확인 */
-async function probeRemoteBackend(baseUrl, kind = "lab") {
+async function probeRemoteBackend(baseUrl, kind = "render") {
   const b = trim(baseUrl);
-  const shortLabel =
-    kind === "aws"
-      ? "Cloud (AWS)"
-      : kind === "render"
-        ? "Cloud (Render)"
-        : "연구실 서버";
+  const shortLabel = kind === "aws" ? "Cloud (AWS)" : "Cloud (Render)";
   const tryFetch = (path) => fetch(`${b}${path}`, { redirect: "follow" });
 
   const health = await tryFetch("/api/health");
@@ -91,7 +85,6 @@ async function probeRemoteBackend(baseUrl, kind = "lab") {
 }
 
 export function ailabDevApiPlugin(opts = {}) {
-  const labTarget = trim(opts.labApiUrl || "");
   const awsTarget = trim(opts.awsApiUrl || "");
   const renderTarget = trim(opts.renderApiUrl || "");
 
@@ -115,25 +108,9 @@ export function ailabDevApiPlugin(opts = {}) {
             return;
           }
           const u = new URL(url, "http://vite.local");
-          const k = (u.searchParams.get("kind") || "lab").toLowerCase();
-          const kind = k === "aws" || k === "render" || k === "lab" ? k : "lab";
-          const base =
-            kind === "aws"
-              ? awsTarget
-              : kind === "render"
-                ? renderTarget
-                : labTarget;
-          if (kind === "lab" && !base) {
-            res.setHeader("Content-Type", "application/json; charset=utf-8");
-            res.end(
-              JSON.stringify({
-                ok: false,
-                message:
-                  "VITE_LAB_API_URL (or VITE_DEV_PROXY_TARGET) is empty. Set it in frontend/.env.",
-              })
-            );
-            return;
-          }
+          const k = (u.searchParams.get("kind") || "render").toLowerCase();
+          const kind = k === "aws" || k === "render" ? k : "render";
+          const base = kind === "aws" ? awsTarget : renderTarget;
           if (kind === "aws" && !base) {
             res.setHeader("Content-Type", "application/json; charset=utf-8");
             res.end(
@@ -166,47 +143,6 @@ export function ailabDevApiPlugin(opts = {}) {
                 JSON.stringify({
                   ok: false,
                   message: `노트북에서 원격 주소로 접속하지 못했습니다: ${e.message}. VPN·망·IP(${base})를 확인하세요.`,
-                })
-              );
-            }
-          })();
-          return;
-        }
-
-        if (pathOnly.startsWith("/__ailab/dev/lab-health") && req.method === "GET") {
-          if (!isAllowedDevRemoteClient(req)) {
-            res.statusCode = 403;
-            res.setHeader("Content-Type", "application/json; charset=utf-8");
-            res.end(
-              JSON.stringify({
-                ok: false,
-                message: "Vite dev lab-health — 로컬·같은 LAN 클라이언트만 사용할 수 있습니다.",
-              }),
-            );
-            return;
-          }
-          if (!labTarget) {
-            res.setHeader("Content-Type", "application/json; charset=utf-8");
-            res.end(
-              JSON.stringify({
-                ok: false,
-                message:
-                  "VITE_LAB_API_URL (or VITE_DEV_PROXY_TARGET) is empty. Set it in frontend/.env.",
-              })
-            );
-            return;
-          }
-          (async () => {
-            try {
-              const result = await probeRemoteBackend(labTarget, "lab");
-              res.setHeader("Content-Type", "application/json; charset=utf-8");
-              res.end(JSON.stringify({ ok: result.ok, message: result.message }));
-            } catch (e) {
-              res.setHeader("Content-Type", "application/json; charset=utf-8");
-              res.end(
-                JSON.stringify({
-                  ok: false,
-                  message: `노트북에서 연구실 주소로 접속하지 못했습니다: ${e.message}. VPN·망·IP(${labTarget})를 확인하세요.`,
                 })
               );
             }
