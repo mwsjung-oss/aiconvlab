@@ -8,6 +8,11 @@ on:
 jobs:
   check:
     runs-on: ubuntu-latest
+    env:
+      # Deployed API smoke (override in repo Variables). Defaults to production Render URL.
+      SMOKE_BACKEND_URL: ${{ vars.SMOKE_BACKEND_URL || 'https://ailab-backend.onrender.com' }}
+      AILAB_SMOKE_EMAIL: ${{ secrets.AILAB_SMOKE_EMAIL }}
+      AILAB_SMOKE_PASSWORD: ${{ secrets.AILAB_SMOKE_PASSWORD }}
     defaults:
       run:
         working-directory: backend
@@ -21,14 +26,19 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
           pip install pytest
+      - name: Requirements pins & deployed API smoke
+        run: |
+          python -m pytest -q tests/test_requirements_pins.py tests/test_deployed_api_smoke.py
+      - name: CLI smoke script (smoke_remote_checks.py)
+        run: python smoke_remote_checks.py
       - name: Compile check
         run: python -m compileall -q .
       - name: Main import check
         run: python -c "import main; print(main.app.title)"
-      - name: Pytest (if tests exist)
+      - name: Pytest (hermetic unit tests, excludes remote_smoke)
         run: |
           if ls test*.py tests/*.py 1> /dev/null 2>&1; then
-            pytest -q
+            pytest -q -m "not remote_smoke"
           else
             echo "No pytest files found. Skipping."
           fi
