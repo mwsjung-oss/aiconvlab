@@ -1,4 +1,8 @@
-"""비밀번호 해시 및 JWT."""
+"""비밀번호 해시 및 JWT.
+
+passlib 1.7.4 + bcrypt 4.0.1 조합은 requirements.txt 에 고정되어 있다.
+verify/hash 에서 발생하는 예외는 라우터(login)에서 잡아 500 + 로그로 구분한다.
+"""
 from __future__ import annotations
 
 import os
@@ -17,10 +21,12 @@ ADMIN_PANEL_TOKEN_HOURS = int(os.getenv("ADMIN_PANEL_TOKEN_HOURS", "24"))
 
 
 def verify_password(plain: str, hashed: str) -> bool:
+    """평문과 저장된 bcrypt 해시 비교. 내부 예외는 호출측(로그인)에서 처리."""
     return pwd_context.verify(plain, hashed)
 
 
 def hash_password(plain: str) -> str:
+    """회원가입·비밀번호 갱신용 bcrypt 해시."""
     return pwd_context.hash(plain)
 
 

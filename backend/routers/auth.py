@@ -1,11 +1,13 @@
 """회원가입, 로그인, 이메일 인증."""
 from __future__ import annotations
 
+import logging
 import os
 import secrets
 from datetime import datetime, timedelta, timezone
 
-from fastapi import APIRouter, Depends, HTTPException, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Request
+from sqlalchemy.exc import OperationalError, SQLAlchemyError
 from sqlalchemy.orm import Session
 
 from activity_service import log_activity
@@ -18,6 +20,7 @@ from user_workspace import ALL_ACCESS_ROLES
 from schemas_auth import Message, TokenResponse, UserLogin, UserOut, UserRegister
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
+logger = logging.getLogger(__name__)
 
 EMAIL_VERIFY_HOURS = int(os.getenv("EMAIL_VERIFY_HOURS", "48"))
 
@@ -91,32 +94,92 @@ def verify_email(token: str, db: Session = Depends(get_db)) -> Message:
 
 @router.post("/login", response_model=TokenResponse)
 def login(req: UserLogin, request: Request, db: Session = Depends(get_db)) -> TokenResponse:
+    """JSON { email, password }. 오류 유형별 HTTP: 401/403/503/500."""
     email = req.email.lower().strip()
-    user = db.query(User).filter(User.email == email).first()
-    if not user or not verify_password(req.password, user.hashed_password):
-        raise HTTPException(status_code=401, detail="이메일 또는 비밀번호가 올바르지 않습니다.")
+    try:
+        try:
+            user = db.query(User).filter(User.email == email).first()
+        except OperationalError:
+            logger.exception(
+                "login: DB 연결/운영 오류 — users 조회 단계 (email=%s)",
+                email,
+            )
+            raise HTTPException(
+                status_code=503,
+                detail="데이터베이스에 연결할 수 없습니다. 잠시 후 다시 시도해 주세요.",
+            ) from None
+        except SQLAlchemyError:
+            logger.exception(
+                "login: DB 예외 — users 조회 단계 (email=%s)",
+                email,
+            )
+            raise HTTPException(
+                status_code=500,
+                detail="서버 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.",
+            ) from None
 
-    if not user.is_active:
+        if not user:
+            raise HTTPException(
+                status_code=401,
+                detail="이메일 또는 비밀번호가 올바르지 않습니다.",
+            )
+
+        try:
+            password_ok = verify_password(req.password, user.hashed_password)
+        except Exception:
+            logger.exception(
+                "login: verify_password 실패 — bcrypt/passlib·해시 형식 등 (email=%s)",
+                email,
+            )
+            raise HTTPException(
+                status_code=500,
+                detail="서버 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.",
+            ) from None
+
+        if not password_ok:
+            raise HTTPException(
+                status_code=401,
+                detail="이메일 또는 비밀번호가 올바르지 않습니다.",
+            )
+
+        if not user.is_active:
+            raise HTTPException(
+                status_code=403,
+                detail="플랫폼 사용이 정지된 계정입니다. 관리자에게 문의하세요.",
+            )
+
+        if user.role not in ALL_ACCESS_ROLES:
+            if not user.is_email_verified:
+                raise HTTPException(
+                    status_code=403,
+                    detail="이메일 인증을 완료해 주세요.",
+                )
+            if not user.is_admin_approved:
+                raise HTTPException(
+                    status_code=403,
+                    detail="관리자 승인 대기 중입니다.",
+                )
+
+        try:
+            token = create_access_token({"sub": str(user.id)})
+        except Exception:
+            logger.exception("login: JWT 발급 실패 (email=%s)", email)
+            raise HTTPException(
+                status_code=500,
+                detail="서버 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.",
+            ) from None
+
+        log_activity(db, user.id, "login", {"email": user.email}, request)
+        return TokenResponse(access_token=token)
+
+    except HTTPException:
+        raise
+    except Exception:
+        logger.exception("login: 처리되지 않은 예외 (email=%s)", email)
         raise HTTPException(
-            status_code=403,
-            detail="플랫폼 사용이 정지된 계정입니다. 관리자에게 문의하세요.",
-        )
-
-    if user.role not in ALL_ACCESS_ROLES:
-        if not user.is_email_verified:
-            raise HTTPException(
-                status_code=403,
-                detail="이메일 인증을 완료해 주세요.",
-            )
-        if not user.is_admin_approved:
-            raise HTTPException(
-                status_code=403,
-                detail="관리자 승인 대기 중입니다.",
-            )
-
-    token = create_access_token({"sub": str(user.id)})
-    log_activity(db, user.id, "login", {"email": user.email}, request)
-    return TokenResponse(access_token=token)
+            status_code=500,
+            detail="서버 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.",
+        ) from None
 
 
 @router.get("/me", response_model=UserOut)
