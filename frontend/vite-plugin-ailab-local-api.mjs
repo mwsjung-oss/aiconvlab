@@ -2,7 +2,7 @@
  * 개발 모드 전용:
  * - 쿠키 ailab_backend_mode=local|lab|aws 에 따라 /api, /history 를 로컬·연구실·Cloud 로 프록시 (브라우저 CORS 회피)
  * - POST /__ailab/dev/start-local-backend → 로컬 uvicorn 자동 기동
- * - GET /__ailab/dev/remote-health?kind=lab|aws → Node 에서 원격 /api/health 확인
+ * - GET /__ailab/dev/remote-health?kind=lab|render|aws → Node 에서 원격 /api/health 확인
  * - GET /__ailab/dev/lab-health → remote-health?kind=lab 호환
  */
 import net from "node:net";
@@ -36,10 +36,30 @@ function isLocalReq(req) {
   );
 }
 
+/** LAN 에서 Vite(예: :5174) — 원격/탭으로 접속 시 remote-health 가 Node 쪽에서 Render를 확인 */
+function isAllowedDevRemoteClient(req) {
+  if (isLocalReq(req)) return true;
+  const h = (req.socket?.remoteAddress || "").replace(/^::ffff:/, "");
+  if (/^192\.168\.\d{1,3}\.\d{1,3}$/.test(h)) return true;
+  if (/^10\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(h)) return true;
+  if (
+    /^172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3}$/.test(
+      h,
+    )
+  )
+    return true;
+  return false;
+}
+
 /** /api/health 가 없거나 404/5xx 일 때 FastAPI 표준 /openapi.json 으로 연결 여부 확인 */
 async function probeRemoteBackend(baseUrl, kind = "lab") {
   const b = trim(baseUrl);
-  const shortLabel = kind === "aws" ? "Cloud (AWS)" : "연구실 서버";
+  const shortLabel =
+    kind === "aws"
+      ? "Cloud (AWS)"
+      : kind === "render"
+        ? "Cloud (Render)"
+        : "연구실 서버";
   const tryFetch = (path) => fetch(`${b}${path}`, { redirect: "follow" });
 
   const health = await tryFetch("/api/health");
@@ -73,6 +93,7 @@ async function probeRemoteBackend(baseUrl, kind = "lab") {
 export function ailabDevApiPlugin(opts = {}) {
   const labTarget = trim(opts.labApiUrl || "");
   const awsTarget = trim(opts.awsApiUrl || "");
+  const renderTarget = trim(opts.renderApiUrl || "");
 
   return {
     name: "ailab-dev-api",
@@ -82,15 +103,26 @@ export function ailabDevApiPlugin(opts = {}) {
         const pathOnly = url.split("?")[0];
 
         if (pathOnly.startsWith("/__ailab/dev/remote-health") && req.method === "GET") {
-          if (!isLocalReq(req)) {
+          if (!isAllowedDevRemoteClient(req)) {
             res.statusCode = 403;
             res.setHeader("Content-Type", "application/json; charset=utf-8");
-            res.end(JSON.stringify({ ok: false, message: "localhost 전용입니다." }));
+            res.end(
+              JSON.stringify({
+                ok: false,
+                message: "Vite dev remote-health — 로컬·같은 LAN 클라이언트만 사용할 수 있습니다.",
+              }),
+            );
             return;
           }
           const u = new URL(url, "http://vite.local");
-          const kind = u.searchParams.get("kind") === "aws" ? "aws" : "lab";
-          const base = kind === "aws" ? awsTarget : labTarget;
+          const k = (u.searchParams.get("kind") || "lab").toLowerCase();
+          const kind = k === "aws" || k === "render" || k === "lab" ? k : "lab";
+          const base =
+            kind === "aws"
+              ? awsTarget
+              : kind === "render"
+                ? renderTarget
+                : labTarget;
           if (kind === "lab" && !base) {
             res.setHeader("Content-Type", "application/json; charset=utf-8");
             res.end(
@@ -108,6 +140,17 @@ export function ailabDevApiPlugin(opts = {}) {
               JSON.stringify({
                 ok: false,
                 message: "VITE_AWS_API_URL 이 비어 있습니다. `.env`에 설정하세요.",
+              })
+            );
+            return;
+          }
+          if (kind === "render" && !base) {
+            res.setHeader("Content-Type", "application/json; charset=utf-8");
+            res.end(
+              JSON.stringify({
+                ok: false,
+                message:
+                  "VITE_API_BASE_URL 이 비어 있습니다. `frontend/.env`에 Cloud Render API 베이스 URL(예: https://ailab-backend.onrender.com)을 넣고 Vite 를 다시 켜 주세요.",
               })
             );
             return;
@@ -131,10 +174,15 @@ export function ailabDevApiPlugin(opts = {}) {
         }
 
         if (pathOnly.startsWith("/__ailab/dev/lab-health") && req.method === "GET") {
-          if (!isLocalReq(req)) {
+          if (!isAllowedDevRemoteClient(req)) {
             res.statusCode = 403;
             res.setHeader("Content-Type", "application/json; charset=utf-8");
-            res.end(JSON.stringify({ ok: false, message: "localhost 전용입니다." }));
+            res.end(
+              JSON.stringify({
+                ok: false,
+                message: "Vite dev lab-health — 로컬·같은 LAN 클라이언트만 사용할 수 있습니다.",
+              }),
+            );
             return;
           }
           if (!labTarget) {

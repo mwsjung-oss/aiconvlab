@@ -92,9 +92,13 @@ async function probeRemoteHealthDirect(
       }
     }
   }
+  const corsHint =
+    /failed to fetch/i.test(lastErr) && typeof window !== "undefined"
+      ? " 같은 Wi‑Fi에서 `http://(PC의 LAN IP):5174`로 접속 중이면, Render CORS(백엔드 최신 배포)와 브라우저(확장·광고 차단)을 확인하세요."
+      : "";
   return {
     ok: false,
-    message: `${remoteName}에 연결할 수 없습니다 (${lastErr}). VPN·망·방화벽·서버 기동을 확인하세요.`,
+    message: `${remoteName}에 연결할 수 없습니다 (${lastErr}). VPN·망·방화벽·서버 기동을 확인하세요.${corsHint}`,
   };
 }
 

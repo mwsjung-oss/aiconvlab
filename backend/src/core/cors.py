@@ -61,8 +61,11 @@ def cors_middleware_params() -> dict:
     origins = [o.strip() for o in raw.split(",") if o.strip()]
     if not origins:
         origins = [o.strip() for o in default.split(",") if o.strip()]
+    # 명시 CORS(운영 오리진)이 있어도 LAN·localhost Vite(예: 192.168.x.x:5174) 는
+    # allow_origin_regex 로 허용합니다. CORS 미설정 시에만 쓰면 LAN dev 가 깨집니다.
     return {
         "allow_origins": origins,
+        "allow_origin_regex": _dev_origin_regex,
         "allow_credentials": True,
         "allow_methods": ["*"],
         "allow_headers": ["*"],

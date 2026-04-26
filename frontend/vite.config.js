@@ -19,6 +19,8 @@ export default defineConfig(({ mode }) => {
     ""
   ).trim();
   const awsApi = (env.VITE_AWS_API_URL || "").trim();
+  // remote-health?kind=render (개발)에서 Node→Render 를 확인할 때 씁니다(값 없으면 Vite 쪽에 안내만).
+  const renderApi = (env.VITE_API_BASE_URL || "").trim();
 
   return {
     plugins: [
@@ -34,6 +36,7 @@ export default defineConfig(({ mode }) => {
               localApiUrl: localApi,
               labApiUrl: labApi,
               awsApiUrl: awsApi,
+              renderApiUrl: renderApi,
             }),
           ]),
       react(),
