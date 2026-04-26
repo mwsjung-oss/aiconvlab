@@ -18,8 +18,9 @@ services:
         sync: false
       - key: BACKEND_PUBLIC_URL
         sync: false
+      # Cloudflare Pages 등 별도 도메인 SPA — 프론트 오리진(스킴+호스트, 슬래시 없음)
       - key: CORS_ORIGINS
-        sync: false
+        value: https://aiconlab.com,https://www.aiconlab.com
       - key: AILAB_ENV
         value: production
       - key: AILAB_DEFAULT_RUNTIME

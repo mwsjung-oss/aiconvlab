@@ -1,5 +1,5 @@
 # main 푸시 시 frontend 빌드 후 Cloudflare Pages 프로덕션에 업로드합니다.
-# 저장소 Secrets·Variables 설정이 모두 있어야 실제 배포가 실행됩니다(없으면 스킵).
+# Cloudflare·GitHub 토큰 3개만 Secret 이며, API URL 은 committed frontend/.env.production 에 둡니다.
 
 name: Deploy frontend (Cloudflare Pages)
 
@@ -30,8 +30,6 @@ jobs:
           if [ -z "${{ secrets.CLOUDFLARE_API_TOKEN }}" ]; then echo "::notice::CLOUDFLARE_API_TOKEN not set"; missing=1; fi
           if [ -z "${{ secrets.CLOUDFLARE_ACCOUNT_ID }}" ]; then echo "::notice::CLOUDFLARE_ACCOUNT_ID not set"; missing=1; fi
           if [ -z "${{ secrets.CLOUDFLARE_PAGES_PROJECT_NAME }}" ]; then echo "::notice::CLOUDFLARE_PAGES_PROJECT_NAME not set"; missing=1; fi
-          if [ -z "${{ secrets.VITE_API_BASE_URL }}" ]; then echo "::notice::VITE_API_BASE_URL not set (public API origin, no trailing slash)"; missing=1; fi
-          if [ -z "${{ secrets.VITE_LAB_API_URL }}" ]; then echo "::notice::VITE_LAB_API_URL not set (lab API origin/proxy endpoint)"; missing=1; fi
           if [ "$missing" -eq 0 ]; then
             echo "do_deploy=true" >> "$GITHUB_OUTPUT"
           else
@@ -46,13 +44,22 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
+      - name: Verify API base in frontend/.env.production
+        if: steps.meta.outputs.do_deploy == 'true'
+        run: |
+          f="frontend/.env.production"
+          if ! grep -qF "VITE_API_BASE_URL=https://ailab-backend.onrender.com" "$f"; then
+            echo "::error::$f에 VITE_API_BASE_URL=https://ailab-backend.onrender.com 이 필요합니다."
+            exit 1
+          fi
+          if grep -qF "ai-lab-be.onrender.com" "$f"; then
+            echo "::error::옛 호스트 ai-lab-be 는 사용하지마세요. ailab-backend 를 쓰세요."
+            exit 1
+          fi
+
       - name: Install and build frontend
         if: steps.meta.outputs.do_deploy == 'true'
         working-directory: frontend
-        env:
-          VITE_APP_ENV: production
-          VITE_API_BASE_URL: ${{ secrets.VITE_API_BASE_URL }}
-          VITE_LAB_API_URL: ${{ secrets.VITE_LAB_API_URL }}
         run: npm ci && npm run build
 
       - name: Deploy to Cloudflare Pages

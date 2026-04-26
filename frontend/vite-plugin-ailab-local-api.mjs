@@ -58,6 +58,12 @@ async function probeRemoteBackend(baseUrl, kind = "lab") {
     };
   }
 
+  if (health.status === 404 && openapi.status === 404) {
+    return {
+      ok: false,
+      message: `${shortLabel}: 해당 URL에서 API를 찾을 수 없습니다(404). 주소(${b})·Render/배포 URL이 올바른지 확인하세요.`,
+    };
+  }
   return {
     ok: false,
     message: `${shortLabel} 응답: health HTTP ${health.status}, openapi HTTP ${openapi.status}. 주소(${b})·경로·배포를 확인하세요.`,

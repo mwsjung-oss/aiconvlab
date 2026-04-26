@@ -2,6 +2,7 @@ import { useState } from "react";
 import { apiJson } from "../api";
 import BackendModeToggle from "../components/BackendModeToggle";
 import { useAuth } from "../AuthContext";
+import { mapAuthRequestError } from "../utils/mapAuthRequestError";
 
 export default function LoginPage({ onSwitchRegister }) {
   const { setToken } = useAuth();
@@ -22,17 +23,7 @@ export default function LoginPage({ onSwitchRegister }) {
       });
       setToken(data.access_token);
     } catch (ex) {
-      const m = ex?.message || String(ex);
-      const netFail =
-        /failed to fetch|networkerror|load failed|fetch|연결|aborted/i.test(m) ||
-        ex?.name === "TypeError";
-      if (m === "Not Found" || netFail) {
-        setErr(
-          "백엔드에 연결할 수 없습니다. 위에서 선택한 환경에 맞게 서버가 떠 있는지 확인하세요. 로컬: `npm run dev:stack` 또는 uvicorn. 연구실: 해당 서버·네트워크·CORS 설정."
-        );
-      } else {
-        setErr(m);
-      }
+      setErr(mapAuthRequestError(ex));
     } finally {
       setSubmitting(false);
     }

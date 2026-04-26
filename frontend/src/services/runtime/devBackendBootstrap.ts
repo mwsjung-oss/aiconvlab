@@ -71,6 +71,12 @@ async function probeRemoteHealthDirect(
               : `${remoteName} FastAPI에 연결되었습니다. (/api/health 비정상·OpenAPI로 확인)`,
         };
       }
+      if (health.status === 404 && openapi.status === 404) {
+        return {
+          ok: false,
+          message: `${remoteName}: 해당 URL에서 API를 찾을 수 없습니다(404). Render·서버가 기동 중인지, VITE_API_BASE_URL(또는 연구실/ AWS 저장 URL)이 실제 백엔드 주소와 일치하는지 확인하세요.`,
+        };
+      }
       return {
         ok: false,
         message: `${remoteName} 응답: health HTTP ${health.status}, openapi HTTP ${openapi.status}.`,
@@ -198,6 +204,11 @@ export async function ensureRemoteBackendReachable(
       try {
         j = JSON.parse(text) as { ok?: boolean; message?: string };
       } catch {
+        // VITE_API_BASE_URL 이 있으면 vite.config에서 dev 플러그인이 생략되어
+        // /__ailab/dev/remote-health 가 없을 수 있음 → 브라우저 CORS로 직접 확인
+        if (r.status === 404) {
+          return probeRemoteHealthDirect(base, remoteName, signal);
+        }
         return {
           ok: false,
           message: `remote-health 응답이 올바르지 않습니다 (HTTP ${r.status}).`,

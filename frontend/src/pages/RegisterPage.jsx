@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { apiJson } from "../api";
 import BackendModeToggle from "../components/BackendModeToggle";
+import { mapAuthRequestError } from "../utils/mapAuthRequestError";
 
 export default function RegisterPage({ onSwitchLogin }) {
   const [email, setEmail] = useState("");
@@ -27,7 +28,7 @@ export default function RegisterPage({ onSwitchLogin }) {
       });
       setDone(data.message);
     } catch (ex) {
-      setErr(ex.message);
+      setErr(mapAuthRequestError(ex));
     } finally {
       setSubmitting(false);
     }
