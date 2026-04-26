@@ -92,3 +92,4 @@ def cors_middleware_params() -> dict:
         "allow_headers": ["*"],
         "allow_private_network": True,
     }
+
