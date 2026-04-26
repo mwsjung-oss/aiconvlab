@@ -513,20 +513,18 @@ def health_root() -> dict[str, str]:
     return _health_payload()
 
 
-@app.get("/api/health/db", tags=["health"], summary="DB 연결 프로브 (SELECT 1)")
+@app.get("/api/health/db", tags=["health"])
 def db_health() -> dict[str, str]:
-    """앱 프로세스에서 DB까지 도달 가능한지 확인합니다."""
-    log = logging.getLogger(__name__)
+    from sqlalchemy import text
+
+    logger = logging.getLogger(__name__)
     try:
         with engine.connect() as conn:
             conn.execute(text("SELECT 1"))
         return {"status": "ok"}
     except Exception:
-        log.exception("DB health check failed")
-        raise HTTPException(
-            status_code=503,
-            detail="DB not reachable",
-        ) from None
+        logger.exception("DB health check failed")
+        raise HTTPException(status_code=503, detail="DB not reachable")
 
 
 def _upsert_dataset_catalog_from_upload(
