@@ -4,6 +4,7 @@
 name: Trigger backend deploy (Render hook)
 
 on:
+  workflow_dispatch:
   push:
     branches: [main]
     paths:
