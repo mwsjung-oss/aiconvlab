@@ -5,8 +5,9 @@
 
 const trim = (u: string) => (u || "").replace(/\/+$/, "").trim();
 
-/** Blueprint·저장소 기준 Cloud(Render) — Pages 환경변수에 옛/삭제 서비스 URL이 박힌 경우 런타임 보정 */
-const CANONICAL_RENDER_API_ORIGIN = "https://ailab-backend.onrender.com";
+/** Blueprint·저장소·`frontend/.env.production` 과 동일한 Cloud-Render API 오리진 */
+export const AILAB_RENDER_PRODUCTION_API_ORIGIN = "https://ailab-backend.onrender.com";
+const CANONICAL_RENDER_API_ORIGIN = AILAB_RENDER_PRODUCTION_API_ORIGIN;
 const ABANDONED_RENDER_API_HOSTNAMES = new Set([
   "ai-lab-be.onrender.com",
   "labapi-backend-k62f.onrender.com",

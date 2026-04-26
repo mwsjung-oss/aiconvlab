@@ -1,6 +1,7 @@
 /** 로그인 화면에서 선택한 백엔드(Cloud: Render / AWS, 로컬 dev 전용: local). */
 
 import {
+  AILAB_RENDER_PRODUCTION_API_ORIGIN,
   getAwsApiBaseWithOverride,
   getAwsApiUrl,
   getLocalApiUrl,
@@ -37,9 +38,15 @@ export function setStoredBackendMode(mode: BackendMode): void {
  * - 그 외: Cloud(Render) 또는 AWS 베이스를 고릅니다.
  */
 export function getResolvedApiBase(): string {
-  const fixed = trimBase(getPublicApiBaseUrl());
   const mode =
     typeof window !== "undefined" ? getStoredBackendMode() ?? "render" : "render";
+
+  let fixed = trimBase(getPublicApiBaseUrl());
+  /* Pages 빌드에서 VITE_API_BASE_URL 이 비면 상대 /api → 정적 호스트 404(Not Found).
+     Render(Cloud) 모드일 때만 운영 API로 보정. */
+  if (!fixed && import.meta.env.PROD && mode === "render") {
+    fixed = trimBase(AILAB_RENDER_PRODUCTION_API_ORIGIN);
+  }
 
   if (mode === "aws") {
     const aws = trimBase(getAwsApiBaseWithOverride());
