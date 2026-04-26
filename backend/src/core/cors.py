@@ -50,6 +50,9 @@ def cors_middleware_params() -> dict:
             "allow_credentials": True,
             "allow_methods": ["*"],
             "allow_headers": ["*"],
+            # Chrome PNA: preflight에 Access-Control-Request-Private-Network 가 오면
+            # False이면 Starlette CORS가 OPTIONS 를 400(Disallowed CORS private-network)로 끊음
+            "allow_private_network": True,
         }
     if raw == "*":
         return {
@@ -57,6 +60,7 @@ def cors_middleware_params() -> dict:
             "allow_credentials": False,
             "allow_methods": ["*"],
             "allow_headers": ["*"],
+            "allow_private_network": True,
         }
     origins = [o.strip() for o in raw.split(",") if o.strip()]
     if not origins:
@@ -86,4 +90,5 @@ def cors_middleware_params() -> dict:
         "allow_credentials": True,
         "allow_methods": ["*"],
         "allow_headers": ["*"],
+        "allow_private_network": True,
     }
