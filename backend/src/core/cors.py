@@ -61,6 +61,23 @@ def cors_middleware_params() -> dict:
     origins = [o.strip() for o in raw.split(",") if o.strip()]
     if not origins:
         origins = [o.strip() for o in default.split(",") if o.strip()]
+
+    # Cloudflare/커스텀 도메인이 CORS_ORIGINS 환경변수에 빠지면 브라우저에서만 Failed to fetch.
+    # 런타임에 이 목록을 항상 병합해 Render 대시보드·오타·배포 누락에도 동일 앱 URL을 허용.
+    _canonical_ailab_frontends = (
+        "https://aiconlab.com",
+        "https://www.aiconlab.com",
+        "https://aiconvlab.com",
+        "https://www.aiconvlab.com",
+    )
+    seen = set()
+    merged = []
+    for o in list(origins) + list(_canonical_ailab_frontends):
+        if o not in seen:
+            seen.add(o)
+            merged.append(o)
+    origins = merged
+
     # 명시 CORS(운영 오리진)이 있어도 LAN·localhost Vite(예: 192.168.x.x:5174) 는
     # allow_origin_regex 로 허용합니다. CORS 미설정 시에만 쓰면 LAN dev 가 깨집니다.
     return {
