@@ -14,11 +14,18 @@ from sqlalchemy.orm import Session
 from activity_service import log_activity
 from auth_utils import create_access_token, hash_password, verify_password
 from database import get_db
-from dependencies import get_current_user
+from dependencies import get_current_active_user, get_current_user
 from email_service import send_verification_email
 from models import User
 from user_workspace import ALL_ACCESS_ROLES
-from schemas_auth import Message, TokenResponse, UserLogin, UserOut, UserRegister
+from schemas_auth import (
+    Message,
+    TokenResponse,
+    UserChangePassword,
+    UserLogin,
+    UserOut,
+    UserRegister,
+)
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 logger = logging.getLogger(__name__)
@@ -206,3 +213,40 @@ def login(req: UserLogin, request: Request, db: Session = Depends(get_db)) -> To
 @router.get("/me", response_model=UserOut)
 def me(current: User = Depends(get_current_user)) -> UserOut:
     return current
+
+
+@router.post("/change-password", response_model=Message)
+def change_password(
+    req: UserChangePassword,
+    request: Request,
+    current: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+) -> Message:
+    """로그인한 계정의 비밀번호를 변경합니다. 현재 비밀번호 확인 후 갱신."""
+    if req.new_password == req.current_password:
+        raise HTTPException(
+            status_code=400,
+            detail="새 비밀번호는 기존 비밀번호와 달라야 합니다.",
+        )
+    try:
+        if not verify_password(req.current_password, current.hashed_password):
+            raise HTTPException(
+                status_code=401,
+                detail="현재 비밀번호가 올바르지 않습니다.",
+            )
+    except HTTPException:
+        raise
+    except Exception:
+        logger.exception(
+            "change_password: verify_password 실패 (user_id=%s)",
+            current.id,
+        )
+        raise HTTPException(
+            status_code=500,
+            detail="서버 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.",
+        ) from None
+
+    current.hashed_password = hash_password(req.new_password)
+    db.commit()
+    log_activity(db, current.id, "password_changed", {"email": current.email}, request)
+    return Message(message="비밀번호가 변경되었습니다.")

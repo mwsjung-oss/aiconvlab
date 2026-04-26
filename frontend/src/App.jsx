@@ -5,6 +5,7 @@ import { getBackendModeLabel } from "./api/backendMode";
 import { useAuth } from "./AuthContext.jsx";
 import { isPrivilegedRole } from "./roles.js";
 import AdminPanelModal from "./components/AdminPanelModal.jsx";
+import ChangePasswordModal from "./components/ChangePasswordModal.jsx";
 import AdminPage from "./pages/AdminPage";
 import DashboardPage from "./pages/DashboardPage";
 import HistoryPage from "./pages/HistoryPage";
@@ -193,6 +194,7 @@ export default function App() {
     }
   }, [notebookMode]);
   const [adminPanelOpen, setAdminPanelOpen] = useState(false);
+  const [changePasswordOpen, setChangePasswordOpen] = useState(false);
   const [architectureOpen, setArchitectureOpen] = useState(false);
 
   useLayoutEffect(() => {
@@ -1045,6 +1047,13 @@ export default function App() {
               <span className="lab-session-email" title={user.email}>
                 {user.email}
               </span>
+              <button
+                type="button"
+                className="lab-change-password"
+                onClick={() => setChangePasswordOpen(true)}
+              >
+                비밀번호 변경
+              </button>
               <button type="button" className="lab-logout" onClick={logout}>
                 로그아웃
               </button>
@@ -1727,6 +1736,11 @@ export default function App() {
       <AdminPanelModal
         open={adminPanelOpen}
         onClose={() => setAdminPanelOpen(false)}
+      />
+
+      <ChangePasswordModal
+        open={changePasswordOpen}
+        onClose={() => setChangePasswordOpen(false)}
       />
 
       {isAuthenticated && experimentEntryOpen && (

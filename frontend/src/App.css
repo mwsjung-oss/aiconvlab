@@ -1341,7 +1341,8 @@ th {
   white-space: nowrap;
 }
 
-.lab-logout {
+.lab-logout,
+.lab-change-password {
   font-size: 0.8rem;
   padding: 0.35rem 0.75rem;
   border-radius: 999px;
@@ -1351,7 +1352,8 @@ th {
   cursor: pointer;
 }
 
-.lab-logout:hover {
+.lab-logout:hover,
+.lab-change-password:hover {
   border-color: var(--accent);
 }
 
