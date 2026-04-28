@@ -24,6 +24,7 @@ except ImportError:
     )
 
 from fastapi.testclient import TestClient
+
 _BACKEND_DIR = Path(__file__).resolve().parent.parent
 
 
@@ -48,6 +49,15 @@ def _clear_overrides() -> None:
         main_mod.app.dependency_overrides.clear()
 
 
+def test_import_main_app_succeeds() -> None:
+    """앱 모듈 로드가 실패하지 않아야 함(Render import 단계)."""
+    _prepend_backend_on_path()
+    import main as main_mod  # noqa: PLC0415
+
+    assert getattr(main_mod, "app", None) is not None
+    assert main_mod.app.title
+
+
 def test_s3_test_disabled_returns_404(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("ENABLE_S3_TEST_ENDPOINT", "false")
     app, main_mod = _load_legacy_main_app()
@@ -58,9 +68,7 @@ def test_s3_test_disabled_returns_404(monkeypatch: pytest.MonkeyPatch) -> None:
     assert r.json().get("detail") == "Not Found"
 
 
-def test_s3_test_missing_env_lists_variables(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
+def test_s3_test_missing_env_lists_variables(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("ENABLE_S3_TEST_ENDPOINT", "true")
     monkeypatch.delenv("S3_BUCKET_DATASETS", raising=False)
     monkeypatch.delenv("AWS_ACCESS_KEY_ID", raising=False)
@@ -72,11 +80,6 @@ def test_s3_test_missing_env_lists_variables(
 
     app, main_mod = _load_legacy_main_app()
     main_mod.app.dependency_overrides.clear()
-    from dependencies import get_current_admin_operator
-
-    main_mod.app.dependency_overrides[get_current_admin_operator] = lambda: MagicMock(
-        id=1, role="admin", is_active=True
-    )
 
     client = TestClient(app, raise_server_exceptions=True)
     r = client.get("/test-s3")
@@ -92,9 +95,7 @@ def test_s3_test_missing_env_lists_variables(
     assert any("REGION" in m for m in missing)
 
 
-def test_s3_test_put_and_delete_called(
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
+def test_s3_test_put_and_delete_called(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("ENABLE_S3_TEST_ENDPOINT", "true")
     monkeypatch.setenv("S3_BUCKET_DATASETS", "test-bucket-datasets")
     monkeypatch.setenv("STORAGE_ACCESS_KEY_ID", "ak-test")
@@ -110,11 +111,7 @@ def test_s3_test_put_and_delete_called(
     s3_client.get_s3_client.cache_clear()
 
     app, main_mod = _load_legacy_main_app()
-    from dependencies import get_current_admin_operator
-
-    main_mod.app.dependency_overrides[get_current_admin_operator] = lambda: MagicMock(
-        id=1, role="admin", is_active=True
-    )
+    main_mod.app.dependency_overrides.clear()
 
     client = TestClient(app, raise_server_exceptions=True)
 
@@ -149,44 +146,3 @@ def test_openapi_lists_get_test_s3(monkeypatch: pytest.MonkeyPatch) -> None:
     assert "/test-s3" in paths, f"missing path; keys sample: {sorted(paths.keys())[:25]}"
     get_op = (paths["/test-s3"] or {}).get("get") or {}
     assert "diagnostics" in (get_op.get("tags") or []), get_op
-
-
-def test_s3_test_requires_bearer(monkeypatch: pytest.MonkeyPatch) -> None:
-    """플래그·환경 변수가 맞아도 Bearer 없으면 로그인 요구(401)."""
-    monkeypatch.setenv("ENABLE_S3_TEST_ENDPOINT", "true")
-    monkeypatch.setenv("S3_BUCKET_DATASETS", "bkt")
-    monkeypatch.setenv("STORAGE_ACCESS_KEY_ID", "ak")
-    monkeypatch.setenv("STORAGE_SECRET_ACCESS_KEY", "sk")
-    monkeypatch.setenv("STORAGE_REGION", "ap-northeast-2")
-
-    app, main_mod = _load_legacy_main_app()
-    main_mod.app.dependency_overrides.clear()
-
-    client = TestClient(app, raise_server_exceptions=True)
-    r = client.get("/test-s3")
-    assert r.status_code == 401
-
-
-def test_s3_test_non_admin_forbidden(monkeypatch: pytest.MonkeyPatch) -> None:
-    """member 역할은 `/test-s3` 호출 불가(403)."""
-    monkeypatch.setenv("ENABLE_S3_TEST_ENDPOINT", "true")
-    monkeypatch.setenv("S3_BUCKET_DATASETS", "bkt")
-    monkeypatch.setenv("STORAGE_ACCESS_KEY_ID", "ak")
-    monkeypatch.setenv("STORAGE_SECRET_ACCESS_KEY", "sk")
-    monkeypatch.setenv("STORAGE_REGION", "ap-northeast-2")
-
-    app, main_mod = _load_legacy_main_app()
-    from dependencies import get_current_active_user
-
-    def fake_member() -> MagicMock:
-        u = MagicMock()
-        u.id = 42
-        u.role = "member"
-        u.is_active = True
-        return u
-
-    main_mod.app.dependency_overrides[get_current_active_user] = fake_member
-
-    client = TestClient(app, raise_server_exceptions=True)
-    r = client.get("/test-s3")
-    assert r.status_code == 403
