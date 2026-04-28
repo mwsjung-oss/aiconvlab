@@ -13,6 +13,7 @@ import platform
 import re
 import shutil
 import subprocess
+import tempfile
 import threading
 import time
 import traceback
@@ -60,7 +61,9 @@ from routers import ai_chat as ai_chat_router
 from routers import ml_platform as ml_platform_router
 from routers import notebook as notebook_router
 from routers import portal as portal_router
+from routers import s3_test
 from api.v1 import platform as platform_router
+from blob_storage import sync_io
 from storage_root import STORAGE_ROOT
 from user_workspace import (
     ALL_ACCESS_ROLES,
@@ -217,7 +220,7 @@ def _ensure_master_user() -> None:
     """환경변수 MASTER_EMAIL / MASTER_PASSWORD 로 마스터 계정을 시드합니다.
 
     MASTER_PASSWORD_RESYNC=1(또는 true)이면 이미 존재하는 동일 이메일 계정의
-    비밀번호 해시를 MASTER_PASSWORD로 갱신합니다(연구실 서버에서 1회 적용 후 끄세요).
+    비밀번호 해시를 MASTER_PASSWORD로 갱신합니다(운영 서버에서 1회 적용 후 끄세요).
     """
     email = (os.getenv("MASTER_EMAIL") or "").strip().lower()
     password = os.getenv("MASTER_PASSWORD") or ""
@@ -273,103 +276,35 @@ def _sync_lead_roles_from_env() -> None:
         db.close()
 
 
-def _ensure_experiment_schema() -> None:
-    """SQLite에 필요한 컬럼을 안전하게 추가(이미 있으면 skip)."""
-    if engine.url.get_backend_name() != "sqlite":
-        return
 
-    def _cols(table: str) -> set[str]:
-        with engine.connect() as conn:
-            rows = conn.execute(text(f"PRAGMA table_info({table})")).fetchall()
-        return {r[1] for r in rows}
+def _log_registered_http_routes(fast_app: FastAPI) -> None:
+    """기동 로그에 노출되어 있는지 확인용 (GET /test-s3 등)."""
+    from fastapi.routing import APIRoute
+    from starlette.routing import Mount
 
-    # experiment_runs 컬럼 보강
-    if "experiment_runs" in _tables():
-        cols = _cols("experiment_runs")
-        alter_sql = []
-        if "run_id" not in cols:
-            alter_sql.append("ALTER TABLE experiment_runs ADD COLUMN run_id TEXT")
-        if "started_at" not in cols:
-            alter_sql.append("ALTER TABLE experiment_runs ADD COLUMN started_at DATETIME")
-        if "finished_at" not in cols:
-            alter_sql.append("ALTER TABLE experiment_runs ADD COLUMN finished_at DATETIME")
-        if "params_json" not in cols:
-            alter_sql.append("ALTER TABLE experiment_runs ADD COLUMN params_json TEXT DEFAULT '{}'")
-        if "log_path" not in cols:
-            alter_sql.append("ALTER TABLE experiment_runs ADD COLUMN log_path TEXT")
-        if "output_path" not in cols:
-            alter_sql.append("ALTER TABLE experiment_runs ADD COLUMN output_path TEXT")
-        if alter_sql:
-            with engine.begin() as conn:
-                for sql in alter_sql:
-                    conn.execute(text(sql))
-                conn.execute(
-                    text(
-                        "UPDATE experiment_runs "
-                        "SET run_id = COALESCE(run_id, model_id, hex(randomblob(16)))"
-                    )
-                )
-        cols2 = _cols("experiment_runs")
-        extra_alter = []
-        if "reproducibility_json" not in cols2:
-            extra_alter.append(
-                "ALTER TABLE experiment_runs ADD COLUMN reproducibility_json TEXT DEFAULT '{}'"
-            )
-        if "registry_stage" not in cols2:
-            extra_alter.append(
-                "ALTER TABLE experiment_runs ADD COLUMN registry_stage TEXT DEFAULT 'none'"
-            )
-        if extra_alter:
-            with engine.begin() as conn:
-                for sql in extra_alter:
-                    conn.execute(text(sql))
-    if "model_registry" in _tables():
-        mcols = _cols("model_registry")
-        malter = []
-        if "lifecycle_stage" not in mcols:
-            malter.append("ALTER TABLE model_registry ADD COLUMN lifecycle_stage TEXT")
-        if "model_uuid" not in mcols:
-            malter.append("ALTER TABLE model_registry ADD COLUMN model_uuid TEXT")
-        if "approved_by_user_id" not in mcols:
-            malter.append(
-                "ALTER TABLE model_registry ADD COLUMN approved_by_user_id INTEGER"
-            )
-        if "approved_at" not in mcols:
-            malter.append("ALTER TABLE model_registry ADD COLUMN approved_at DATETIME")
-        if malter:
-            with engine.begin() as conn:
-                for sql in malter:
-                    conn.execute(text(sql))
-    if "projects" in _tables():
-        pcols = _cols("projects")
-        palter = []
-        if "source_type" not in pcols:
-            palter.append("ALTER TABLE projects ADD COLUMN source_type TEXT")
-        if "intelligence_json" not in pcols:
-            palter.append("ALTER TABLE projects ADD COLUMN intelligence_json TEXT")
-        if palter:
-            with engine.begin() as conn:
-                for sql in palter:
-                    conn.execute(text(sql))
-
-
-def _tables() -> set[str]:
-    with engine.connect() as conn:
-        rows = conn.execute(
-            text("SELECT name FROM sqlite_master WHERE type='table'")
-        ).fetchall()
-    return {r[0] for r in rows}
+    log = logging.getLogger("ailab.routes")
+    lines: list[str] = []
+    for route in fast_app.routes:
+        if isinstance(route, APIRoute):
+            for method in sorted(route.methods or []):
+                lines.append(f"{method:7} {route.path}")
+        elif isinstance(route, Mount):
+            lines.append(f"MOUNT   {route.path}")
+    for line in sorted(lines):
+        log.info("route %s", line)
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    _log_registered_http_routes(app)
     test_database_connection()
-    warn_production_cors()
+    from core.storage_configuration import validate_storage_startup
+
+    validate_storage_startup()
 
     from database import Base
 
     Base.metadata.create_all(bind=engine)
-    _ensure_experiment_schema()
     try:
         from benchmark_data import ensure_builtin_datasets
 
@@ -405,9 +340,17 @@ async def lifespan(app: FastAPI):
         logging.getLogger(__name__).exception("Notebook subprocess shutdown failed")
 
 
-from core.cors import cors_middleware_params, warn_production_cors
+from core.cors import cors_middleware_params
 
-app = FastAPI(title="Local AILab", version="3.0.1", lifespan=lifespan)
+
+app = FastAPI(
+    title="Local AILab",
+    version="3.0.1",
+    lifespan=lifespan,
+    openapi_tags=[
+        {"name": "diagnostics", "description": "운영 점검·S3 연결 테스트 등 (관리자 전용)"},
+    ],
+)
 app.include_router(auth_router.router)
 app.include_router(admin_router.router)
 app.include_router(admin_panel_router.router)
@@ -415,6 +358,7 @@ app.include_router(ml_platform_router.router)
 app.include_router(ai_chat_router.router)
 app.include_router(portal_router.router)
 app.include_router(notebook_router.router)  # 노트북: NOTEBOOK_ENABLED=.env
+app.include_router(s3_test.router)
 app.include_router(platform_router.router)
 
 # ---- LLM gateway + Agent + RAG routers --------------------------------------
@@ -473,8 +417,10 @@ def _safe_filename(name: str) -> str:
     return name
 
 
-def _load_csv(filename: str, data_dir: Path) -> pd.DataFrame:
-    path = data_dir / filename
+def _load_csv(filename: str, ws: WorkspacePaths) -> pd.DataFrame:
+    fname = Path(filename).name
+    sync_io.fetch_file_if_missing(ws.workspace_scope, ws.data / fname, ws.staging_anchor)
+    path = ws.data / fname
     if not path.is_file():
         raise HTTPException(status_code=404, detail=f"File not found: {filename}")
     try:
@@ -492,7 +438,7 @@ def _model_path(models_dir: Path, model_id: str) -> Path:
 
 
 def _health_payload() -> dict[str, str]:
-    """로드밸런서·프론트·연구실 배포에서 공통으로 쓰는 헬스 본문."""
+    """로드밸런서·프론트·원격 배포에서 공통으로 쓰는 헬스 본문."""
     return {"status": "ok"}
 
 
@@ -521,7 +467,7 @@ def db_health() -> dict[str, str]:
     try:
         with engine.connect() as conn:
             conn.execute(text("SELECT 1"))
-        return {"status": "ok"}
+        return {"status": "ok", "database": "postgresql"}
     except Exception:
         logger.exception("DB health check failed")
         raise HTTPException(status_code=503, detail="DB not reachable")
@@ -593,15 +539,16 @@ def _finish_upload_with_catalog(
     return out
 
 
-async def _upload_csv_core(file: UploadFile, data_dir: Path) -> dict[str, Any]:
-    data_dir.mkdir(parents=True, exist_ok=True)
+async def _upload_csv_core(file: UploadFile, ws: WorkspacePaths) -> dict[str, Any]:
+    ws.data.mkdir(parents=True, exist_ok=True)
     fname = _safe_filename(file.filename or "upload.csv")
-    dest = data_dir / fname
+    dest = ws.data / fname
     content = await file.read()
     if len(content) > 50 * 1024 * 1024:
         raise HTTPException(status_code=400, detail="File too large (max 50 MB)")
     dest.write_bytes(content)
-    df = _load_csv(fname, data_dir)
+    sync_io.push_file(ws.workspace_scope, dest, ws.staging_anchor)
+    df = _load_csv(fname, ws)
     numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
     return {
         "filename": fname,
@@ -620,7 +567,7 @@ async def upload_csv(
 ) -> dict[str, Any]:
     ws = workspace_for_user(current_user)
     ensure_workspace_dirs(ws)
-    result = await _upload_csv_core(file, ws.data)
+    result = await _upload_csv_core(file, ws)
     log_activity(db, current_user.id, "upload", {"filename": result["filename"]}, request)
     return _finish_upload_with_catalog(db, current_user, result)
 
@@ -633,7 +580,7 @@ def list_datasets(
 ) -> dict[str, list[str]]:
     ws = workspace_for_user(current_user)
     ensure_workspace_dirs(ws)
-    files = sorted(p.name for p in ws.data.glob("*.csv"))
+    files = sync_io.list_csv_basenames(ws.workspace_scope, ws.data, ws.staging_anchor)
     log_activity(db, current_user.id, "list_datasets", {}, request)
     return {"files": files}
 
@@ -649,7 +596,7 @@ def preview(
     _safe_filename(filename)
     ws = workspace_for_user(current_user)
     ensure_workspace_dirs(ws)
-    df = _load_csv(filename, ws.data)
+    df = _load_csv(filename, ws)
     rows = max(1, min(rows, 500))
     head = df.head(rows)
     numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
@@ -807,7 +754,7 @@ def _build_lag_timeseries_regressor(model_type: str, random_state: int):
 
 def _train_time_series_impl(req: TrainRequest, ws: WorkspacePaths) -> dict[str, Any]:
     _safe_filename(req.filename)
-    df = _load_csv(req.filename, ws.data)
+    df = _load_csv(req.filename, ws)
     if req.target_column not in df.columns:
         raise HTTPException(status_code=400, detail="target_column not in dataset")
     y = pd.to_numeric(df[req.target_column], errors="coerce").dropna()
@@ -1102,7 +1049,7 @@ def _train_anomaly_impl(req: TrainRequest, ws: WorkspacePaths) -> dict[str, Any]
             detail="anomaly_detection은 model_type으로 isolation_forest만 지원합니다.",
         )
     _safe_filename(req.filename)
-    df = _load_csv(req.filename, ws.data)
+    df = _load_csv(req.filename, ws)
     if req.feature_columns:
         feature_cols = [c for c in req.feature_columns if c in df.columns]
     else:
@@ -1168,7 +1115,7 @@ def _train_impl(
     if req.task == "anomaly_detection":
         return _train_anomaly_impl(req, ws)
     _safe_filename(req.filename)
-    df = _load_csv(req.filename, ws.data)
+    df = _load_csv(req.filename, ws)
     t_train_start = time.time()
     dataset_abs = ws.data / req.filename
     from ml_reproducibility import build_reproducibility_base
@@ -1618,6 +1565,7 @@ def train(
     ws = workspace_for_user(current_user)
     ensure_workspace_dirs(ws)
     meta = _train_impl(req, ws, current_user=current_user, job_id=None)
+    sync_io.snapshot_push_workspace(ws)
     log_activity(db, current_user.id, "train", {"model_id": meta.get("model_id")}, request)
     return meta
 
@@ -1662,11 +1610,14 @@ def _predict_impl(
     current_user: User | None = None,
 ) -> dict[str, Any]:
     meta_path = _metadata_path(ws.models, req.model_id)
+    sync_io.fetch_file_if_missing(ws.workspace_scope, meta_path, ws.staging_anchor)
+    model_disk = _model_path(ws.models, req.model_id)
+    sync_io.fetch_file_if_missing(ws.workspace_scope, model_disk, ws.staging_anchor)
     if not meta_path.is_file():
         raise HTTPException(status_code=404, detail="Model not found")
     meta = json.loads(meta_path.read_text(encoding="utf-8"))
     _safe_filename(req.filename)
-    df = _load_csv(req.filename, ws.data)
+    df = _load_csv(req.filename, ws)
     artifact = joblib.load(_model_path(ws.models, req.model_id))
     mode = artifact.get("mode")
     if mode == "time_series":
@@ -1762,6 +1713,7 @@ def predict(
                 "배치 예측 CSV는 `outputs`에서 내려받을 수 있으며, **결과** 탭에서 `prediction` 열 미리보기를 확인할 수 있습니다.",
             ],
         )
+    sync_io.snapshot_push_workspace(ws)
     log_activity(
         db,
         current_user.id,
@@ -1781,7 +1733,8 @@ def list_models(
     ws = workspace_for_user(current_user)
     ensure_workspace_dirs(ws)
     items = []
-    for p in sorted(ws.models.glob("*.json")):
+    paths = sync_io.glob_json_models(ws.workspace_scope, ws.models, ws.staging_anchor)
+    for p in paths:
         try:
             data = json.loads(p.read_text(encoding="utf-8"))
             items.append(
@@ -1809,6 +1762,7 @@ def get_metrics(
     ws = workspace_for_user(current_user)
     ensure_workspace_dirs(ws)
     p = _metadata_path(ws.models, model_id)
+    sync_io.fetch_file_if_missing(ws.workspace_scope, p, ws.staging_anchor)
     if not p.is_file():
         raise HTTPException(status_code=404, detail="Model not found")
     log_activity(db, current_user.id, "get_metrics", {"model_id": model_id}, request)
@@ -1826,7 +1780,7 @@ def get_output_file(
     ensure_workspace_dirs(ws)
     safe = Path(filename).name
     out_root = ws.outputs.resolve()
-    path = (ws.outputs / safe).resolve()
+    path = sync_io.pull_output_for_download(ws.workspace_scope, safe, ws.outputs, ws.staging_anchor)
     if not path.is_file() or path.parent != out_root:
         raise HTTPException(status_code=404, detail="File not found")
     log_activity(db, current_user.id, "download_output", {"filename": safe}, request)
@@ -1844,13 +1798,23 @@ def get_report_summary(
     ensure_workspace_dirs(ws)
 
     if filename:
-        target = (ws.outputs / Path(filename).name).resolve()
+        target = sync_io.pull_output_for_download(
+            ws.workspace_scope,
+            Path(filename).name,
+            ws.outputs,
+            ws.staging_anchor,
+        )
         if not target.is_file() or target.parent != ws.outputs.resolve():
             raise HTTPException(status_code=404, detail="Summary file not found")
     else:
-        candidates = [p for p in ws.outputs.glob("*_summary.md") if p.is_file()]
+        all_paths = sync_io.glob_outputs_reports(
+            ws.workspace_scope, ws.outputs, ws.staging_anchor, ""
+        )
+        candidates = [p for p in all_paths if p.name.endswith("_summary.md") and p.is_file()]
         pilot_md = ws.outputs / "pilot_demand_lab_report.md"
         metal_md = ws.outputs / "metal_24w_forecast_report.md"
+        sync_io.fetch_file_if_missing(ws.workspace_scope, pilot_md, ws.staging_anchor)
+        sync_io.fetch_file_if_missing(ws.workspace_scope, metal_md, ws.staging_anchor)
         if not candidates:
             if pilot_md.is_file():
                 target = pilot_md
@@ -1905,17 +1869,19 @@ def get_report_files(
 ) -> dict[str, Any]:
     ws = workspace_for_user(current_user)
     ensure_workspace_dirs(ws)
-    pilot_md = ws.outputs / "pilot_demand_lab_report.md"
+    all_paths = sync_io.glob_outputs_reports(ws.workspace_scope, ws.outputs, ws.staging_anchor, "")
+    names = {p.name for p in all_paths if p.is_file()}
     pilot_extra: list[str] = []
-    if pilot_md.is_file():
-        pilot_extra.append(pilot_md.name)
-    metal_md = ws.outputs / "metal_24w_forecast_report.md"
     metal_extra: list[str] = []
-    if metal_md.is_file():
-        metal_extra.append(metal_md.name)
-    files = [p.name for p in ws.outputs.glob("lee_daehyun_tft_forecast_*.csv") if p.is_file()]
-    files = sorted(files, reverse=True)
-    preferred = []
+    if "pilot_demand_lab_report.md" in names:
+        pilot_extra.append("pilot_demand_lab_report.md")
+    if "metal_24w_forecast_report.md" in names:
+        metal_extra.append("metal_24w_forecast_report.md")
+    files = sorted(
+        (n for n in names if n.startswith("lee_daehyun_tft_forecast_") and n.endswith(".csv")),
+        reverse=True,
+    )
+    preferred: list[str] = []
     for key in ["_wide_by_model.csv", "_top20_total.csv", "_24w_fast.csv"]:
         matched = [f for f in files if f.endswith(key)]
         preferred.extend(matched)
@@ -1936,7 +1902,7 @@ def preview_report_file(
     ws = workspace_for_user(current_user)
     ensure_workspace_dirs(ws)
     safe = Path(filename).name
-    path = (ws.outputs / safe).resolve()
+    path = sync_io.pull_output_for_download(ws.workspace_scope, safe, ws.outputs, ws.staging_anchor)
     out_root = ws.outputs.resolve()
     if not path.is_file() or path.parent != out_root:
         raise HTTPException(status_code=404, detail="File not found")
@@ -1984,7 +1950,7 @@ def download_report_excel(
     ws = workspace_for_user(current_user)
     ensure_workspace_dirs(ws)
     safe = Path(filename).name
-    path = (ws.outputs / safe).resolve()
+    path = sync_io.pull_output_for_download(ws.workspace_scope, safe, ws.outputs, ws.staging_anchor)
     out_root = ws.outputs.resolve()
     if not path.is_file() or path.parent != out_root:
         raise HTTPException(status_code=404, detail="File not found")
@@ -2044,7 +2010,7 @@ async def upload_csv_public(
 
     ws = workspace_for_user(current_user)
     ensure_workspace_dirs(ws)
-    result = await _upload_csv_core(file, ws.data)
+    result = await _upload_csv_core(file, ws)
     log_activity(db, current_user.id, "upload", {"filename": result["filename"]}, request)
     return _finish_upload_with_catalog(db, current_user, result)
 
@@ -2065,7 +2031,7 @@ def preview_public(
     safe_name = _safe_filename(filename)
     ws = workspace_for_user(current_user)
     ensure_workspace_dirs(ws)
-    df = _load_csv(safe_name, ws.data)
+    df = _load_csv(safe_name, ws)
     head = df.head(20)
 
     dtypes: Dict[str, str] = {col: str(dtype) for col, dtype in df.dtypes.items()}
@@ -2375,24 +2341,47 @@ class PredictJobPayload(BaseModel):
     project_id: int | None = None
 
 
-JOBS_META_PATH = STORAGE_ROOT / "job_registry.json"
+JOBS_DISK_PATH = STORAGE_ROOT / "job_registry.json"
+JOB_REGISTRY_OBJECT_KEY = "system/state/job_registry.json"
 JOBS_LOCK = threading.Lock()
 JOBS: dict[str, dict[str, Any]] = {}
 
 
 def _load_jobs() -> None:
-    if not JOBS_META_PATH.is_file():
-        return
+    parsed: dict[str, Any] | None = None
     try:
-        raw = json.loads(JOBS_META_PATH.read_text(encoding="utf-8"))
-    except (json.JSONDecodeError, OSError):
+        if sync_io.uses_object_workspace():
+            from blob_storage.object_store import ops as _obj
+
+            raw = _obj().get_bytes(JOB_REGISTRY_OBJECT_KEY)
+            if not raw:
+                return
+            raw_text = raw.decode("utf-8")
+        else:
+            if not JOBS_DISK_PATH.is_file():
+                return
+            raw_text = JOBS_DISK_PATH.read_text(encoding="utf-8")
+        obj = json.loads(raw_text)
+        if isinstance(obj, dict):
+            parsed = obj
+    except (json.JSONDecodeError, OSError, UnicodeDecodeError):
         return
-    if isinstance(raw, dict):
-        JOBS.update(raw)
+    if parsed is not None:
+        JOBS.update(parsed)
 
 
 def _persist_jobs() -> None:
-    JOBS_META_PATH.write_text(json.dumps(JOBS, indent=2), encoding="utf-8")
+    payload = json.dumps(JOBS, indent=2, ensure_ascii=False)
+    if sync_io.uses_object_workspace():
+        from blob_storage.object_store import ops as _obj
+
+        _obj().put_bytes(
+            JOB_REGISTRY_OBJECT_KEY,
+            payload.encode("utf-8"),
+            content_type="application/json",
+        )
+    else:
+        JOBS_DISK_PATH.write_text(payload, encoding="utf-8")
 
 
 def _visible_jobs_for_user(current_user: User) -> list[tuple[str, dict[str, Any]]]:
@@ -2945,16 +2934,7 @@ def retry_job(job_id: str, current_user: User = Depends(get_current_approved_mem
 def list_dataset_details(current_user: User = Depends(get_current_approved_member)) -> dict[str, Any]:
     ws = workspace_for_user(current_user)
     ensure_workspace_dirs(ws)
-    items = []
-    for p in sorted(ws.data.glob("*.csv")):
-        st = p.stat()
-        items.append(
-            {
-                "filename": p.name,
-                "size_bytes": st.st_size,
-                "updated_at": datetime.fromtimestamp(st.st_mtime, tz=timezone.utc).isoformat(),
-            }
-        )
+    items = sync_io.list_csv_dataset_detail_items(ws.workspace_scope, ws.data, ws.staging_anchor)
     return {"datasets": items}
 
 
@@ -2964,9 +2944,11 @@ def delete_dataset(filename: str, current_user: User = Depends(get_current_appro
     ws = workspace_for_user(current_user)
     ensure_workspace_dirs(ws)
     p = ws.data / safe
+    sync_io.fetch_file_if_missing(ws.workspace_scope, p.resolve(), ws.staging_anchor)
     if not p.is_file():
         raise HTTPException(status_code=404, detail="File not found")
-    p.unlink()
+    sync_io.delete_file_from_store(ws.workspace_scope, p.resolve(), ws.staging_anchor)
+    p.unlink(missing_ok=True)
     return {"message": "삭제되었습니다."}
 
 
@@ -2974,9 +2956,13 @@ def delete_dataset(filename: str, current_user: User = Depends(get_current_appro
 def list_artifacts(current_user: User = Depends(get_current_approved_member)) -> dict[str, Any]:
     ws = workspace_for_user(current_user)
     ensure_workspace_dirs(ws)
-    models = [p.name for p in sorted(ws.models.glob("*.joblib"))]
-    metas = [p.name for p in sorted(ws.models.glob("*.json"))]
-    outputs = [p.name for p in sorted(ws.outputs.glob("*")) if p.is_file()]
+    models = sync_io.list_basenames_under_dir_with_suffix(
+        ws.workspace_scope, ws.models, ws.staging_anchor, "joblib"
+    )
+    metas = sync_io.list_basenames_under_dir_with_suffix(
+        ws.workspace_scope, ws.models, ws.staging_anchor, "json"
+    )
+    outputs = sync_io.list_output_basenames(ws.workspace_scope, ws.outputs, ws.staging_anchor)
     db = SessionLocal()
     try:
         q = db.query(ExperimentRun, Experiment).join(
@@ -3037,6 +3023,7 @@ def download_artifact(
     else:
         root = ws.logs
         path = (root / safe).resolve()
+    sync_io.fetch_file_if_missing(ws.workspace_scope, path, ws.staging_anchor)
     if not path.is_file() or path.parent != root.resolve():
         raise HTTPException(status_code=404, detail="File not found")
     return FileResponse(path)
@@ -3069,6 +3056,7 @@ def download_artifact_query(
     else:
         root = ws.logs.resolve()
         path = (root / safe).resolve()
+    sync_io.fetch_file_if_missing(ws.workspace_scope, path, ws.staging_anchor)
     if not path.is_file() or path.parent != root:
         raise HTTPException(status_code=404, detail="File not found")
     return FileResponse(path)
@@ -3083,7 +3071,8 @@ def system_monitor(current_user: User = Depends(get_current_approved_member)) ->
         if j.get("status") in {"queued", "running", "cancelling"}
     ]
     vm = psutil.virtual_memory()
-    du = psutil.disk_usage(str(STORAGE_ROOT))
+    disk_path = tempfile.gettempdir() if sync_io.uses_object_workspace() else str(STORAGE_ROOT)
+    du = psutil.disk_usage(disk_path)
     return {
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "cpu_percent": psutil.cpu_percent(interval=0.2),
