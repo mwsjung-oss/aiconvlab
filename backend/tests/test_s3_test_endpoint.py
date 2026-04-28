@@ -106,16 +106,12 @@ def test_s3_test_put_and_delete_called(monkeypatch: pytest.MonkeyPatch) -> None:
     mock_client.put_object.return_value = {"ETag": '"abc"', "ResponseMetadata": {}}
     mock_client.delete_object.return_value = {"ResponseMetadata": {}}
 
-    from blob_storage import s3_client
-
-    s3_client.get_s3_client.cache_clear()
-
     app, main_mod = _load_legacy_main_app()
     main_mod.app.dependency_overrides.clear()
 
     client = TestClient(app, raise_server_exceptions=True)
 
-    with patch("blob_storage.s3_client.get_s3_client", return_value=mock_client):
+    with patch("routers.s3_test.boto3.client", return_value=mock_client):
         r = client.get("/test-s3")
 
     assert r.status_code == 200

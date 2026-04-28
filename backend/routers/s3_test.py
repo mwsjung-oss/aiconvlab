@@ -1,8 +1,7 @@
-"""GET /test-s3 — 운영용 S3 연결 점검 (`ENABLE_S3_TEST_ENDPOINT=true` 일 때만).
+"""GET /test-s3 — boto3 전용 진단 라우터 (`blob_storage` 패키지 비의존).
 
-인증 의존성 없음(임시 진단 전용). 기본값은 비활성화(404).
-
-``ENABLE_S3_TEST_ENDPOINT=false`` 또는 미설정이면 존재하지 않는 리소스로 처리합니다."""
+`ENABLE_S3_TEST_ENDPOINT=true` 일 때만 동작(그 외 404).
+모듈 import 시 AWS 환경 변수를 요구하지 않는다."""
 
 from __future__ import annotations
 
@@ -12,6 +11,8 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any
 
+import boto3
+from botocore.exceptions import BotoCoreError, ClientError
 from fastapi import APIRouter, Depends, HTTPException
 
 logger = logging.getLogger(__name__)
@@ -26,35 +27,61 @@ def _s3_test_truthy(env_value: str | None) -> bool:
 
 
 def require_s3_test_endpoint_enabled() -> None:
-    """기본 비활성: 미설정·false 계열이면 존재하지 않는 리소스로 처리(404)."""
     if _s3_test_truthy(os.getenv("ENABLE_S3_TEST_ENDPOINT")):
         return
     raise HTTPException(status_code=404, detail="Not Found")
 
 
 def collect_missing_s3_test_env_vars() -> list[str]:
-    """`/test-s3`에 필요한 환경 변수 누락 목록."""
+    """필수: S3_BUCKET_DATASETS, 액세스 키, 시크릿, 리전(또는 STORAGE_* 동등)."""
     missing: list[str] = []
     if not (os.getenv("S3_BUCKET_DATASETS") or "").strip():
         missing.append("S3_BUCKET_DATASETS")
 
-    ak = (os.getenv("AWS_ACCESS_KEY_ID") or "").strip() or (
-        os.getenv("STORAGE_ACCESS_KEY_ID") or ""
-    ).strip()
+    ak = (
+        (os.getenv("AWS_ACCESS_KEY_ID") or "").strip()
+        or (os.getenv("STORAGE_ACCESS_KEY_ID") or "").strip()
+    )
     if not ak:
-        missing.append("AWS_ACCESS_KEY_ID 또는 STORAGE_ACCESS_KEY_ID")
+        missing.append("AWS_ACCESS_KEY_ID (또는 STORAGE_ACCESS_KEY_ID)")
 
-    sk = (os.getenv("AWS_SECRET_ACCESS_KEY") or "").strip() or (
-        os.getenv("STORAGE_SECRET_ACCESS_KEY") or ""
-    ).strip()
+    sk = (
+        (os.getenv("AWS_SECRET_ACCESS_KEY") or "").strip()
+        or (os.getenv("STORAGE_SECRET_ACCESS_KEY") or "").strip()
+    )
     if not sk:
-        missing.append("AWS_SECRET_ACCESS_KEY 또는 STORAGE_SECRET_ACCESS_KEY")
+        missing.append("AWS_SECRET_ACCESS_KEY (또는 STORAGE_SECRET_ACCESS_KEY)")
 
     region = (os.getenv("AWS_REGION") or "").strip() or (os.getenv("STORAGE_REGION") or "").strip()
     if not region:
-        missing.append("AWS_REGION 또는 STORAGE_REGION")
+        missing.append("AWS_REGION (또는 STORAGE_REGION)")
 
     return missing
+
+
+def _build_diag_s3_client():
+    ak = (
+        (os.getenv("AWS_ACCESS_KEY_ID") or "").strip()
+        or (os.getenv("STORAGE_ACCESS_KEY_ID") or "").strip()
+    )
+    sk = (
+        (os.getenv("AWS_SECRET_ACCESS_KEY") or "").strip()
+        or (os.getenv("STORAGE_SECRET_ACCESS_KEY") or "").strip()
+    )
+    region = (os.getenv("AWS_REGION") or "").strip() or (os.getenv("STORAGE_REGION") or "").strip()
+    endpoint = (
+        (os.getenv("STORAGE_ENDPOINT_URL") or "").strip()
+        or (os.getenv("CLOUDFLARE_R2_ENDPOINT") or "").strip()
+    )
+    kwargs: dict[str, Any] = {
+        "service_name": "s3",
+        "region_name": region,
+        "aws_access_key_id": ak,
+        "aws_secret_access_key": sk,
+    }
+    if endpoint:
+        kwargs["endpoint_url"] = endpoint
+    return boto3.client(**kwargs)
 
 
 @router.get(
@@ -62,22 +89,21 @@ def collect_missing_s3_test_env_vars() -> list[str]:
     dependencies=[Depends(require_s3_test_endpoint_enabled)],
     summary="S3 데이터셋 버킷 연결 테스트 (업로드 후 즉시 삭제)",
     description=(
-        "`S3_BUCKET_DATASETS` 버킷에 작은 텍스트를 `put_object` 한 뒤 `delete_object`로 정리합니다. "
-        "활성화: **`ENABLE_S3_TEST_ENDPOINT=true`** 및 `AWS_*` / `STORAGE_*` 자격 증명·리전. "
-        "인증 없음(네트워크·액세스 키로만 보호)."
+        "`S3_BUCKET_DATASETS`에 작은 텍스트를 올렸다가 바로 삭제합니다. "
+        "boto3만 사용하며 `blob_storage`에 의존하지 않습니다. "
+        "R2 등은 `STORAGE_ENDPOINT_URL`/`CLOUDFLARE_R2_ENDPOINT`로 지정하세요."
     ),
     responses={
-        200: {"description": "성공 — `upload_ok` / `delete_ok` 포함"},
-        400: {"description": "필수 환경 변수 누락 — `detail.missing_environment_variables`"},
-        404: {"description": "엔드포인트 비활성 (`ENABLE_S3_TEST_ENDPOINT`)"},
-        502: {"description": "S3 업로드 실패"},
-        503: {"description": "boto3 클라이언트 구성 실패"},
+        200: {"description": "성공"},
+        400: {"description": "환경 변수 누락"},
+        404: {"description": "엔드포인트 비활성"},
+        502: {"description": "S3 API 오류"},
+        503: {"description": "클라이언트 생성 실패"},
     },
     name="test_s3_connectivity",
     include_in_schema=True,
 )
 def test_s3_upload() -> dict[str, Any]:
-    """boto3로 소형 테스트 객체 업로드 직후 동일 객체를 삭제하고 JSON으로 반환합니다."""
     missing = collect_missing_s3_test_env_vars()
     if missing:
         raise HTTPException(
@@ -91,17 +117,9 @@ def test_s3_upload() -> dict[str, Any]:
 
     bucket = (os.getenv("S3_BUCKET_DATASETS") or "").strip()
     try:
-        from blob_storage.s3_client import get_s3_client
+        client = _build_diag_s3_client()
     except Exception as e:
-        logger.exception("S3 client import failed")
-        raise HTTPException(
-            status_code=503,
-            detail={"error": "s3_client_import_failed", "message": str(e)},
-        ) from e
-
-    try:
-        client = get_s3_client()
-    except RuntimeError as e:
+        logger.exception("boto3 client build failed")
         raise HTTPException(
             status_code=503,
             detail={"error": "s3_client_build_failed", "message": str(e)},
@@ -123,7 +141,7 @@ def test_s3_upload() -> dict[str, Any]:
             ContentType="text/plain; charset=utf-8",
         )
         upload_ok = True
-    except Exception as e:
+    except (ClientError, BotoCoreError, OSError) as e:
         logger.exception("put_object failed bucket=%s key=%s", bucket, key)
         raise HTTPException(
             status_code=502,
@@ -133,7 +151,7 @@ def test_s3_upload() -> dict[str, Any]:
     try:
         client.delete_object(Bucket=bucket, Key=key)
         delete_ok = True
-    except Exception as e:
+    except (ClientError, BotoCoreError, OSError) as e:
         logger.exception("delete_object failed bucket=%s key=%s", bucket, key)
         return {
             "ok": False,
@@ -145,9 +163,8 @@ def test_s3_upload() -> dict[str, Any]:
             "error": {"phase": "delete", "message": str(e)},
         }
 
-    ok = upload_ok and delete_ok
     return {
-        "ok": ok,
+        "ok": upload_ok and delete_ok,
         "bucket": bucket,
         "key": key,
         "bytes_uploaded": len(body),

@@ -63,7 +63,36 @@ from routers import notebook as notebook_router
 from routers import portal as portal_router
 from routers import s3_test
 from api.v1 import platform as platform_router
-from blob_storage import sync_io
+
+
+def _uses_object_workspace() -> bool:
+    """환경만으로 판별 — `import main` 단계에서 blob_storage 를 불러오지 않음."""
+    return (os.getenv("STORAGE_BACKEND") or "local").strip().lower() in ("s3", "r2")
+
+
+class _LazySyncIoProxy:
+    """`blob_storage.sync_io` 지연 로드 — 패키지 미배포 시에도 앱 기동."""
+
+    __slots__ = ("_mod",)
+
+    def __init__(self) -> None:
+        object.__setattr__(self, "_mod", None)
+
+    def _ensure(self) -> Any:
+        mod = object.__getattribute__(self, "_mod")
+        if mod is None:
+            from blob_storage import sync_io as loaded  # noqa: PLC0415
+
+            object.__setattr__(self, "_mod", loaded)
+            return loaded
+        return mod
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._ensure(), name)
+
+
+sync_io = _LazySyncIoProxy()
+
 from storage_root import STORAGE_ROOT
 from user_workspace import (
     ALL_ACCESS_ROLES,
@@ -2350,14 +2379,19 @@ JOBS: dict[str, dict[str, Any]] = {}
 def _load_jobs() -> None:
     parsed: dict[str, Any] | None = None
     try:
-        if sync_io.uses_object_workspace():
-            from blob_storage.object_store import ops as _obj
+        raw_text: str | None = None
+        if _uses_object_workspace():
+            try:
+                from blob_storage.object_store import ops as _obj
 
-            raw = _obj().get_bytes(JOB_REGISTRY_OBJECT_KEY)
-            if not raw:
-                return
-            raw_text = raw.decode("utf-8")
-        else:
+                raw = _obj().get_bytes(JOB_REGISTRY_OBJECT_KEY)
+                if raw:
+                    raw_text = raw.decode("utf-8")
+            except ImportError:
+                logging.getLogger(__name__).warning(
+                    "blob_storage unavailable; job registry will use local disk if present",
+                )
+        if raw_text is None:
             if not JOBS_DISK_PATH.is_file():
                 return
             raw_text = JOBS_DISK_PATH.read_text(encoding="utf-8")
@@ -2372,16 +2406,21 @@ def _load_jobs() -> None:
 
 def _persist_jobs() -> None:
     payload = json.dumps(JOBS, indent=2, ensure_ascii=False)
-    if sync_io.uses_object_workspace():
-        from blob_storage.object_store import ops as _obj
+    if _uses_object_workspace():
+        try:
+            from blob_storage.object_store import ops as _obj
 
-        _obj().put_bytes(
-            JOB_REGISTRY_OBJECT_KEY,
-            payload.encode("utf-8"),
-            content_type="application/json",
-        )
-    else:
-        JOBS_DISK_PATH.write_text(payload, encoding="utf-8")
+            _obj().put_bytes(
+                JOB_REGISTRY_OBJECT_KEY,
+                payload.encode("utf-8"),
+                content_type="application/json",
+            )
+            return
+        except ImportError:
+            logging.getLogger(__name__).warning(
+                "blob_storage unavailable; persisting job registry to local disk",
+            )
+    JOBS_DISK_PATH.write_text(payload, encoding="utf-8")
 
 
 def _visible_jobs_for_user(current_user: User) -> list[tuple[str, dict[str, Any]]]:
@@ -3071,7 +3110,7 @@ def system_monitor(current_user: User = Depends(get_current_approved_member)) ->
         if j.get("status") in {"queued", "running", "cancelling"}
     ]
     vm = psutil.virtual_memory()
-    disk_path = tempfile.gettempdir() if sync_io.uses_object_workspace() else str(STORAGE_ROOT)
+    disk_path = tempfile.gettempdir() if _uses_object_workspace() else str(STORAGE_ROOT)
     du = psutil.disk_usage(disk_path)
     return {
         "timestamp": datetime.now(timezone.utc).isoformat(),
