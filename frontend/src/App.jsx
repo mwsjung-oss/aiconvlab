@@ -55,6 +55,11 @@ import {
   getWorkflowStepForPage,
   isExperimentWorkflowPage,
 } from "./workflowConfig.js";
+import {
+  readStoredExecutionTarget,
+  writeStoredExecutionTarget,
+} from "./services/runtime/executionTargetPref.js";
+import { phraseFromJobPayload } from "./services/jobUiPhrases.js";
 
 /** 모델 학습 탭: 과제별로 백엔드와 동일한 model_type 값만 노출 */
 const TASK_MODEL_OPTIONS = {
@@ -110,12 +115,51 @@ export default function App() {
     readSelectedRuntime()
   );
   const [runtimeSystemInfo, setRuntimeSystemInfo] = useState(null);
+  const [executionTarget, setExecutionTarget] = useState(() =>
+    readStoredExecutionTarget(),
+  );
+  const [trainJobPollId, setTrainJobPollId] = useState(null);
+  const [trainJobSnapshot, setTrainJobSnapshot] = useState(null);
 
   useEffect(() => {
     const sync = () => setApiEnvLabel(getBackendModeLabel());
     window.addEventListener("ailab-backend-mode-change", sync);
     return () => window.removeEventListener("ailab-backend-mode-change", sync);
   }, []);
+
+  useEffect(() => {
+    const sync = () => setExecutionTarget(readStoredExecutionTarget());
+    window.addEventListener("ailab-execution-target-change", sync);
+    return () =>
+      window.removeEventListener("ailab-execution-target-change", sync);
+  }, []);
+
+  useEffect(() => {
+    if (!trainJobPollId || !token) {
+      setTrainJobSnapshot(null);
+      return;
+    }
+    let cancelled = false;
+    let timer;
+    async function tick() {
+      try {
+        const j = await apiJson(`/api/jobs/${trainJobPollId}`);
+        if (!cancelled) setTrainJobSnapshot(j);
+        const st = String(j?.status || "").toUpperCase();
+        if (["COMPLETED", "FAILED", "CANCELLED"].includes(st)) {
+          setTrainJobPollId(null);
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+    tick();
+    timer = window.setInterval(tick, 2800);
+    return () => {
+      cancelled = true;
+      if (timer) window.clearInterval(timer);
+    };
+  }, [trainJobPollId, token]);
 
   useEffect(() => {
     setApiEnvLabel(getBackendModeLabel());
@@ -695,6 +739,7 @@ export default function App() {
       test_size: 0.2,
       random_state: 42,
       project_id: currentProjectId,
+      execution_target: executionTarget,
     };
     const t0 = Date.now();
     const tick = setInterval(() => {
@@ -707,6 +752,19 @@ export default function App() {
         timeoutMs: 0,
         signal: ac.signal,
       });
+      if (data?.queued && data.job_id != null) {
+        setTrainMsg(
+          `${data.user_message || "큐 등록 완료"} · job ${data.job_id}`,
+        );
+        setTrainJobPollId(data.job_id);
+        await loadJobs();
+        setCurrentPage("results");
+        clearInterval(tick);
+        trainAbortRef.current = null;
+        setTrainElapsedSec(0);
+        setTrainLoading(false);
+        return;
+      }
       setTrainResult(data);
       setTrainMsg(`학습 완료. 모델 ID: ${data.model_id}`);
       await loadModels();
@@ -775,6 +833,11 @@ export default function App() {
   const plotUrl =
     trainResult?.plot_file &&
     `/api/outputs/${encodeURIComponent(trainResult.plot_file)}`;
+
+  const trainJobPhraseLine = useMemo(
+    () => phraseFromJobPayload(trainJobSnapshot),
+    [trainJobSnapshot],
+  );
 
   /** 헤더 플랫폼 제목 아래 (비로그인 동일 노출). Experiment=프로젝트·워크플로, Administration=관리 */
   const navHeaderQuick = [
@@ -1111,6 +1174,12 @@ export default function App() {
             }}
             onLogout={logout}
             userEmail={user?.email || null}
+            executionTarget={executionTarget}
+            onExecutionTargetChange={(e) => {
+              const v = e.target.value;
+              writeStoredExecutionTarget(v);
+              setExecutionTarget(v);
+            }}
             childrenSubNav={
               <>
                 {/* 6단계 워크플로 가로 내비게이션 (상단 스트립 바로 아래) */}
@@ -1482,6 +1551,7 @@ export default function App() {
                   error={trainErr}
                   trainResult={trainResult}
                   plotUrl={plotUrl}
+                  jobPollPhrase={trainJobPhraseLine}
                 />
               )}
               {!notebookMode && currentPage === "predict" && (
@@ -1632,6 +1702,7 @@ export default function App() {
           error={trainErr}
           trainResult={trainResult}
           plotUrl={plotUrl}
+          jobPollPhrase={trainJobPhraseLine}
         />
       )}
 

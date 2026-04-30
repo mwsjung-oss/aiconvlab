@@ -48,6 +48,7 @@ from sqlalchemy import text
 import psutil
 
 import models  # noqa: F401 — Alembic/메타데이터 등록
+import models_aps  # noqa: F401 — APS jobs·LLM·lab heartbeat
 from activity_service import log_activity
 from auth_utils import hash_password
 from database import SessionLocal, engine, get_db, test_database_connection
@@ -62,7 +63,13 @@ from routers import ml_platform as ml_platform_router
 from routers import notebook as notebook_router
 from routers import portal as portal_router
 from routers import s3_test
+from routers import ops_health as ops_health_router
+from routers import lab_worker_api as lab_worker_api_router
+from routers import jobs_router as jobs_api_router
 from api.v1 import platform as platform_router
+from aps_ops.execution.aws_executor import train_sync_via_main_impl
+from aps_ops.execution.execution_router import schedule_lab_training_job
+from aps_ops.queue import sqs_queue
 
 
 def _uses_object_workspace() -> bool:
@@ -325,6 +332,9 @@ def _log_registered_http_routes(fast_app: FastAPI) -> None:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    from config.aws_env_validation import log_startup_aws_environment_status
+
+    log_startup_aws_environment_status()
     _log_registered_http_routes(app)
     test_database_connection()
     from core.storage_configuration import validate_storage_startup
@@ -388,6 +398,10 @@ app.include_router(ai_chat_router.router)
 app.include_router(portal_router.router)
 app.include_router(notebook_router.router)  # 노트북: NOTEBOOK_ENABLED=.env
 app.include_router(s3_test.router)
+app.include_router(jobs_api_router.router)
+app.include_router(lab_worker_api_router.router)
+app.include_router(lab_worker_api_router.public_router)
+app.include_router(ops_health_router.router)
 app.include_router(platform_router.router)
 
 # ---- LLM gateway + Agent + RAG routers --------------------------------------
@@ -491,15 +505,40 @@ def health_root() -> dict[str, str]:
 @app.get("/api/health/db", tags=["health"])
 def db_health() -> dict[str, str]:
     from sqlalchemy import text
+    from sqlalchemy.exc import OperationalError
 
     logger = logging.getLogger(__name__)
     try:
         with engine.connect() as conn:
             conn.execute(text("SELECT 1"))
+        dial = engine.dialect.name
+        if dial == "sqlite":
+            return {"status": "ok", "database": "sqlite"}
         return {"status": "ok", "database": "postgresql"}
+    except OperationalError as e:
+        from database import database_url_for_logs
+
+        orig = getattr(e, "orig", None)
+        pgcode = getattr(orig, "pgcode", None) if orig is not None else None
+        logger.error(
+            "/api/health/db 실패 — RDS(PostgreSQL) OperationalError | url=%s | pgcode=%s | %r",
+            database_url_for_logs(),
+            pgcode,
+            e,
+        )
+        raise HTTPException(
+            status_code=503,
+            detail=(
+                "RDS(PostgreSQL)에 연결할 수 없습니다. "
+                "APS_DATABASE_URL·보안그룹·RDS 가용성·자격증명을 확인하세요."
+            ),
+        ) from e
     except Exception:
         logger.exception("DB health check failed")
-        raise HTTPException(status_code=503, detail="DB not reachable")
+        raise HTTPException(
+            status_code=503,
+            detail="데이터베이스 헬스 체크 중 예외가 발생했습니다(로그 참고).",
+        )
 
 
 def _upsert_dataset_catalog_from_upload(
@@ -671,6 +710,10 @@ class TrainRequest(BaseModel):
     test_size: float = Field(0.2, ge=0.1, le=0.5)
     random_state: int = 42
     project_id: int | None = None
+    execution_target: Literal["aws", "lab_gpu", "auto"] = Field(
+        default="aws",
+        description="aws: EB에서 동기 학습. lab_gpu/auto: 워커 가용 시 비동기 큐.",
+    )
     extra_context: dict[str, Any] | None = Field(
         default=None,
         description="내부용(스윕 메타 등). API JSON에는 포함하지 않습니다.",
@@ -1591,12 +1634,38 @@ def train(
 ) -> dict[str, Any]:
     if req.project_id is not None and not _can_edit_project_for_user(db, current_user, req.project_id):
         raise HTTPException(status_code=403, detail="해당 프로젝트 실행 권한이 없습니다.")
+
+    if req.execution_target == "aws":
+        resolved: str = "aws"
+        blocked_msg: str | None = None
+    else:
+        resolved, blocked_msg = sqs_queue.resolve_targets(db, req.execution_target)
+
+    if resolved == "lab_gpu":
+        ws0 = workspace_for_user(current_user)
+        ensure_workspace_dirs(ws0)
+        return schedule_lab_training_job(
+            db=db,
+            user=current_user,
+            req=req,
+            ws=ws0,
+            blocked_msg=blocked_msg,
+            request=request,
+        )
+
     ws = workspace_for_user(current_user)
     ensure_workspace_dirs(ws)
-    meta = _train_impl(req, ws, current_user=current_user, job_id=None)
-    sync_io.snapshot_push_workspace(ws)
-    log_activity(db, current_user.id, "train", {"model_id": meta.get("model_id")}, request)
-    return meta
+    return train_sync_via_main_impl(
+        request,
+        req,
+        ws,
+        current_user,
+        db,
+        blocked_msg=blocked_msg,
+        sync_io=sync_io,
+        ensure_workspace_dirs=ensure_workspace_dirs,
+        train_impl=_train_impl,
+    )
 
 
 class PredictRequest(BaseModel):

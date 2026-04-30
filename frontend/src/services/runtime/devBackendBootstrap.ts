@@ -1,6 +1,6 @@
-/** 개발 시 로컬 uvicorn 자동 기동(Vite 플러그인) + Render/AWS 원격 헬스 확인 */
+/** 개발 시 Render/AWS 원격 헬스 확인(Vite 플러그인 경유 또는 브라우저 직접) */
 
-import { getAwsApiBaseWithOverride, getPublicApiBaseUrl } from "../config/publicEnv";
+import { getPublicApiBaseUrl } from "../config/publicEnv";
 
 const trim = (u: string) => u.replace(/\/+$/, "");
 
@@ -66,7 +66,7 @@ async function probeRemoteHealthDirect(
       if (health.status === 404 && openapi.status === 404) {
         return {
           ok: false,
-          message: `${remoteName}: 해당 URL에서 API를 찾을 수 없습니다(404). Render·서버가 기동 중인지, VITE_API_BASE_URL(또는 연구실/ AWS 저장 URL)이 실제 백엔드 주소와 일치하는지 확인하세요.`,
+          message: `${remoteName}: 해당 URL에서 API를 찾을 수 없습니다(404). Render·서버가 기동 중인지, VITE_API_BASE_URL(또는 AWS 저장 URL)이 실제 백엔드 주소와 일치하는지 확인하세요.`,
         };
       }
       return {
@@ -101,91 +101,31 @@ async function probeRemoteHealthDirect(
   };
 }
 
-function awsBase() {
-  return trim(getAwsApiBaseWithOverride());
-}
 
-function renderBase() {
+function cloudBase() {
   return trim(getPublicApiBaseUrl());
-}
-
-/** Vite dev 전용: 로컬 백엔드가 없으면 서버가 uvicorn 을 띄운 뒤 /api/health 까지 대기 */
-export async function ensureLocalBackendReady(
-  signal?: AbortSignal
-): Promise<{ ok: boolean; message: string }> {
-  if (!import.meta.env.DEV) {
-    return {
-      ok: true,
-      message: "배포 빌드에서는 백엔드를 서버에서 직접 실행하세요.",
-    };
-  }
-
-  try {
-    const r = await fetch("/__ailab/dev/start-local-backend", {
-      method: "POST",
-      signal,
-    });
-    const text = await r.text();
-    let j: { ok?: boolean; message?: string } = {};
-    try {
-      j = JSON.parse(text) as { ok?: boolean; message?: string };
-    } catch {
-      return {
-        ok: false,
-        message: `Vite 응답이 올바르지 않습니다 (HTTP ${r.status}).`,
-      };
-    }
-    if (!j.ok) {
-      return { ok: false, message: j.message || "로컬 API 시작 요청이 거부되었습니다." };
-    }
-  } catch (e) {
-    return {
-      ok: false,
-      message: `Vite 개발 서버와 통신하지 못했습니다. \`npm run dev\` 로 프론트를 띄웠는지 확인하세요. (${String(e)})`,
-    };
-  }
-
-  for (let i = 0; i < 90; i++) {
-    if (signal?.aborted) {
-      return { ok: false, message: "취소되었습니다." };
-    }
-    try {
-      const h = await fetch("/api/health", { signal });
-      if (h.ok) {
-        return { ok: true, message: "로컬 백엔드가 준비되었습니다." };
-      }
-    } catch {
-      /* retry */
-    }
-    await new Promise((res) => setTimeout(res, 400));
-  }
-  return {
-    ok: false,
-    message:
-      "로컬 백엔드가 응답하지 않습니다. `backend`에서 Python·의존성(uvicorn)을 확인하세요.",
-  };
 }
 
 export async function ensureRemoteBackendReachable(
   kind: "render" | "aws",
   signal?: AbortSignal
 ): Promise<{ ok: boolean; message: string }> {
-  if (kind === "render" && !renderBase()) {
+  const base = cloudBase();
+  if (!base && !(import.meta.env.DEV && isViteLocalhostClient())) {
     return {
       ok: false,
-      message: "VITE_API_BASE_URL 이 비어 있습니다. `.env`에 Render API 베이스 URL을 설정하세요.",
+      message:
+        "VITE_API_BASE_URL 이 비어 있습니다. AWS Elastic Beanstalk 공개 API URL(https)을 설정하세요.",
     };
   }
-  if (kind === "aws" && !awsBase()) {
+  if (!base) {
     return {
-      ok: false,
-      message: "VITE_AWS_API_URL 이 비어 있습니다. `.env`에 Cloud API 베이스 URL을 설정하세요.",
+      ok: true,
+      message: "로컬 개발 — Vite 가 `/api` 를 백엔드로 프록시합니다.",
     };
   }
 
-  const base = kind === "render" ? renderBase() : awsBase();
-  const remoteName = kind === "render" ? "Cloud (Render)" : "Cloud (AWS)";
-
+  const remoteName = "APS Backend (AWS EB)";
   if (import.meta.env.DEV && isViteLocalhostClient()) {
     try {
       const r = await fetch(
@@ -227,12 +167,6 @@ export async function ensureRemoteBackendReachable(
     }
   }
 
-  if (!base) {
-    return {
-      ok: false,
-      message: `${remoteName} API 베이스 URL이 비어 있습니다.`,
-    };
-  }
 
   return probeRemoteHealthDirect(base, remoteName, signal);
 }

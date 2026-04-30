@@ -1,6 +1,6 @@
 export const AI_PROVIDER_STORAGE_KEY = "ailab_ai_provider";
 
-const VALID = ["openai", "gemini", "ollama", "local"];
+const VALID = ["openai", "gemini", "bedrock", "auto", "ollama", "local"];
 
 export function readStoredAiProvider() {
   try {
@@ -26,7 +26,9 @@ export function writeStoredAiProvider(value) {
 
 export const AI_PROVIDER_OPTIONS = [
   { value: "openai", label: "OpenAI" },
-  { value: "gemini", label: "Google Gemini" },
-  { value: "ollama", label: "Ollama (로컬)" },
-  { value: "local", label: "로컬 (슬래시·키워드)" },
+  { value: "gemini", label: "Gemini" },
+  { value: "bedrock", label: "Bedrock" },
+  { value: "auto", label: "Auto" },
+  { value: "ollama", label: "Ollama (로컬·레거시)" },
+  { value: "local", label: "로컬 (레거시)" },
 ];

@@ -18,7 +18,7 @@ export function mapAuthRequestError(ex) {
   if (netFail) {
     return (
       "백엔드에 연결할 수 없습니다. 위에서 선택한 환경에 맞게 서버가 떠 있는지 확인하세요. " +
-      "로컬: `npm run dev:stack` 또는 uvicorn. 연구실: 해당 서버·네트워크·CORS 설정."
+      "로컬: `npm run dev:stack` 또는 uvicorn. 원격: API URL·네트워크·CORS 설정."
     );
   }
   return m;

@@ -3,6 +3,8 @@ import { apiJson } from "../api";
 import BackendModeToggle from "../components/BackendModeToggle";
 import { useAuth } from "../AuthContext";
 import { mapAuthRequestError } from "../utils/mapAuthRequestError";
+import { buildApiUrl } from "../services/api/client";
+import { getStoredBackendMode } from "../api/backendMode";
 
 /** 로그인 API: POST /api/auth/login, Content-Type application/json, { email, password } */
 function formatLoginFailureMessage(ex) {
@@ -33,6 +35,21 @@ export default function LoginPage({ onSwitchRegister }) {
     setErr(null);
     setSubmitting(true);
     try {
+      const backendMode = getStoredBackendMode() ?? "cloud";
+      if (backendMode !== "local") {
+        const probeUrl = buildApiUrl("/api/health");
+        const hr = await fetch(probeUrl, { method: "GET", mode: "cors" });
+        const bodyText = await hr.text().catch(() => "");
+        if (!hr.ok) {
+          console.error("[LOGIN 헬스 실패]", { status: hr.status, bodyText });
+          setErr(
+            `Backend 연결 실패\nHTTP ${hr.status}\n${bodyText.slice(0, 2000) || "(본문 없음)"}`,
+          );
+          setSubmitting(false);
+          return;
+        }
+      }
+
       const data = await apiJson("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },

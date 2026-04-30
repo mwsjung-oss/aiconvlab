@@ -52,6 +52,10 @@ jobs:
             echo "::error::$f에 VITE_API_BASE_URL=https://ailab-backend.onrender.com 이 필요합니다."
             exit 1
           fi
+          if ! grep -qE '^VITE_AWS_API_URL=https://' "$f" || grep -qE '^VITE_AWS_API_URL=\s*$' "$f"; then
+            echo "::error::$f에 빈 줄이 아닌 VITE_AWS_API_URL(https://…) 이 필요합니다(AWS APS Backend 공개 도메인)."
+            exit 1
+          fi
           if grep -qF "ai-lab-be.onrender.com" "$f"; then
             echo "::error::옛 호스트 ai-lab-be 는 사용하지마세요. ailab-backend 를 쓰세요."
             exit 1

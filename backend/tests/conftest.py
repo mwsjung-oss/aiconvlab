@@ -1,23 +1,8 @@
-"""Pytest bootstrap: ensure the lightweight gateway package is importable.
+"""Pytest: CI의 DATABASE_URL 우선; 없으면 SQLite 개발 폴백."""
+import os
 
-We intentionally only add ``backend/src`` so that ``import main`` resolves to
-``backend/src/main.py`` (the lightweight gateway app), not the heavy legacy
-``backend/main.py`` which pulls in optional ML dependencies.
-"""
-from __future__ import annotations
+if not os.getenv("DATABASE_URL") and not os.getenv("APS_DATABASE_URL"):
+    os.environ.setdefault("APS_SQLITE_FALLBACK_DEV", "1")
 
-import sys
-from pathlib import Path
-
-_HERE = Path(__file__).resolve()
-_BACKEND_DIR = _HERE.parent.parent
-_SRC_DIR = _BACKEND_DIR / "src"
-
-# Remove the legacy backend dir if some other conftest / tool put it on sys.path
-_legacy = str(_BACKEND_DIR)
-while _legacy in sys.path:
-    sys.path.remove(_legacy)
-
-_src = str(_SRC_DIR)
-if _src not in sys.path:
-    sys.path.insert(0, _src)
+os.environ.setdefault("APS_DISABLE_SQS_PUBLISH", "1")
+os.environ.setdefault("APS_STORAGE_LOCAL", "1")

@@ -1,8 +1,8 @@
 """
-지정한 이메일 사용자의 비밀번호를 DB에서 직접 갱신합니다.
+지정한 이메일 사용자의 비밀번호를 PostgreSQL(DB)에서 직접 갱신합니다.
 
-백엔드가 사용하는 SQLite/DB와 동일한 머신에서 실행해야 합니다.
-(로컬 개발: backend 폴더에서 실행. 연구실 서버: SSH로 접속해 해당 경로에서 실행.)
+`DATABASE_URL`이 가리키는 DB와 같은 환경에서 실행해야 합니다.
+(로컬: backend 폴더에서 실행. 원격 호스트 DB만 쓰므로 해당 `.env`의 연결이 필요합니다.)
 
   python reset_user_password.py user@example.com "새비밀번호"
   python reset_user_password.py user@example.com "새비밀번호" --member-ready

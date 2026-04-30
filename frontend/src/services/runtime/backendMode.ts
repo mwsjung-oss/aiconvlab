@@ -1,89 +1,70 @@
-/** 로그인 화면에서 선택한 백엔드(Cloud: Render / AWS, 로컬 dev 전용: local). */
-
+/**
+ * API 베이스: 운영 단일 Elastic Beanstalk / Cloud URL (`VITE_API_BASE_URL`).
+ * Render·Cloudflare 레거시 라벨만 남기고, 라우팅은 항상 같은 env 를 사용합니다.
+ */
 import {
-  AILAB_RENDER_PRODUCTION_API_ORIGIN,
-  getAwsApiBaseWithOverride,
-  getAwsApiUrl,
-  getLocalApiUrl,
   getPublicApiBaseUrl,
+  getLocalApiUrl,
 } from "../config/publicEnv";
 
 export const BACKEND_MODE_KEY = "ailab_backend_mode";
 
-export type BackendMode = "local" | "render" | "aws";
+/** @deprecated 레거시 UI; 저장값은 모두 cloud 단일로 취급 */
+export type BackendMode = "local" | "render" | "aws" | "cloud";
 
 const trimBase = (u: string) => u.replace(/\/+$/, "");
-
 const localDefault = trimBase(getLocalApiUrl());
-const awsDefault = trimBase(getAwsApiUrl());
+
+function effectiveCloudBase(): string {
+  return trimBase(getPublicApiBaseUrl());
+}
+
+/** 단일 EB/배포 URL. dev 에서 비어 있으면 Vite 프록시 ``/api`` */
+export function getApiBase(_selectedBackend: BackendMode = "cloud"): string {
+  const cloud = effectiveCloudBase();
+  if (import.meta.env.DEV && !cloud) return "";
+  if (!cloud) {
+    throw new Error("VITE_API_BASE_URL 이 설정되지 않았습니다.");
+  }
+  return cloud;
+}
 
 export function getStoredBackendMode(): BackendMode | null {
   if (typeof window === "undefined") return null;
   const v = localStorage.getItem(BACKEND_MODE_KEY);
-  // 기존 연구실(lab) 모드는 Cloud(Render)로 승격 (연구실 API 선택 UI 제거)
-  if (v === "lab" || v === "local") return "render";
-  if (v === "render" || v === "aws") return v;
+  if (v === "local") return "local";
+  if (v === "render" || v === "aws" || v === "cloud") return "cloud";
   return null;
 }
 
 export function setStoredBackendMode(mode: BackendMode): void {
   if (typeof window === "undefined") return;
-  localStorage.setItem(BACKEND_MODE_KEY, mode);
-  document.cookie = `ailab_backend_mode=${mode}; Path=/; SameSite=Lax; Max-Age=31536000`;
+  const unified = mode === "local" ? "local" : "cloud";
+  localStorage.setItem(BACKEND_MODE_KEY, unified === "local" ? "local" : "cloud");
+  document.cookie = `ailab_backend_mode=${unified}; Path=/; SameSite=Lax; Max-Age=31536000`;
 }
 
-/**
- * 브라우저가 호출할 API 오리진.
- * - 개발(`import.meta.env.DEV`)이고 VITE_API_BASE_URL 이 비어 있으면 상대 경로 `/api` → Vite 프록시·쿠키 모드.
- * - 그 외: Cloud(Render) 또는 AWS 베이스를 고릅니다.
- */
 export function getResolvedApiBase(): string {
-  const mode =
-    typeof window !== "undefined" ? getStoredBackendMode() ?? "render" : "render";
-
-  let fixed = trimBase(getPublicApiBaseUrl());
-  /* Pages 빌드에서 VITE_API_BASE_URL 이 비면 상대 /api → 정적 호스트 404(Not Found).
-     Render(Cloud) 모드일 때만 운영 API로 보정. */
-  if (!fixed && import.meta.env.PROD && mode === "render") {
-    fixed = trimBase(AILAB_RENDER_PRODUCTION_API_ORIGIN);
+  const m = typeof window !== "undefined" ? getStoredBackendMode() : null;
+  if (m === "local") {
+    return localDefault;
   }
-
-  if (mode === "aws") {
-    const aws = trimBase(getAwsApiBaseWithOverride());
-    if (aws) return aws;
-    if (import.meta.env.DEV && !fixed) return "";
-    return fixed;
-  }
-  if (import.meta.env.DEV && !fixed) return "";
-  return fixed;
+  const cloud = effectiveCloudBase();
+  if (import.meta.env.DEV && !cloud) return "";
+  return cloud || "";
 }
 
 export function getBackendModeLabel(): string {
-  return "Cloud";
+  return "APS Cloud";
 }
 
-export function getBackendHint(mode: BackendMode): string {
-  if (mode === "local") {
-    return `API → ${localDefault} (개발 시 선택하면 자동 기동을 시도합니다. 이미 떠 있으면 유지됩니다.)`;
-  }
-  if (mode === "render") {
-    const fixed = trimBase(getPublicApiBaseUrl());
-    if (fixed) {
-      return `API → ${fixed} (Cloud-Render 운영 백엔드)`;
-    }
-    return "Cloud-Render: VITE_API_BASE_URL 을 설정하세요.";
-  }
-  if (mode === "aws") {
-    const eff = trimBase(getAwsApiBaseWithOverride());
-    if (eff) {
-      return `API → ${eff} (Cloud AWS. 서버가 켜져 있어야 합니다.)`;
-    }
-    return "Cloud (AWS): 아래에 URL을 저장하거나 `.env`에 VITE_AWS_API_URL 을 설정하세요.";
-  }
-  return "";
+export function getBackendHint(_mode: BackendMode): string {
+  const b = effectiveCloudBase();
+  return b
+    ? `API → ${b} (AWS Elastic Beanstalk / 단일 운영)`
+    : "개발: VITE_API_BASE_URL 비움 → Vite 프록시 /api";
 }
 
-/** 원격(비로컬) 모드인지 */
 export function isRemoteBackendMode(m: BackendMode): boolean {
-  return m === "render" || m === "aws";
+  return m !== "local";
 }

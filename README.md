@@ -1,7 +1,20 @@
 # AILab Platform
 
-AI 실험 플랫폼 저장소입니다.  
-프론트엔드와 백엔드를 분리 운영하며, runtime/provider 추상화 기반으로 local/lab/cloud 확장을 준비합니다.
+AI 실험 플랫폼 저장소입니다.
+
+## APS 표준 운영(클라우드 상시)
+
+- **표준 접속**(학교 PC·iPad·외부 PC·모바일에서 동일): **`VITE_API_BASE_URL`이 가리키는 공개 Backend**를 쓰는 **Cloud Frontend HTTPS URL 한 개**만 즐겨찾기하면 됩니다. VPN·Tailscale·로컬 호스트에 의존하지 않습니다.
+- 노트북 부팅, Windows 시작 프로그램, WSL 에서 매번 `uvicorn` 을 켜 둘 필요가 **없습니다**.
+- 데이터 경로는 **Cloudflare Pages Frontend → Render Backend → 원격 PostgreSQL → Cloudflare R2(S3 호환 객체 저장소)** 로 고정합니다.
+
+자세한 배포 변수·헬스·검증 절차: [`docs/operations/cloud-deployment.md`](docs/operations/cloud-deployment.md)  
+
+로컬만의 개발·디버깅: [`docs/operations/development-modes.md`](docs/operations/development-modes.md)  
+
+예전 시작 프로그램 `.cmd`(Postgres 자동 실행) 해제 방법: [`docs/operations/remove-local-autostart.md`](docs/operations/remove-local-autostart.md)
+
+프론트엔드와 백엔드를 분리 운영하며, runtime/provider 추상화 기반으로 추가 프로바이더를 두고 있습니다.
 
 ## 기술 스택
 
@@ -24,30 +37,20 @@ pip install -r requirements.txt
 python -m uvicorn main:app --reload --host 127.0.0.1 --port 8000
 ```
 
-PostgreSQL 사용 시 `.env`에 `DATABASE_URL`을 설정하세요. Render에서는 대시보드의 **External** Database URL을 그대로 쓰면 됩니다(`postgresql://…`도 자동 정규화).
+로컬 백엔드는 **`DATABASE_URL`(원격 PostgreSQL)** 이 필수입니다. Render에서는 대시보드의 **External** Database URL을 그대로 쓰면 됩니다(`postgresql://…`도 자동 정규화되며 localhost·127.0.0.1 은 허용되지 않습니다).
 
 ```env
 DATABASE_URL=postgresql://user:password@dpg-xxxxx.region.postgres.render.com:5432/dbname
 ```
 
-기존 SQLite(`data/app.db`)를 PostgreSQL로 완전 이관:
+기존 SQLite(`data/app.db`) 데이터를 원격 PostgreSQL로 이관하려면(타깃 URL은 호스트 이름이 포함된 원격 Postgres):
 
 ```powershell
 cd backend
-python migrate_sqlite_to_postgres.py --pg-url "postgresql+psycopg://user:password@host:5432/ailab" --truncate-target
+python migrate_sqlite_to_postgres.py --pg-url "postgresql://user:password@dpg-xxxxx.region.postgres.render.com:5432/dbname" --truncate-target
 ```
 
-Windows 원클릭 자동화(설치+기동+이관+컷오버):
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\migrate_postgres_and_cutover.ps1
-```
-
-로그인 시 PostgreSQL 자동 기동 등록:
-
-```powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\windows\install_postgres_autostart.ps1
-```
+Windows에서는 위 명령을 직접 실행하면 됩니다(부팅 시 자동 Postgres/백엔드 기동 스크립트는 사용하지 않습니다).
 
 ### 2) 프론트엔드
 
@@ -62,6 +65,9 @@ npm run dev
 
 ## 배포/운영 문서
 
+- 클라우드 APS 배포 표준(Render·변수·헬스·스토리지 전환): `docs/operations/cloud-deployment.md`
+- 로컬 개발 분리만(운영 접속 아님): `docs/operations/development-modes.md`
+- Windows 시작 프로그램·로컬 자동 Postgres 제거: `docs/operations/remove-local-autostart.md`
 - 아키텍처 개요: `docs/architecture/overview.md`
 - Phase 1 리팩터: `docs/architecture/refactor-phase1.md`
 - Phase 2 runtime/provider: `docs/architecture/runtime-provider-phase2.md`
@@ -86,9 +92,10 @@ npm run dev
 
 ## 환경변수 원칙
 
-- 프론트 `VITE_*`: 공개값만 허용
-- 백엔드 `.env`: 비밀키/토글 관리
-- provider 기본값: `OPENAI_ENABLED=false`, `GEMINI_ENABLED=false`, `AWS_ENABLED=false`
+- 프론트 `VITE_*`: 공개값만 허용. 운영 빌드(`npm run build`)에서는 **`VITE_API_BASE_URL` 필수** — 공개 HTTPS Backend URL(로컬/사설 IP 금지, 검증: `frontend/src/services/config/apiBaseValidation.ts`).
+- 백엔드 `.env` / Render: `DATABASE_URL`·`CORS_ORIGINS`·JWT·마스터 시드 및 [`docs/operations/cloud-deployment.md`](docs/operations/cloud-deployment.md) 의 **객체 스토리지** 변수.
+- Provider 기본값: `OPENAI_ENABLED=false`, `GEMINI_ENABLED=false`, `AWS_ENABLED=false`
+- **운영**에서는 `STORAGE_BACKEND=s3`(또는 `r2`)와 버킷·액세스 키·**`STORAGE_ENDPOINT_URL`** 이 필수입니다. `STORAGE_ALLOW_EPHEMERAL_DISK=true` 는 컨테이너 디스크만 쓰는 임시 완충값이며 **`AILAB_ENV=production` 에서는 기동 실패**합니다.
 
 ## 경량 LLM Gateway (OpenAI + Gemini 통합)
 

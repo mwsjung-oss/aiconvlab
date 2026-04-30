@@ -103,7 +103,7 @@ def _build_diag_s3_client():
     name="test_s3_connectivity",
     include_in_schema=True,
 )
-def test_s3_upload() -> dict[str, Any]:
+def diagnose_s3_bucket() -> dict[str, Any]:
     missing = collect_missing_s3_test_env_vars()
     if missing:
         raise HTTPException(

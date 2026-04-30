@@ -1,7 +1,9 @@
 """FastAPI 의존성: 현재 사용자, DB."""
 from __future__ import annotations
 
-from fastapi import Depends, HTTPException, status
+import os
+
+from fastapi import Depends, Header, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.orm import Session
 
@@ -98,4 +100,22 @@ def require_admin_panel_token(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="관리자 패널 인증이 필요합니다.",
             headers={"WWW-Authenticate": "Bearer"},
+        )
+
+
+def verify_lab_worker_token(
+    x_lab_worker_token: str | None = Header(default=None, alias="X-Lab-Worker-Token"),
+) -> None:
+    """연구실 Lab Worker 전용 공유 비밀. 강화: API Gateway 또는 mTLS 검토 — docs/aws-secrets.md."""
+
+    secret = (os.getenv("LAB_WORKER_SHARED_SECRET") or "").strip()
+    if not secret:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="연구실 Worker API가 비활성화되어 있습니다. LAB_WORKER_SHARED_SECRET 미설정(EB Secrets 확인).",
+        )
+    if (x_lab_worker_token or "").strip() != secret:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="invalid_lab_worker_secret",
         )

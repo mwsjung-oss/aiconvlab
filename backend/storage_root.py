@@ -1,4 +1,4 @@
-"""실험 데이터·모델·DB 저장 위치. 연구실 서버에서 별도 디스크를 쓰려면 AILAB_STORAGE_ROOT 를 설정."""
+"""실험 데이터·모델·DB 저장 위치. 별도 디스크를 쓰려면 AILAB_STORAGE_ROOT 를 설정."""
 from __future__ import annotations
 
 import os

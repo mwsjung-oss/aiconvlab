@@ -1,0 +1,23 @@
+# AWS Amplify Hosting — APS Frontend
+version: 1
+applications:
+  - appRoot: frontend
+    frontend:
+      phases:
+        preBuild:
+          commands:
+            - npm ci
+        build:
+          commands:
+            - export VITE_API_BASE_URL="${VITE_API_BASE_URL:-}"
+            - export VITE_DEFAULT_EXECUTION_TARGET="${VITE_DEFAULT_EXECUTION_TARGET:-aws}"
+            - export VITE_ENABLE_LAB_GPU="${VITE_ENABLE_LAB_GPU:-true}"
+            - export VITE_ENABLE_LLM_PROVIDER_SELECT="${VITE_ENABLE_LLM_PROVIDER_SELECT:-true}"
+            - npm run build
+      artifacts:
+        baseDirectory: dist
+        files:
+          - "**/*"
+      cache:
+        paths:
+          - node_modules/**/*

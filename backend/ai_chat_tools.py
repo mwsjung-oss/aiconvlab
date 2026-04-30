@@ -69,7 +69,7 @@ def tool_train(
 
     if dry_run:
         try:
-            df = _load_csv(fn, ws.data)
+            df = _load_csv(fn, ws)
         except HTTPException as e:
             return {"ok": False, "dry_run": True, "error": e.detail}
         except Exception as e:
@@ -265,7 +265,7 @@ def tool_preview_columns(user: User, *, filename: str, rows: int = 5) -> dict[st
     ws = workspace_for_user(user)
     ensure_workspace_dirs(ws)
     try:
-        df = _load_csv(filename.strip(), ws.data)
+        df = _load_csv(filename.strip(), ws)
     except HTTPException as e:
         return {"ok": False, "error": e.detail}
     head = df.head(min(max(1, rows), 30))

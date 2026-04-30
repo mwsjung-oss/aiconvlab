@@ -1,4 +1,7 @@
 import RunStatusBadge from "./RunStatusBadge.jsx";
+import {
+  EXECUTION_TARGET_OPTIONS,
+} from "../../services/runtime/executionTargetPref.js";
 
 /**
  * Experiment 전용 상단 스트립: 프로젝트·모델·상태·빠른 액션 + (optional) 서브 내비 슬롯
@@ -22,6 +25,8 @@ export default function ExperimentTopStrip({
   onGoMain,
   onLogout,
   userEmail,
+  executionTarget = "aws",
+  onExecutionTargetChange,
   childrenSubNav,
 }) {
   return (
@@ -52,6 +57,29 @@ export default function ExperimentTopStrip({
                 New Project
               </button>
             </div>
+          </div>
+        </div>
+
+        <div className="experiment-top-strip-cluster experiment-top-strip-cluster--exec">
+          <div className="experiment-top-strip-field">
+            <span className="experiment-top-strip-field-label">
+              학습 실행 위치
+            </span>
+            <label className="experiment-model-label">
+              <select
+                className="experiment-model-select experiment-model-select--wide"
+                value={executionTarget}
+                title="실험(학습) 실행 인프라"
+                aria-label="학습 실행 위치"
+                onChange={onExecutionTargetChange || (() => {})}
+              >
+                {EXECUTION_TARGET_OPTIONS.map((o) => (
+                  <option key={o.value} value={o.value}>
+                    {o.label}
+                  </option>
+                ))}
+              </select>
+            </label>
           </div>
         </div>
 

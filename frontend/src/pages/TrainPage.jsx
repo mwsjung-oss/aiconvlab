@@ -20,6 +20,7 @@ export default function TrainPage({
   error,
   trainResult,
   plotUrl,
+  jobPollPhrase = null,
 }) {
   const featureKeys = Object.keys(featureSelection);
 
@@ -248,6 +249,11 @@ export default function TrainPage({
         )}
       </div>
       {message && <div className="msg ok">{message}</div>}
+      {jobPollPhrase ? (
+        <div className="msg ok" style={{ fontSize: "0.92rem" }}>
+          Job 상태: {jobPollPhrase}
+        </div>
+      ) : null}
       {error && <div className="msg error">{error}</div>}
 
       {trainResult && (

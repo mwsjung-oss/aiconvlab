@@ -1,7 +1,7 @@
 /**
  * /api, /history → 백엔드 (http-proxy-middleware, 스트리밍·multipart 안정적)
  * dev 서버 + vite preview 둘 다 동일 프록시 (LAN에서 preview 시 Failed to fetch 방지)
- * 쿠키 `ailab_backend_mode`: local | render | aws (연구실 lab 모드 제거)
+ * 쿠키 `ailab_backend_mode`: local | render | aws
  */
 import { createProxyMiddleware } from "http-proxy-middleware";
 

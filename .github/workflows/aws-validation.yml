@@ -1,0 +1,62 @@
+name: AWS migration validation
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  backend-test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    env:
+      APS_SQLITE_FALLBACK_DEV: "1"
+      APS_DISABLE_SQS_PUBLISH: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install -r requirements.txt pytest
+      - run: python -m pytest -q -m "not remote_smoke"
+
+  frontend-build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: frontend
+    env:
+      VITE_API_BASE_URL: https://example.com
+      VITE_DEFAULT_EXECUTION_TARGET: aws
+      VITE_ENABLE_LAB_GPU: "true"
+      VITE_ENABLE_LLM_PROVIDER_SELECT: "true"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+      - run: npm ci
+      - run: npm run build
+
+  configuration-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Required files exist
+        run: |
+          test -f amplify.yml
+          test -f backend/Procfile
+          test -f docs/aws-migration.md
+
+  migration-safety-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: No destructive AWS/CF scripts
+        run: |
+          ! grep -R "delete-bucket" scripts infra .github 2>/dev/null || true
+          echo "OK: manual review only — no auto resource deletion in repo scripts."

@@ -10,9 +10,9 @@
     "dev:api:8001": "cd ../backend && python -m uvicorn main:app --reload --host 127.0.0.1 --port 8001",
     "dev:stack": "concurrently -k -n api,vite -c cyan,magenta \"npm run dev:api\" \"npm run dev:web\"",
     "dev:web": "wait-on http://127.0.0.1:8000/api/health -t 120000 -i 300 && vite",
-    "dev:lab": "node ./scripts/dev-web-lab.mjs",
-    "build": "vite build",
-    "preview": "vite preview"
+    "build": "node scripts/assert-vite-env.mjs && vite build",
+    "preview": "vite preview",
+    "test": "node tests/jobUiPhrases.unit.mjs"
   },
   "dependencies": {
     "react": "^18.3.1",

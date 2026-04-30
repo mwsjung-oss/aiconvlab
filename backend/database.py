@@ -1,4 +1,4 @@
-"""데이터베이스 연결 및 세션 (PostgreSQL 우선, 미설정 시 SQLite)."""
+"""데이터베이스 연결: RDS PostgreSQL(운영), SQLite(로컬 개발 선택 폴백)."""
 from __future__ import annotations
 
 import logging
@@ -7,26 +7,18 @@ import re
 from pathlib import Path
 
 from dotenv import load_dotenv
-from sqlalchemy import create_engine, event, text
+from sqlalchemy import create_engine, text
+from sqlalchemy.engine import make_url
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import declarative_base, sessionmaker
 
-from storage_root import STORAGE_ROOT
-
 logger = logging.getLogger(__name__)
 
-# standalone 스크립트/REPL에서도 backend/.env 값을 읽도록 보강
 _BACKEND_ROOT = Path(__file__).resolve().parent
 load_dotenv(_BACKEND_ROOT / ".env")
 
-DB_PATH = STORAGE_ROOT / "data" / "app.db"
-DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-
-_DEFAULT_SQLITE_URL = f"sqlite:///{DB_PATH.as_posix()}"
-
 
 def _normalize_postgres_url(url: str) -> str:
-    """Render External URL 등 `postgresql://` → 드라이버 접두사 `postgresql+psycopg://` 로 통일."""
     u = url.strip()
     if u.startswith("postgresql+psycopg://"):
         return u
@@ -37,63 +29,107 @@ def _normalize_postgres_url(url: str) -> str:
     return u
 
 
-_RAW_DATABASE_URL = (os.getenv("DATABASE_URL") or "").strip()
-DATABASE_URL = (
-    _normalize_postgres_url(_RAW_DATABASE_URL)
-    if _RAW_DATABASE_URL
-    else _DEFAULT_SQLITE_URL
-)
-IS_SQLITE = DATABASE_URL.startswith("sqlite:")
-
-_CONNECT_TIMEOUT = int((os.getenv("DATABASE_CONNECT_TIMEOUT") or "10").strip() or "10")
-
-
 def database_url_for_logs(url: str | None = None) -> str:
-    """로그용 URL(비밀번호 마스킹)."""
     u = url or DATABASE_URL
     try:
+        if "sqlite" in u.lower():
+            return re.sub(r"/([^/]+)$", "/***.sqlite3", u)
         return re.sub(r"://([^:/@]+):([^@]+)@", r"://\1:***@", u)
     except Exception:
         return "<unparseable>"
 
 
-def _warn_production_database_url() -> None:
-    """운영에서 localhost/내부망 Postgres URL 사용 시 명확히 경고."""
-    ailab_env = (os.getenv("AILAB_ENV") or os.getenv("ENVIRONMENT") or "").strip().lower()
-    if ailab_env != "production":
-        return
-    if IS_SQLITE:
-        logger.warning(
-            "AILAB_ENV=production 인데 SQLite를 사용 중입니다. "
-            "Render·운영에서는 PostgreSQL과 DATABASE_URL(External Database URL) 사용을 권장합니다."
+def _is_production_env() -> bool:
+    return (
+        (os.getenv("AILAB_ENV") or os.getenv("ENVIRONMENT") or "").strip().lower()
+        in ("production", "prod")
+    )
+
+
+_raw = (os.getenv("APS_DATABASE_URL") or os.getenv("DATABASE_URL") or "").strip()
+_sqlite_fb = (os.getenv("APS_SQLITE_FALLBACK_DEV") or "").strip().lower() in (
+    "1",
+    "true",
+    "yes",
+)
+if not _raw and _sqlite_fb and not _is_production_env():
+    _data_dir = _BACKEND_ROOT / "data"
+    _data_dir.mkdir(parents=True, exist_ok=True)
+    _raw = f"sqlite+pysqlite:///{(_data_dir / 'aps_dev.sqlite3').as_posix()}"
+    logger.warning(
+        "APS_SQLITE_FALLBACK_DEV 활성: SQLite 개발 DB 파일 %s 사용(운영 RDS 아님).",
+        _data_dir / "aps_dev.sqlite3",
+    )
+
+if not _raw:
+    raise RuntimeError(
+        "APS_DATABASE_URL 또는 DATABASE_URL 이 필요합니다. "
+        "AWS RDS PostgreSQL 연결 문자열을 설정하세요. "
+        "로컬 개발 전용 SQLite는 APS_SQLITE_FALLBACK_DEV=true 와 함께 비워 둘 수 있습니다."
+    )
+
+_IS_SQLITE = _raw.lower().startswith("sqlite")
+
+if _IS_SQLITE:
+    if _is_production_env():
+        raise RuntimeError(
+            "운영(ENVIRONMENT=production)에서는 SQLite를 사용할 수 없습니다. RDS PostgreSQL(APS_DATABASE_URL)을 설정하세요."
         )
+    DATABASE_URL = _raw
+else:
+    DATABASE_URL = _normalize_postgres_url(_raw)
+    if not DATABASE_URL.startswith("postgresql"):
+        raise RuntimeError(
+            "PostgreSQL URL이어야 합니다(postgresql://… 또는 postgres://…). "
+            f"현재={database_url_for_logs(DATABASE_URL)}"
+        )
+
+    _PG_URL = make_url(DATABASE_URL)
+    _HOST = (
+        (_PG_URL.host or "").strip().lower()
+        if _PG_URL.drivername.startswith("postgresql")
+        else ""
+    )
+    _BLOCKED_HOSTS = frozenset({"", "localhost", "127.0.0.1", "::1", "0.0.0.0"})
+    _allow_local_pg = (os.getenv("ALLOW_LOCAL_DATABASE") or "").strip().lower() in (
+        "1",
+        "true",
+        "yes",
+    )
+    _is_prod_like = _is_production_env()
+
+    if _HOST in _BLOCKED_HOSTS:
+        dev_ok = _allow_local_pg and not _is_prod_like
+        if not dev_ok:
+            raise RuntimeError(
+                "DATABASE_URL 원격 호스트만 허용(loopback 불가). "
+                "로컬 Postgres 개발만 ALLOW_LOCAL_DATABASE=true 와 함께 사용하세요. "
+                f"(host={_HOST or '<비어있음>'})"
+            )
+
+
+_CONNECT_TIMEOUT = int((os.getenv("DATABASE_CONNECT_TIMEOUT") or "10").strip() or "10")
+
+
+def _warn_production_database_url() -> None:
+    if not _is_production_env():
         return
     lowered = DATABASE_URL.lower()
-    bad_local = (
-        "localhost" in lowered
-        or "127.0.0.1" in lowered
-        or ".internal" in lowered
-        or ".local" in lowered
-    )
-    if bad_local:
+    bad_internal = ".internal" in lowered or ".local" in lowered
+    if bad_internal and not _IS_SQLITE:
         logger.error(
-            "운영(AILAB_ENV=production)에서 DATABASE_URL이 localhost/내부 호스트를 가리킵니다. "
-            "Render 대시보드의 PostgreSQL **External** Database URL을 DATABASE_URL에 설정하세요. "
-            "(현재=%s)",
+            "운영 DATABASE_URL 이 내부 전용 호스트를 가리킬 수 있습니다. RDS External 엔드포인트 확인. url=%s",
             database_url_for_logs(),
         )
 
 
 _warn_production_database_url()
 
-if IS_SQLITE:
+if _IS_SQLITE:
     engine = create_engine(
         DATABASE_URL,
-        connect_args={
-            "check_same_thread": False,
-            # 동시 쓰기 경합 시 즉시 실패하지 않고 잠시 대기합니다.
-            "timeout": 30,
-        },
+        connect_args={"check_same_thread": False},
+        pool_pre_ping=True,
     )
 else:
     engine = create_engine(
@@ -108,24 +144,6 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
 
-@event.listens_for(engine, "connect")
-def _set_sqlite_pragmas(dbapi_connection, connection_record):  # type: ignore[no-untyped-def]
-    """SQLite 동시성/안정성 관련 PRAGMA를 연결 시 적용."""
-    if not IS_SQLITE:
-        return
-    cursor = dbapi_connection.cursor()
-    try:
-        # 읽기/쓰기 동시성을 개선해 "database is locked" 빈도를 줄입니다.
-        cursor.execute("PRAGMA journal_mode=WAL")
-        # 락 해제 대기 시간을 늘려 일시적 락 경쟁을 흡수합니다.
-        cursor.execute("PRAGMA busy_timeout=30000")
-        # WAL 모드에서 권장되는 동기화 레벨(내구성/성능 균형).
-        cursor.execute("PRAGMA synchronous=NORMAL")
-        cursor.execute("PRAGMA foreign_keys=ON")
-    finally:
-        cursor.close()
-
-
 def get_db():
     db = SessionLocal()
     try:
@@ -135,34 +153,34 @@ def get_db():
 
 
 def test_database_connection() -> None:
-    """서버 기동 시 1회: 연결 가능 여부 확인. 실패 시 예외로 기동을 중단합니다."""
-    label = "SQLite" if IS_SQLITE else "PostgreSQL"
     masked = database_url_for_logs()
+    backend = "SQLite(dev)" if _IS_SQLITE else "PostgreSQL"
     try:
         with engine.connect() as conn:
             conn.execute(text("SELECT 1"))
         logger.info(
-            "데이터베이스 연결 확인 완료 (backend=%s, connect_timeout_s=%s, url=%s)",
-            label,
-            _CONNECT_TIMEOUT if not IS_SQLITE else "N/A(sqlite)",
+            "데이터베이스 연결 확인 완료 (backend=%s, url=%s)",
+            backend,
             masked,
         )
     except OperationalError as e:
+        orig = getattr(e, "orig", None)
+        pgcode = getattr(orig, "pgcode", None) if orig is not None else None
         logger.error(
-            "데이터베이스 연결 실패 (%s). "
-            "Render라면 Internal이 아닌 External URL·비밀번호·DATABASE_URL 동기화를 확인하세요. "
-            "url=%s 원인=%s",
-            label,
+            "PostgreSQL(RDS) 연결 실패 — url=%s | OperationalError=%r | 원인 클래스=%s | pgcode=%s",
             masked,
             e,
+            type(orig).__name__ if orig is not None else None,
+            pgcode,
+        )
+        logger.error(
+            "RDS 접속 점검: RDS 엔드포인트 호스트명·포트(%s), VPC 보안그룹 inbound(5432), "
+            "사용자/비밀번호, RDS Public accessibility / PrivateLink 여부.",
+            DATABASE_URL.split("@")[-1][:80] if "@" in DATABASE_URL else DATABASE_URL[:80],
         )
         raise RuntimeError(
-            f"DATABASE 연결 실패 ({label}). "
-            "postgresql://… External Database URL과 DATABASE_CONNECT_TIMEOUT(기본 10초)을 확인하세요."
+            f"데이터베이스 연결 실패입니다. {backend} URL·방화벽·보안그룹을 확인하세요."
         ) from e
     except Exception:
-        logger.exception(
-            "데이터베이스 연결 테스트 중 예기치 않은 오류 (url=%s)",
-            masked,
-        )
+        logger.exception("데이터베이스 연결 테스트 예외 (url=%s)", masked)
         raise

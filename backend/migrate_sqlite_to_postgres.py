@@ -15,6 +15,23 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+
+def _bootstrap_database_url_from_argv() -> None:
+    """database import 전에 --pg-url을 DATABASE_URL 로 반영(타깃 PG는 원격 호스트만)."""
+
+    argv = sys.argv
+    i = 0
+    while i < len(argv) - 1:
+        if argv[i] == "--pg-url":
+            v = argv[i + 1].strip()
+            if v:
+                os.environ["DATABASE_URL"] = v
+            return
+        i += 1
+
+
+_bootstrap_database_url_from_argv()
+
 from sqlalchemy import MetaData, create_engine, func, select, text
 from sqlalchemy.engine import Engine
 

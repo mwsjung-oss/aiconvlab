@@ -34,4 +34,16 @@ services:
         value: false
       - key: AWS_ENABLED
         value: false
+      - key: STORAGE_BACKEND
+        value: s3
+      - key: STORAGE_BUCKET
+        sync: false
+      - key: STORAGE_ENDPOINT_URL
+        sync: false
+      - key: STORAGE_REGION
+        sync: false
+      - key: STORAGE_ACCESS_KEY_ID
+        sync: false
+      - key: STORAGE_SECRET_ACCESS_KEY
+        sync: false
 

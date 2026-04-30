@@ -1,28 +1,9 @@
 /**
  * 개발 모드 전용:
- * - 쿠키 ailab_backend_mode=local|lab|aws 에 따라 /api, /history 를 로컬·연구실·Cloud 로 프록시 (브라우저 CORS 회피)
- * - POST /__ailab/dev/start-local-backend → 로컬 uvicorn 자동 기동
  * - GET /__ailab/dev/remote-health?kind=render|aws → Node 에서 원격 /api/health 확인
  */
-import net from "node:net";
-import path from "node:path";
-import { spawn } from "node:child_process";
-import { fileURLToPath } from "node:url";
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const backendRoot = path.resolve(__dirname, "../backend");
-
 function trim(u) {
   return (u || "").replace(/\/+$/, "");
-}
-
-function portHasListener(port, host = "127.0.0.1") {
-  return new Promise((resolve) => {
-    const s = net.createConnection({ port, host }, () => {
-      s.end();
-      resolve(true);
-    });
-    s.on("error", () => resolve(false));
-  });
 }
 
 function isLocalReq(req) {
@@ -142,70 +123,11 @@ export function ailabDevApiPlugin(opts = {}) {
               res.end(
                 JSON.stringify({
                   ok: false,
-                  message: `노트북에서 원격 주소로 접속하지 못했습니다: ${e.message}. VPN·망·IP(${base})를 확인하세요.`,
+                  message: `개발 서버(Node)에서 원격 주소로 접속하지 못했습니다: ${e.message}. VPN·망·IP(${base})를 확인하세요.`,
                 })
               );
             }
           })();
-          return;
-        }
-
-        if (pathOnly.startsWith("/__ailab/dev/start-local-backend")) {
-          if (req.method !== "POST") {
-            res.statusCode = 405;
-            res.end();
-            return;
-          }
-          if (!isLocalReq(req)) {
-            res.statusCode = 403;
-            res.setHeader("Content-Type", "application/json; charset=utf-8");
-            res.end(JSON.stringify({ ok: false, message: "localhost 전용입니다." }));
-            return;
-          }
-
-          (async () => {
-            const listening = await portHasListener(8000);
-            if (listening) {
-              res.setHeader("Content-Type", "application/json; charset=utf-8");
-              res.end(
-                JSON.stringify({
-                  ok: true,
-                  already: true,
-                  message: "이미 127.0.0.1:8000 에서 API가 수신 중입니다.",
-                })
-              );
-              return;
-            }
-
-            const child = spawn(
-              "python",
-              ["-m", "uvicorn", "main:app", "--reload", "--host", "127.0.0.1", "--port", "8000"],
-              {
-                cwd: backendRoot,
-                shell: true,
-                detached: true,
-                stdio: "ignore",
-                windowsHide: true,
-              }
-            );
-            child.unref();
-            child.on("error", (err) => {
-              console.error("[ailab-dev-api] uvicorn spawn:", err.message);
-            });
-
-            res.setHeader("Content-Type", "application/json; charset=utf-8");
-            res.end(
-              JSON.stringify({
-                ok: true,
-                started: true,
-                message: "로컬 uvicorn 프로세스를 시작했습니다.",
-              })
-            );
-          })().catch((e) => {
-            res.statusCode = 500;
-            res.setHeader("Content-Type", "application/json; charset=utf-8");
-            res.end(JSON.stringify({ ok: false, message: String(e?.message || e) }));
-          });
           return;
         }
 
