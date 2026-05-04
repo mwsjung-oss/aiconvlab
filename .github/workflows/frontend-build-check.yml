@@ -22,8 +22,9 @@ jobs:
         run: npm ci
       - name: Build
         env:
-          VITE_APP_ENV: production
-          VITE_API_BASE_URL: https://ailab-backend.onrender.com
-          VITE_AWS_API_URL: https://your-aws-backend-domain.com
-        run: npm run build
-
+          CI_PLACEHOLDER: ${{ vars.AWS_EB_PUBLIC_API_URL || 'https://ci-frontend-build-check.example.invalid' }}
+        run: |
+          export VITE_APP_ENV=production
+          export VITE_API_BASE_URL="$CI_PLACEHOLDER"
+          export VITE_AWS_API_URL="$CI_PLACEHOLDER"
+          npm run build

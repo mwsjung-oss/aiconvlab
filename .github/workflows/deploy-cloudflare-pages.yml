@@ -1,7 +1,14 @@
-# main 푸시 시 frontend 빌드 후 Cloudflare Pages 프로덕션에 업로드합니다.
-# Cloudflare·GitHub 토큰 3개만 Secret 이며, API URL 은 committed frontend/.env.production 에 둡니다.
+name: Deploy frontend (Cloudflare Pages — ROLLBACK / legacy only)
 
-name: Deploy frontend (Cloudflare Pages)
+#
+# =====================================================================
+#  ROLLBACK·레거시 전용 워크플로 (Primary 운영: AWS Amplify Hosting)
+#
+# - Primary SPA 배포 및 DNS 전환은 docs/aws-cutover-runbook.md 를 따릅니다.
+# - 과거 클라우드 스택 재가동·긴급 롤백 시에만 이 워크플로 또는 Cloudflare 연동 빌드를 사용합니다.
+# - 실운영 URL과 비밀값은 레포지토리나 주석에 넣지 마세요(GitHub Secrets / Variables 이용).
+# =====================================================================
+#
 
 on:
   push:
@@ -23,7 +30,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Check deploy configuration
+      - name: Check deploy configuration (Cloudflare credentials)
         id: meta
         run: |
           missing=0
@@ -34,7 +41,7 @@ jobs:
             echo "do_deploy=true" >> "$GITHUB_OUTPUT"
           else
             echo "do_deploy=false" >> "$GITHUB_OUTPUT"
-            echo "::notice::Cloudflare Pages 자동 배포를 켜려면 위 Secrets를 GitHub 저장소에 설정하세요."
+            echo "::notice::Rollback-only: Cloudflare Pages 자동 업로드를 켜려면 위 Secrets 저장소에 설정하세요."
           fi
 
       - uses: actions/setup-node@v4
@@ -44,26 +51,30 @@ jobs:
           cache: npm
           cache-dependency-path: frontend/package-lock.json
 
-      - name: Verify API base in frontend/.env.production
+      - name: Ensure frontend/.env.production (복사 또는 롤백 브랜치에 커밋)
         if: steps.meta.outputs.do_deploy == 'true'
         run: |
           f="frontend/.env.production"
-          if ! grep -qF "VITE_API_BASE_URL=https://ailab-backend.onrender.com" "$f"; then
-            echo "::error::$f에 VITE_API_BASE_URL=https://ailab-backend.onrender.com 이 필요합니다."
+          if [ ! -f "$f" ]; then
+            cp frontend/.env.production.example "$f"
+            echo "::notice::${f} 가 없어 .env.production.example 을 복사했습니다. 롤백 시 레거시 백엔드 HTTPS 로 반드시 편집하세요."
+          fi
+
+      # Rollback 빌드: 레거시 백엔드 호스트(URL)만 잠시 허용. Primary AWS 전환 브랜치에서는 필요 시 수동 교체 후 실행.
+      - name: Verify API env keys (frontend/.env.production)
+        if: steps.meta.outputs.do_deploy == 'true'
+        run: |
+          f="frontend/.env.production"
+          if [ ! -f "$f" ]; then
+            echo "::error::$f 파일이 필요합니다(AWS 진행 브랜치는 placeholder 또는 실제 값이 포함된 파일 포함)."
             exit 1
           fi
-          if ! grep -qE '^VITE_AWS_API_URL=https://' "$f" || grep -qE '^VITE_AWS_API_URL=\s*$' "$f"; then
-            echo "::error::$f에 빈 줄이 아닌 VITE_AWS_API_URL(https://…) 이 필요합니다(AWS APS Backend 공개 도메인)."
-            exit 1
-          fi
-          if grep -qF "ai-lab-be.onrender.com" "$f"; then
-            echo "::error::옛 호스트 ai-lab-be 는 사용하지마세요. ailab-backend 를 쓰세요."
-            exit 1
-          fi
-          if grep -qF "labapi-backend-k62f.onrender.com" "$f"; then
-            echo "::error::폐기된 Render 서비스 labapi-backend-k62f 는 404 입니다. VITE_API_BASE_URL 을 https://ailab-backend.onrender.com 으로 두세요."
-            exit 1
-          fi
+          for key in VITE_API_BASE_URL VITE_AWS_API_URL; do
+            if ! grep -qE "^${key}=https://" "$f"; then
+              echo "::error::$f 에 ${key}=https://... 가 필요합니다."
+              exit 1
+            fi
+          done
 
       - name: Install and build frontend
         if: steps.meta.outputs.do_deploy == 'true'

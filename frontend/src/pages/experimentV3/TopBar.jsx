@@ -127,7 +127,7 @@ export default function TopBar({
  * - 2개 버튼을 좁은 pill 에 담아 헤더 우측(홈 버튼 왼쪽)에 배치한다.
  * - `health.{openai,gemini}` 가 false 면 해당 버튼 옆에 노란 점을 표시해
  *   "서버에 API 키 미등록" 을 알려 준다(기능 자체는 허용 — 관리자가 키를
- *   Render 에 넣는 즉시 동작하므로).
+ *   배포 환경에 넣는 즉시 동작하므로).
  */
 function AiSwitch({ value, onChange, health }) {
   const items = [
@@ -142,7 +142,7 @@ function AiSwitch({ value, onChange, health }) {
       (id === "gemini" && health?.gemini);
     return ok
       ? `${id} API 키가 서버에 등록되어 있습니다.`
-      : `${id} API 키가 서버에 등록되어 있지 않습니다 (Render 환경변수 확인 필요).`;
+      : `${id} API 키가 서버에 등록되어 있지 않습니다 (백엔드 EB 환경 변수 확인 필요).`;
   };
   return (
     <div

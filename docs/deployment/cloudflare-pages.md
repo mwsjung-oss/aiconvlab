@@ -1,8 +1,11 @@
-# Cloudflare Pages Deployment Guide
+# Cloudflare Pages Deployment Guide (**ROLLBACK / legacy**)
+
+> **Primary 운영 Frontend 는 AWS Amplify Hosting** 입니다 (`amplify.yml`, `docs/aws-cutover-runbook.md`).  
+> 이 문서는 **Cloudflare Pages 롤백·레거시 절차** 보존용입니다.
 
 ## 목적
 
-프론트엔드를 Cloudflare Pages 정적 호스팅으로 배포하고, 백엔드는 별도 퍼블릭 서비스로 운영합니다.
+레거시 경로에서 프론트엔드를 Cloudflare Pages 로 배포하고, 백엔드는 별도 퍼블릭 서비스(URL)로 두는 방법을 적어 둡니다.
 
 ## 전제
 
@@ -17,9 +20,10 @@
    - Root directory: `frontend`
    - Build command: `npm ci && npm run build`
    - Build output directory: `dist`
-3. Environment variables (Pages UI)
+3. Environment variables (Pages UI · 롤백 시)
    - `VITE_APP_ENV=production`
    - `VITE_API_BASE_URL=https://<public-backend-domain>`
+   - `VITE_AWS_API_URL=https://<public-backend-domain>` (단일 백엔드면 보통 동일 값)
    - `VITE_LAB_API_URL=https://aiconvlab.com/api` (연구실 모드 기본 API; localStorage override가 없을 때 사용)
 4. SPA fallback
    - `frontend/public/_redirects` 포함 (`/* /index.html 200`)
@@ -40,8 +44,8 @@
 |------|------|
 | `CLOUDFLARE_API_TOKEN` | Account → API Tokens — **Cloudflare Pages:Edit** 권한 포함 |
 | `CLOUDFLARE_ACCOUNT_ID` | 대시보드 오른쪽 사이드바 또는 계정 개요 |
-| `CLOUDFLARE_PAGES_PROJECT_NAME` | Pages 프로젝트 이름(문자열) |
-| `VITE_API_BASE_URL` | 공개 백엔드 오리진, 예: `https://your-api.onrender.com` (끝 슬래시 없음) |
+| `CLOUDFLARE_PAGES_PROJECT_NAME` | Pages 프로젝트 이름 |
+| (빌드 시) `VITE_API_BASE_URL`, `VITE_AWS_API_URL` | 롤백 대상 Backend 공개 HTTPS — **Amplify 표와 동일 키** |
 
 Secrets 가 하나라도 비어 있으면 해당 워크플로는 **배포를 건너뛰고** 성공으로 종료합니다(기존 Cloudflare Git 연동만 쓰는 경우와 공존 가능).
 

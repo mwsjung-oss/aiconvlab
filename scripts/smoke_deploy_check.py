@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 배포 후 스모크 점검(선택값).
-  APS_API_ORIGIN=https://your-backend.onrender.com python scripts/smoke_deploy_check.py
+  APS_API_ORIGIN=https://YOUR-EB-HOST.elasticbeanstalk.com python scripts/smoke_deploy_check.py
 """
 from __future__ import annotations
 
@@ -35,8 +35,8 @@ def main() -> int:
     api = (os.getenv("APS_API_ORIGIN") or "").strip().rstrip("/") or ""
     if not api:
         print(
-            "[ERROR] APS_API_ORIGIN 또는 환경 변수로 공개 Backend URL 을 설정하세요. "
-            "예: APS_API_ORIGIN=https://ailab-backend.onrender.com python scripts/smoke_deploy_check.py",
+            "[ERROR] APS_API_ORIGIN 또는 환경 변수로 공개 Backend HTTPS URL 을 설정하세요. "
+            "예: APS_API_ORIGIN=https://your-eb.env.region.elasticbeanstalk.com python scripts/smoke_deploy_check.py",
             file=sys.stderr,
         )
         return 2

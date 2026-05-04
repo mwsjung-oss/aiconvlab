@@ -175,7 +175,7 @@ export default function ActivityWorkspace({
              해야 하는지" 바로 보이도록 힌트를 붙여 준다. */
           const looksLikeMissingKey = /OPENAI_API_KEY|GEMINI_API_KEY/i.test(raw);
           const hint = looksLikeMissingKey
-            ? `\n\n[관리자 안내] Render 백엔드 환경변수에 ${
+            ? `\n\n[관리자 안내] 백엔드(예: EB) 환경 변수에 ${
                 aiProvider === "openai" ? "OPENAI_API_KEY" : "GEMINI_API_KEY"
               } 가 설정되어 있어야 합니다. 저장 후 재배포하면 즉시 동작합니다.`
             : "";

@@ -1,6 +1,6 @@
 /**
- * API 베이스: 운영 단일 Elastic Beanstalk / Cloud URL (`VITE_API_BASE_URL`).
- * Render·Cloudflare 레거시 라벨만 남기고, 라우팅은 항상 같은 env 를 사용합니다.
+ * API 베이스: 운영 단일 AWS EB(또는 공개 API) URL — `VITE_API_BASE_URL`.
+ * 개발 프록시 쿠키 모드(`render` 레이블 등)은 dev 전용 과거 호환입니다.
  */
 import {
   getPublicApiBaseUrl,
@@ -60,9 +60,7 @@ export function getBackendModeLabel(): string {
 
 export function getBackendHint(_mode: BackendMode): string {
   const b = effectiveCloudBase();
-  return b
-    ? `API → ${b} (AWS Elastic Beanstalk / 단일 운영)`
-    : "개발: VITE_API_BASE_URL 비움 → Vite 프록시 /api";
+  return b ? `API → ${b} (AWS EB / 운영 원본)` : "개발: VITE_API_BASE_URL 비움 → Vite 프록시 /api";
 }
 
 export function isRemoteBackendMode(m: BackendMode): boolean {

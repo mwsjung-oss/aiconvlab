@@ -147,7 +147,7 @@ export async function requestJson<T = any>(
         "서버에 연결하지 못했습니다(Failed to fetch). " +
         "로컬 모드면 백엔드(uvicorn)가 켜져 있고 `npm run dev` 또는 `vite preview`로 " +
         "같은 주소·포트에서 프론트를 연 뒤 다시 시도하세요. " +
-        "다른 도메인에 API만 둔 배포라면 빌드 시 VITE_API_BASE_URL 을 설정해야 합니다.";
+        "별도 도메인에만 API를 두는 SPA 배포에서는 빌드 시 VITE_API_BASE_URL 과 VITE_AWS_API_URL 을 설정해야 합니다.";
       logApiFailure(url, undefined, friendly);
       throw new Error(friendly);
     }

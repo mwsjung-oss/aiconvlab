@@ -1,6 +1,8 @@
-# Cloudflare Pages Template
+# Cloudflare Pages (ROLLBACK / legacy Frontend only)
 
-This folder contains minimal templates for hosting only the frontend on Cloudflare Pages.
+**Primary 운영 프론트는 AWS Amplify Hosting**입니다. 자세한 절차는 `docs/aws-cutover-runbook.md` 를 따릅니다.
+
+이 디렉터리 자료와 `.github/workflows/deploy-cloudflare-pages.yml` 은 **DNS·긴급 롤백 시** Cloudflare SPA 를 다시 빌드·배포할 때 참고합니다.
 
 ## Build settings
 
@@ -9,16 +11,17 @@ This folder contains minimal templates for hosting only the frontend on Cloudfla
 - Build command: `npm ci && npm run build`
 - Build output directory: `dist`
 
-## Required environment variables (Pages UI → Settings → Environment Variables)
+## Environment variables (롤백 빌드 시)
 
-**Production 과 Preview 빌드 모두** 다음이 설정되어야 합니다. 누락 시 `npm run build` 단계에서 `VITE_AWS_API_URL` 검증 때문에 **빌드가 실패** 합니다.
+롤백 대상인 **실제 레거시 백엔드 HTTPS URL** 을 콘솔에 넣습니다(레포에는 비밀·URL 문자열 커밋 금지).
 
-| Variable | Example | Notes |
-|----------|---------|--------|
-| `VITE_APP_ENV` | `production` | 선택(기본 프로덕션 느낌 명시용). |
-| `VITE_API_BASE_URL` | `https://ailab-backend.onrender.com` | Cloud(Render) APS Backend HTTPS 오리진(끝 슬래시 없음). |
-| `VITE_AWS_API_URL` | `https://your-aws-deployed-backend.example.com` | **필수.** AWS에 올린 동일 레포 APS Backend 의 공개 HTTPS URL. 사용자 입력 아님. |
+| Variable | 예시 역할 |
+|----------|------------|
+| `VITE_APP_ENV` | `production` |
+| `VITE_API_BASE_URL` | 롤백 시 사용 중인 Backend HTTPS 오리진 |
+| `VITE_AWS_API_URL` | 정책상 필수 — 단일 호스트 롤백 시 **보통 동일 값** |
+| 기능 플래그 | 필요 시 Amplify 설정과 동일 키 |
 
-`frontend/.env.production` 에 같은 키가 있으면 **Pages 대시보드 값이 우선** 하는 경우가 있어, 오래된 변수가 남아 있으면 한쪽을 정리해야 합니다.
+`frontend/.env.production` 과 Pages 대시보드 값 우선 순위 충돌이 나지 않도록, 롤백 브랜치에서 명시적으로 정리하세요.
 
-Do not put secrets in `VITE_*` variables.
+`VITE_*` 에 시크릿을 넣지 마세요.

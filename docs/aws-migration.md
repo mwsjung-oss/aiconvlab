@@ -4,15 +4,15 @@
 
 APS(AI Practice Studio)를 **Cloudflare Pages + Render** 중심에서 **AWS 단일 운영(Amplify Hosting + Elastic Beanstalk + RDS + S3 + SQS)** 으로 이전하여 운영 단순화와 보안·비밀관리 일원화를 달성합니다.
 
-## 이전 구조(레거시)
+## 이전 구조(레거시 · 롤백용으로 유지)
 
 - Frontend: Cloudflare Pages
 - Backend: Render
 - 과거 환경변수·플러그인 레퍼런스: `docs/cloudflare-render-retirement.md`, `infra/cloudflare/README.md`
 
-## 목표 구조
+## 목표 구조 (Primary 운영)
 
-- **Frontend**: AWS Amplify Hosting (`amplify.yml`)
+- **Frontend**: AWS Amplify Hosting (`amplify.yml`) — 상세 `docs/aws-cutover-runbook.md`
 - **Backend**: AWS Elastic Beanstalk + FastAPI (`backend/Procfile`)
 - **DB**: Amazon RDS PostgreSQL (`APS_DATABASE_URL`)
 - **Storage**: Amazon S3 (`backend/aps_ops/storage/s3_storage.py`)

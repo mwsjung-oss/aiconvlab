@@ -33,7 +33,7 @@
 |------|----------------|------|
 | Elastic Beanstalk (API) | Secrets Manager `aps/prod/backend` 또는 EB 환경 속성 | DB URL, JWT, SQS 두 URL, S3 버킷명, `LAB_WORKER_SHARED_SECRET`, LLM 키 |
 | Lab GPU Worker | 서버 OS 환경변수 또는 Parameter Store → 배포 스크립트 주입 | `APS_BACKEND_URL`, 같은 `LAB_WORKER_SHARED_SECRET`, `SQS_LAB_GPU_JOBS_URL`, AWS 자격 증명(역할 권장) |
-| Amplify Hosting | 앱 빌드 환경변수 (비밀 아님) | `VITE_API_BASE_URL`, `VITE_DEFAULT_EXECUTION_TARGET`, feature flags |
+| Amplify Hosting | 앱 빌드 환경변수 (비밀 아님) | `VITE_API_BASE_URL`, `VITE_AWS_API_URL`, `VITE_DEFAULT_EXECUTION_TARGET`, feature flags (`docs/aws-cutover-runbook.md`) |
 | GitHub Actions | 퍼블릭 CI 전용, 시크릿 최소 | 검증 워크플로만; 실제 AWS 키는 OIDC·수동 배포 권장 |
 
 ## GitHub Actions

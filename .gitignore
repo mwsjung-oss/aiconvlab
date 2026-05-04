@@ -17,6 +17,7 @@ backend/.env
 backend/.env.local
 frontend/.env
 frontend/.env.local
+frontend/.env.production
 
 # Data & artifacts (keep folders via .gitkeep)
 backend/data/*.csv

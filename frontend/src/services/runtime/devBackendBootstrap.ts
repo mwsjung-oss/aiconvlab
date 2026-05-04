@@ -1,4 +1,4 @@
-/** 개발 시 Render/AWS 원격 헬스 확인(Vite 플러그인 경유 또는 브라우저 직접) */
+/** 개발 시 AWS EB 원격 헬스 확인(Vite 플러그인 경유 또는 브라우저 직접) */
 
 import { getPublicApiBaseUrl } from "../config/publicEnv";
 
@@ -66,7 +66,7 @@ async function probeRemoteHealthDirect(
       if (health.status === 404 && openapi.status === 404) {
         return {
           ok: false,
-          message: `${remoteName}: 해당 URL에서 API를 찾을 수 없습니다(404). Render·서버가 기동 중인지, VITE_API_BASE_URL(또는 AWS 저장 URL)이 실제 백엔드 주소와 일치하는지 확인하세요.`,
+          message: `${remoteName}: 해당 URL에서 API를 찾을 수 없습니다(404). 서버 기동 여부와 VITE_API_BASE_URL·VITE_AWS_API_URL 과 실제 백엔드 주소 일치 여부를 확인하세요.`,
         };
       }
       return {
@@ -86,13 +86,13 @@ async function probeRemoteHealthDirect(
   }
   const onProd =
     typeof window !== "undefined" && import.meta.env.PROD && window.location?.origin
-      ? ` 현재 사이트: ${window.location.origin} — 백엔드 Render의 CORS_ORIGINS 에 이 주소(및 www)가 포함돼 있어야 합니다. aiconvlab.com 과 aiconlab.com 은 서로 다른 오리진입니다.`
+      ? ` 현재 사이트: ${window.location.origin} — 프런트 오리진이 백엔드 EB 의 CORS_ORIGINS 에 포함돼 있는지 확인하세요. 커스텀 도메인과 Amplify 도메인은 서로 다른 오리진입니다.`
       : "";
   const devLanHint =
     /failed to fetch/i.test(lastErr) &&
     typeof window !== "undefined" &&
     import.meta.env.DEV
-      ? " 같은 Wi‑Fi에서 `http://(PC의 LAN IP):5174`로 접속 중이면, Render CORS(백엔드 최신 배포)와 브라우저(확장·광고 차단)을 확인하세요."
+      ? " 같은 Wi‑Fi에서 `http://(PC의 LAN IP):5174`로 접속 중이면, EB CORS(백엔드 최신 배포)와 브라우저(확장·광고 차단)을 확인하세요."
       : "";
   const corsHint = /failed to fetch/i.test(lastErr) ? `${onProd}${devLanHint}` : "";
   return {
@@ -151,13 +151,7 @@ export async function ensureRemoteBackendReachable(
         ok: !!j.ok,
         message:
           j.message ||
-          (j.ok
-            ? kind === "render"
-              ? "Cloud (Render) API에 연결되었습니다."
-              : "Cloud (AWS) API에 연결되었습니다."
-            : kind === "render"
-              ? "Cloud (Render) 확인 실패"
-              : "Cloud (AWS) 확인 실패"),
+          (j.ok ? "APS Backend API에 연결되었습니다." : `APS Backend(${kind}) 원격 헬스 확인 실패`),
       };
     } catch (e) {
       return {

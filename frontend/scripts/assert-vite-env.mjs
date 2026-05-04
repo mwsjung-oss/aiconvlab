@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-/** APS: 프로덕션 빌드 전 `VITE_API_BASE_URL` 필수 검증 */
+/** APS: 프로덕션 빌드 전 VITE 공개 오리진 필수 검증 (AWS EB 권장) */
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -26,12 +26,22 @@ function parseProduction(key) {
   return "";
 }
 
-const fromShell =
-  process.env.VITE_API_BASE_URL && String(process.env.VITE_API_BASE_URL).trim();
-const raw = fromShell || parseProduction("VITE_API_BASE_URL");
-if (!raw) {
-  console.error(
-    "ERROR: VITE_API_BASE_URL is required (AWS Elastic Beanstalk public HTTPS API).",
-  );
-  process.exit(1);
+function requireHttps(key, hint) {
+  const fromShell = process.env[key] && String(process.env[key]).trim();
+  const raw = fromShell || parseProduction(key);
+  if (!raw) {
+    console.error(`ERROR: ${key} is required (${hint}).`);
+    console.error(`       Use Amplify/GitHub Actions env injection or frontend/.env.production (.example 참고)`);
+    process.exit(1);
+  }
+  if (!raw.startsWith("https://")) {
+    console.error(`ERROR: ${key} must use https:// in production builds (got "${raw}")`);
+    process.exit(1);
+  }
 }
+
+requireHttps("VITE_API_BASE_URL", "browser → API (Elastic Beanstalk public HTTPS 등)");
+requireHttps(
+  "VITE_AWS_API_URL",
+  "AWS 전용 브라우저 경로 분기 등 — 단일 EB면 VITE_API_BASE_URL 과 동일 URL",
+);

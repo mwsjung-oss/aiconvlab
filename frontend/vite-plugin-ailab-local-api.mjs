@@ -1,6 +1,7 @@
 /**
  * 개발 모드 전용:
- * - GET /__ailab/dev/remote-health?kind=render|aws → Node 에서 원격 /api/health 확인
+ * GET /__ailab/dev/remote-health?kind=render|aws → Node 에서 원격 /api/health 확인
+ * kind=render → VITE_API_BASE_URL , kind=aws → VITE_AWS_API_URL
  */
 function trim(u) {
   return (u || "").replace(/\/+$/, "");
@@ -16,14 +17,13 @@ function isLocalReq(req) {
   );
 }
 
-/** LAN 에서 Vite(예: :5174) — 원격/탭으로 접속 시 remote-health 가 Node 쪽에서 Render를 확인 */
 function isAllowedDevRemoteClient(req) {
   if (isLocalReq(req)) return true;
   const h = (req.socket?.remoteAddress || "").replace(/^::ffff:/, "");
   if (/^192\.168\.\d{1,3}\.\d{1,3}$/.test(h)) return true;
   if (/^10\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(h)) return true;
   if (
-    /^172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3}$/.test(
+    /^172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(
       h,
     )
   )
@@ -31,15 +31,15 @@ function isAllowedDevRemoteClient(req) {
   return false;
 }
 
-/** /api/health 가 없거나 404/5xx 일 때 FastAPI 표준 /openapi.json 으로 연결 여부 확인 */
 async function probeRemoteBackend(baseUrl, kind = "render") {
   const b = trim(baseUrl);
-  const shortLabel = kind === "aws" ? "Cloud (AWS)" : "Cloud (Render)";
+  const shortLabel =
+    kind === "aws" ? "Cloud (AWS, VITE_AWS_API_URL)" : "공개 API (VITE_API_BASE_URL)";
   const tryFetch = (path) => fetch(`${b}${path}`, { redirect: "follow" });
 
   const health = await tryFetch("/api/health");
   if (health.ok) {
-    return { ok: true, message: `${shortLabel} API에 연결되었습니다.` };
+    return { ok: true, message: `${shortLabel}에 연결되었습니다.` };
   }
 
   const openapi = await tryFetch("/openapi.json");
@@ -56,7 +56,7 @@ async function probeRemoteBackend(baseUrl, kind = "render") {
   if (health.status === 404 && openapi.status === 404) {
     return {
       ok: false,
-      message: `${shortLabel}: 해당 URL에서 API를 찾을 수 없습니다(404). 주소(${b})·Render/배포 URL이 올바른지 확인하세요.`,
+      message: `${shortLabel}: 해당 URL에서 API를 찾을 수 없습니다(404). 주소(${b})·배포 URL이 올바른지 확인하세요.`,
     };
   }
   return {
@@ -67,7 +67,7 @@ async function probeRemoteBackend(baseUrl, kind = "render") {
 
 export function ailabDevApiPlugin(opts = {}) {
   const awsTarget = trim(opts.awsApiUrl || "");
-  const renderTarget = trim(opts.renderApiUrl || "");
+  const remoteTarget = trim(opts.remoteApiUrl || opts.renderApiUrl || "");
 
   return {
     name: "ailab-dev-api",
@@ -91,14 +91,14 @@ export function ailabDevApiPlugin(opts = {}) {
           const u = new URL(url, "http://vite.local");
           const k = (u.searchParams.get("kind") || "render").toLowerCase();
           const kind = k === "aws" || k === "render" ? k : "render";
-          const base = kind === "aws" ? awsTarget : renderTarget;
+          const base = kind === "aws" ? awsTarget : remoteTarget;
           if (kind === "aws" && !base) {
             res.setHeader("Content-Type", "application/json; charset=utf-8");
             res.end(
               JSON.stringify({
                 ok: false,
                 message: "VITE_AWS_API_URL 이 비어 있습니다. `.env`에 설정하세요.",
-              })
+              }),
             );
             return;
           }
@@ -108,8 +108,8 @@ export function ailabDevApiPlugin(opts = {}) {
               JSON.stringify({
                 ok: false,
                 message:
-                  "VITE_API_BASE_URL 이 비어 있습니다. `frontend/.env`에 Cloud Render API 베이스 URL(예: https://ailab-backend.onrender.com)을 넣고 Vite 를 다시 켜 주세요.",
-              })
+                  "VITE_API_BASE_URL 이 비어 있습니다. 개발 프록시 테스트 시 `frontend/.env` 에 EB 공개 API 베이스 URL(https) 을 설정하세요.",
+              }),
             );
             return;
           }
@@ -124,7 +124,7 @@ export function ailabDevApiPlugin(opts = {}) {
                 JSON.stringify({
                   ok: false,
                   message: `개발 서버(Node)에서 원격 주소로 접속하지 못했습니다: ${e.message}. VPN·망·IP(${base})를 확인하세요.`,
-                })
+                }),
               );
             }
           })();

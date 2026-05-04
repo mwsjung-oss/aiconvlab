@@ -1,6 +1,6 @@
 # AWS 컷오버 체크리스트
 
-DNS를 Amplify·EB로 전환하기 **전에** 확인합니다.
+DNS를 Amplify·EB로 전환하기 **전에** 확인합니다. 전체 단계 및 입력 위치 요약은 **`docs/aws-cutover-runbook.md`** 를 참고합니다.
 
 ## 기능
 
@@ -12,7 +12,7 @@ DNS를 Amplify·EB로 전환하기 **전에** 확인합니다.
 
 ## 설정
 
-- [ ] Amplify 환경변수: `VITE_API_BASE_URL` = 실제 EB HTTPS URL(사용자 입력 UI 없음).
+- [ ] Amplify 환경변수: `VITE_API_BASE_URL` 및 `VITE_AWS_API_URL` = 실제 EB HTTPS URL(단일 호스트 시 동일, 사용자 입력 UI 없음).
 - [ ] EB 환경: RDS·SQS·S3·Secrets 연결 문자열 검증 완료.
 - [ ] CORS: 프런트 프로덕션 도메인만 허용.
 

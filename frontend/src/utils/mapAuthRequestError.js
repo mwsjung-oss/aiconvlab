@@ -1,6 +1,6 @@
 /**
  * 로그인/가입 등 인증 API 실패 시 사용자-facing 메시지.
- * HTTP 404는 네트워크 실패와 구분해 Render·URL 설정 문제를 안내한다.
+ * HTTP 404는 네트워크 실패와 구분해 URL·배포 설정 문제를 안내한다.
  */
 export function mapAuthRequestError(ex) {
   const m = ex?.message || String(ex);
@@ -11,8 +11,8 @@ export function mapAuthRequestError(ex) {
   if (status === 404 || m === "Not Found") {
     return (
       "API 주소에서 서비스를 찾을 수 없습니다(HTTP 404). " +
-      "Render 대시보드에서 웹 서비스가 배포·기동 중인지 확인하고, " +
-      "프론트 빌드(Cloudflare Pages 등)의 VITE_API_BASE_URL이 백엔드 공개 URL과 일치하는지 맞추세요."
+      "백엔드(예: EB) 배포 상태를 확인하고, " +
+      "프론트 빌드(AWS Amplify 등)의 VITE_API_BASE_URL·VITE_AWS_API_URL 이 백엔드 공개 URL과 일치하는지 확인하세요."
     );
   }
   if (netFail) {
