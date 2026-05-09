@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import os
+import secrets
 
 from fastapi import Depends, Header, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
@@ -118,4 +119,28 @@ def verify_lab_worker_token(
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="invalid_lab_worker_secret",
+        )
+
+
+def require_admin_api_key(
+    x_admin_api_key: str | None = Header(default=None, alias="X-Admin-API-Key"),
+) -> None:
+    """운영 점검용 관리 API — `ADMIN_API_KEY`와 헤더 값이 일치해야 합니다."""
+
+    expected = (os.getenv("ADMIN_API_KEY") or "").strip()
+    if not expected:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="서버에 ADMIN_API_KEY가 설정되어 있지 않습니다.",
+        )
+    got = (x_admin_api_key or "").strip()
+    if not got or len(got) != len(expected):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="X-Admin-API-Key가 없거나 올바르지 않습니다.",
+        )
+    if not secrets.compare_digest(got, expected):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="X-Admin-API-Key가 없거나 올바르지 않습니다.",
         )

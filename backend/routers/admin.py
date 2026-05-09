@@ -1,21 +1,55 @@
 """마스터 관리자: 승인, 정지, 이력 조회."""
 from __future__ import annotations
 
+import html
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy.orm import Session
 
 from activity_service import log_activity
 from database import get_db
-from dependencies import get_current_master
+from dependencies import get_current_master, require_admin_api_key
 from email_service import send_approval_notice_email
 from models import ActivityLog, Announcement, User
 from user_workspace import ALL_ACCESS_ROLES
 from schemas_auth import ActivityLogOut, Message, UserOut
+from services.email_service import (
+    EmailConfigurationError,
+    EmailSendError,
+    send_email,
+    smtp_enabled,
+)
 
 router = APIRouter(prefix="/api/admin", tags=["admin"])
+
+
+class AdminTestEmailRequest(BaseModel):
+    to: EmailStr
+    subject: str = Field(..., min_length=1, max_length=998)
+    message: str = Field(..., min_length=1, max_length=50_000)
+
+
+@router.post("/test-email")
+def post_admin_test_email(
+    body: AdminTestEmailRequest,
+    _: None = Depends(require_admin_api_key),
+) -> dict[str, str]:
+    """ADMIN_API_KEY + X-Admin-API-Key 로 보호되는 SES SMTP 점검용 엔드포인트."""
+
+    safe_msg = html.escape(body.message)
+    html_body = f"<pre>{safe_msg}</pre>"
+    try:
+        send_email(body.to, body.subject, html_body, text_body=body.message)
+    except EmailConfigurationError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+    except EmailSendError as e:
+        raise HTTPException(status_code=502, detail=str(e)) from e
+
+    if smtp_enabled():
+        return {"status": "sent", "to": body.to}
+    return {"status": "dry_run", "to": body.to}
 
 
 class AnnouncementOut(BaseModel):

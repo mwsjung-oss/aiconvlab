@@ -6,11 +6,20 @@ import os
 import smtplib
 from email.header import Header
 from email.mime.text import MIMEText
+from email.utils import formataddr
 from typing import Literal
 
 logger = logging.getLogger(__name__)
 
 EmailChannel = Literal["smtp", "console"]
+
+
+def _smtp_enabled_for_legacy() -> bool:
+    """SMTP_ENABLED=off 이면 레거시 경로도 실제 SMTP를 쓰지 않습니다."""
+    v = (os.getenv("SMTP_ENABLED") or "").strip().lower()
+    if not v:
+        return True
+    return v not in ("0", "false", "no", "off")
 
 
 def _smtp_config() -> dict:
@@ -24,12 +33,19 @@ def _smtp_config() -> dict:
     if isinstance(pwd, str):
         pwd = pwd.strip()
     local_host = os.getenv("SMTP_LOCAL_HOSTNAME", "").strip() or None
+    user = (os.getenv("SMTP_USERNAME") or os.getenv("SMTP_USER") or "").strip()
+    from_email = (os.getenv("SMTP_FROM_EMAIL") or os.getenv("SMTP_FROM") or "").strip()
+    if not from_email:
+        from_email = user
+    from_name = (os.getenv("SMTP_FROM_NAME") or "").strip()
+    from_header = formataddr((from_name, from_email)) if (from_name and from_email) else from_email
     return {
         "host": os.getenv("SMTP_HOST", "").strip(),
         "port": port,
-        "user": os.getenv("SMTP_USER", "").strip(),
+        "user": user,
         "password": pwd,
-        "from_addr": (os.getenv("SMTP_FROM") or os.getenv("SMTP_USER") or "").strip(),
+        "from_addr": from_header,
+        "envelope_from": from_email,
         "timeout": int(os.getenv("SMTP_TIMEOUT", "30")),
         "use_ssl": use_ssl_env or port == 465,
         "use_tls": os.getenv("SMTP_USE_TLS", "true").lower() in ("1", "true", "yes"),
@@ -43,7 +59,7 @@ def _email_mode() -> str:
 
 
 def _smtp_ready(cfg: dict) -> bool:
-    return bool(cfg["host"] and cfg["user"] and cfg["password"] and cfg["from_addr"])
+    return bool(cfg["host"] and cfg["user"] and cfg["password"] and cfg.get("envelope_from"))
 
 
 def _log_why_console_if_auto(cfg: dict) -> None:
@@ -54,11 +70,11 @@ def _log_why_console_if_auto(cfg: dict) -> None:
     if not cfg["host"]:
         missing.append("SMTP_HOST")
     if not cfg["user"]:
-        missing.append("SMTP_USER")
+        missing.append("SMTP_USERNAME 또는 SMTP_USER")
     if not cfg["password"]:
         missing.append("SMTP_PASSWORD")
-    if not cfg["from_addr"]:
-        missing.append("SMTP_FROM 또는 SMTP_USER")
+    if not cfg.get("envelope_from"):
+        missing.append("SMTP_FROM_EMAIL 또는 SMTP_FROM 또는 SMTP_USER")
     if missing:
         logger.warning(
             "이메일이 실제로 발송되지 않습니다(auto 모드). .env에 다음을 설정하세요: %s",
@@ -72,6 +88,7 @@ def _send_via_smtp(to_email: str, subject: str, body: str, cfg: dict) -> None:
     msg["From"] = cfg["from_addr"]
     msg["To"] = to_email
     text = msg.as_string()
+    envelope = cfg.get("envelope_from") or cfg["from_addr"]
 
     host, port = cfg["host"], cfg["port"]
     timeout = cfg["timeout"]
@@ -84,16 +101,18 @@ def _send_via_smtp(to_email: str, subject: str, body: str, cfg: dict) -> None:
     if cfg["use_ssl"]:
         with smtplib.SMTP_SSL(host, port, **kwargs) as server:
             server.login(cfg["user"], cfg["password"])
-            server.sendmail(cfg["from_addr"], [to_email], text)
+            server.sendmail(envelope, [to_email], text)
     else:
         with smtplib.SMTP(host, port, **kwargs) as server:
             if cfg["use_tls"]:
                 server.starttls()
             server.login(cfg["user"], cfg["password"])
-            server.sendmail(cfg["from_addr"], [to_email], text)
+            server.sendmail(envelope, [to_email], text)
 
 
 def _should_send_smtp(cfg: dict) -> bool:
+    if not _smtp_enabled_for_legacy():
+        return False
     mode = _email_mode()
     if mode == "console":
         return False
@@ -122,14 +141,14 @@ def send_verification_email(
     if _should_send_smtp(cfg):
         if not _smtp_ready(cfg):
             raise ValueError(
-                "EMAIL_MODE=smtp 인데 SMTP_HOST, SMTP_USER, SMTP_PASSWORD, "
-                "SMTP_FROM(또는 SMTP_USER와 동일) 설정이 필요합니다."
+                "EMAIL_MODE=smtp 인데 SMTP_HOST, SMTP_USERNAME(또는 SMTP_USER), SMTP_PASSWORD, "
+                "SMTP_FROM_EMAIL(또는 SMTP_FROM) 설정이 필요합니다."
             )
         try:
             _send_via_smtp(to_email, subject, body, cfg)
         except smtplib.SMTPAuthenticationError as e:
             raise ValueError(
-                "SMTP 로그인 실패: 아이디·비밀번호(앱 비밀번호)와 SMTP_USER/SMTP_FROM 일치 여부를 확인하세요."
+                "SMTP 로그인 실패: 자격 증명과 SMTP_USERNAME·SMTP_FROM_EMAIL 을 확인하세요."
             ) from e
         except smtplib.SMTPException as e:
             raise ValueError(f"SMTP 오류: {e}") from e
