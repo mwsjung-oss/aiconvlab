@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   getBackendHint,
   getStoredBackendMode,
@@ -16,6 +16,18 @@ import {
  */
 export default function BackendModeToggle({ disabled = false, onReadyChange }) {
   const mode = getStoredBackendMode() ?? "cloud";
+  /** 제어 select: localStorage만 갱신하면 리렌더가 없어 값이 OpenAI로 되돌아가는 문제 방지 */
+  const [aiProvider, setAiProvider] = useState(() => readStoredAiProvider());
+  useEffect(() => {
+    const sync = () => setAiProvider(readStoredAiProvider());
+    window.addEventListener("ailab-ai-provider-change", sync);
+    return () => window.removeEventListener("ailab-ai-provider-change", sync);
+  }, []);
+  const handleAiProviderChange = useCallback((e) => {
+    const v = e.target.value;
+    setAiProvider(v);
+    writeStoredAiProvider(v);
+  }, []);
 
   useEffect(() => {
     setStoredBackendMode(mode === "local" ? "local" : "cloud");
@@ -51,12 +63,9 @@ export default function BackendModeToggle({ disabled = false, onReadyChange }) {
         <div className="auth-ai-agent-model-label">AI Agent 모델</div>
         <select
           className="auth-ai-agent-model-select"
-          value={readStoredAiProvider()}
+          value={aiProvider}
           disabled={disabled}
-          onChange={(e) => {
-            const v = e.target.value;
-            writeStoredAiProvider(v);
-          }}
+          onChange={handleAiProviderChange}
           aria-label="AI Agent 백엔드"
         >
           {AI_PROVIDER_OPTIONS.map((o) => (
